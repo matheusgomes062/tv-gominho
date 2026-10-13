@@ -4,7 +4,7 @@ Um player de vídeo livre (FOSS) para reviver as manhãs de desenho como na **TV
 
 Você coloca os seus próprios episódios em pastas organizadas, escolhe uma grade de programação (por exemplo, "TV Globinho 2003") e a TV Chuvisco cuida do resto.
 
-> **Status:** em planejamento. Ainda não há código — veja a especificação em [`docs/`](docs/).
+> **Status:** primeira versão em desenvolvimento: roda no navegador (Chrome/Edge) lendo a pasta da biblioteca do seu computador. Veja o [roteiro](docs/roteiro.md).
 
 ## Duas formas de assistir
 
@@ -28,6 +28,34 @@ Você coloca os seus próprios episódios em pastas organizadas, escolhe uma gra
 4. [Configurações](docs/configuracoes.md)
 5. [Pendrive para qualquer TV](docs/pendrive.md)
 6. [Roteiro e decisões em aberto](docs/roteiro.md)
+
+## Rodando o projeto
+
+Requisitos: [Node.js](https://nodejs.org) 22 ou mais novo. Para gerar a biblioteca de exemplo, também o [ffmpeg](https://ffmpeg.org).
+
+```sh
+npm install
+npm run exemplo   # gera exemplo/biblioteca com vídeos de teste (precisa do ffmpeg)
+npm run dev       # abre em http://localhost:5173
+```
+
+No navegador, clique em **Escolher biblioteca** e selecione a sua pasta `biblioteca`, ou em **Usar biblioteca de exemplo**.
+
+| Comando | O que faz |
+|---|---|
+| `npm test` | Testes do núcleo (leitura da biblioteca e motor da grade) |
+| `npm run typecheck` | Verificação de tipos do TypeScript |
+| `npm run build` | Gera a versão final em `pacotes/interface/dist` |
+
+### Controles
+
+| Tecla | Na TV | Na biblioteca |
+|---|---|---|
+| ↑ ↓ | Troca de canal | Navega |
+| ← → | | Navega (no player: volta/avança 10 s) |
+| Enter / OK | Mostra o que está passando | Abre |
+| Esc / Backspace | Abre o menu | Volta |
+| 1–9 | Vai direto para o canal | |
 
 ## Licença
 

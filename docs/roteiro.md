@@ -10,7 +10,7 @@
 - [x] Pendrive
 - [x] Nome, licença e pilha técnica
 
-### Fase 1: Versão local no navegador (atual)
+### Fase 1: Versão local no navegador (atual, primeira versão pronta)
 Sem servidor e sem instalação: uma página que lê a pasta `biblioteca` direto do computador. Nada é enviado para a internet.
 
 - Botão "Escolher biblioteca" (File System Access API, só Chrome/Edge no computador)
