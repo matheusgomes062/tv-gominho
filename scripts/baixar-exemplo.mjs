@@ -327,9 +327,7 @@ try {
 // Generated bumpers (optional).
 bumper('vinhetas/aberturas/abertura.mp4', { title: 'Sessão Desenho', seconds: 4, color: '0x2a4fd6', tone: 880 });
 bumper('vinhetas/encerramentos/encerramento.mp4', { title: 'Até a próxima!', seconds: 4, color: '0xd6482a', tone: 784 });
-bumper('vinhetas/intervalos/voltamos-ja.mp4', { title: 'Voltamos já!', seconds: 3, color: '0xc9a000', tone: 988 });
-bumper('vinhetas/intervalos/a-seguir.mp4', { title: 'A seguir...', seconds: 3, color: '0x00a0c9', tone: 932 });
-credits.push('Vinhetas (abertura, encerramento, intervalos): geradas por scripts/baixar-exemplo.mjs com o ffmpeg;');
+credits.push('Vinhetas (abertura, encerramento): geradas por scripts/baixar-exemplo.mjs com o ffmpeg;');
 credits.push('são cartões de cor simples, sem material de terceiros.');
 credits.push('');
 
@@ -343,10 +341,8 @@ blocos:
     itens:
       - vinheta: aberturas
       - programa: superman-fleischer
-      - vinheta: intervalos
       - comerciais: 2
       - programa: popeye-contos-das-mil-e-uma-noites
-      - vinheta: intervalos
       - comerciais: 2
       - programa: gato-felix
       - vinheta: encerramentos
@@ -355,10 +351,8 @@ blocos:
     itens:
       - vinheta: aberturas
       - programa: gato-felix
-      - vinheta: intervalos
       - comerciais: 2
       - programa: popeye-contos-das-mil-e-uma-noites
-      - vinheta: intervalos
       - comerciais: 2
       - programa: superman-fleischer
       - vinheta: encerramentos
