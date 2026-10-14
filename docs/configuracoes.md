@@ -10,6 +10,7 @@ No pendrive comum, as mesmas configurações são escolhidas na hora de gerar o 
 |---|---|---|
 | `modo_inicial` | `tv`, `biblioteca` | `tv` |
 | `canal_inicial` | nome de uma grade | a primeira grade |
+| `canais_por_programa` | sim/não | sim |
 | `horario` | `continuo`, `real`, `do_inicio` | `continuo` |
 | `crt.ligado` | sim/não | sim |
 | `crt.intensidade` | `suave`, `media`, `forte` | `media` |
@@ -22,6 +23,10 @@ No pendrive comum, as mesmas configurações são escolhidas na hora de gerar o 
 | `relogio_na_tela` | sim/não | não |
 | `marca_dagua` | caminho de uma imagem do usuário | nenhuma |
 | `idioma` | `pt-BR`, `en` | `pt-BR` |
+
+### `canais_por_programa`
+
+Cria um canal extra para cada programa da biblioteca, que passa só os episódios dele, um atrás do outro, com vinhetas de `intervalos` entre eles. Ficam depois dos canais das grades.
 
 ### `horario`
 

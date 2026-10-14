@@ -1,6 +1,6 @@
 # Grade de programação
 
-Uma grade descreve o que passa em cada horário, como a programação da TV Globinho de um determinado ano. Cada grade é um **canal** no Modo TV.
+Uma grade descreve o que passa em cada horário, como a programação da TV Globinho de um determinado ano. Cada grade é um **canal** no Modo TV. Depois das grades vêm os **canais por programa** (um por programa, só com os episódios dele; veja `canais_por_programa` em [configuracoes.md](configuracoes.md)). Sem nenhuma grade, o app cria um "Canal Automático" com todos os programas.
 
 ## Exemplo
 

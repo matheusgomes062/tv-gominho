@@ -16,7 +16,7 @@ export {
   type TimelineOptions,
   type Position,
 } from './engine';
-export { createAutoSchedule, AUTO_SCHEDULE_ID } from './auto';
+export { createAutoSchedule, createShowChannels, AUTO_SCHEDULE_ID, SHOW_CHANNEL_PREFIX } from './auto';
 export {
   localIsoDate,
   secondsSinceMidnight,

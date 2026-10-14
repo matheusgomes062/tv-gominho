@@ -31,3 +31,41 @@ export function createAutoSchedule(library: Library): Schedule | null {
     blocks: [{ start: 0, items }],
   };
 }
+
+export const SHOW_CHANNEL_PREFIX = '__programa:';
+
+/**
+ * Most episodes in a per-show channel's daily loop. Up to this, the loop holds
+ * the whole show; longer series air this many a day and rotate across days.
+ */
+const MAX_EPISODES_PER_DAY = 40;
+
+/**
+ * One channel per show that has playable episodes: the show's episodes back
+ * to back (with an interval bumper between them, when the library has any).
+ * In continuous mode the day's loop repeats, so the loop holds every episode;
+ * only very long series are split across days.
+ * Shows are in library order; the id is stable (`__programa:<folder>`).
+ */
+export function createShowChannels(library: Library): Schedule[] {
+  const hasIntervals = resolveInterstitials(library, 'intervalos').length > 0;
+  return library.shows
+    .filter((show) => show.episodes.length > 0)
+    .map((show) => {
+      const count = Math.min(show.episodes.length, MAX_EPISODES_PER_DAY);
+      const items: ScheduleItem[] = [];
+      for (let i = 0; i < count; i++) {
+        if (i > 0 && hasIntervals) items.push({ type: 'interstitial', ref: 'intervalos' });
+        items.push({ type: 'show', show: show.id, count: 1 });
+      }
+      return {
+        id: `${SHOW_CHANNEL_PREFIX}${show.id}`,
+        path: '',
+        name: show.title,
+        description: `Só ${show.title}, episódio após episódio.`,
+        startDate: '2000-01-01',
+        days: [...WEEKDAYS],
+        blocks: [{ start: 0, items }],
+      };
+    });
+}

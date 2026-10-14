@@ -1,4 +1,4 @@
-import { createAutoSchedule, type Library, type Schedule } from '@tv-chuvisco/nucleo';
+import { createAutoSchedule, createShowChannels, type Library, type Schedule } from '@tv-chuvisco/nucleo';
 import { useCallback, useMemo, useState } from 'react';
 import { Durations } from './media';
 import { LibraryMode } from './screens/LibraryMode';
@@ -25,6 +25,7 @@ type View =
   | { name: 'show'; showId: string; focusEpisode?: number }
   | { name: 'player'; showId: string; index: number };
 
+const CHANNELS_PER_SHOW = true;
 const CHANNEL_KEY = 'tv-chuvisco.canal';
 
 export function App() {
@@ -40,7 +41,10 @@ export function App() {
 
   const open = useCallback((source: BrowserLibrary, library: Library) => {
     const auto = createAutoSchedule(library);
-    const channels = library.schedules.length > 0 ? library.schedules : auto ? [auto] : [];
+    const base = library.schedules.length > 0 ? library.schedules : auto ? [auto] : [];
+    // Setting `canais_por_programa` (default on) will be wired here in phase 2.
+    const showChannels = CHANNELS_PER_SHOW ? createShowChannels(library) : [];
+    const channels = [...base, ...showChannels];
     setSession({ source, library, durations: new Durations(source), channels });
     setView({ name: 'tv' });
   }, []);
