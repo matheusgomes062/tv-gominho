@@ -14,7 +14,7 @@ import {
   validateOutput,
 } from './plan';
 
-const h264: VideoStream = { index: 0, codec: 'h264', profile: 'High', pixFmt: 'yuv420p', width: 640, height: 480 };
+const h264: VideoStream = { index: 0, codec: 'h264', profile: 'High', pixFmt: 'yuv420p', width: 640, height: 480, frameRate: 25, sampleAspectRatio: 1, colorSpace: null };
 const aac: AudioStream = { index: 1, codec: 'aac', channels: 2, sampleRate: 48000, language: null };
 
 function media(video: Partial<VideoStream> | null, audio: Partial<AudioStream>[] = [{}], duration: number | null = 60): MediaInfo {

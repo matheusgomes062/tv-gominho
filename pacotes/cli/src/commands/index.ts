@@ -1,5 +1,6 @@
 import { converterCommand } from './converter';
+import { pendriveCommand } from './pendrive';
 import type { Command } from './types';
 
-/** Register new commands here (the `pendrive` command goes next to `converter`). */
-export const commands: Command[] = [converterCommand];
+/** Register new commands here. */
+export const commands: Command[] = [converterCommand, pendriveCommand];

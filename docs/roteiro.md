@@ -30,8 +30,8 @@ Sem servidor e sem instalação: uma página que lê a pasta `biblioteca` direto
 
 ### Fase 3: Ferramentas e pendrive
 - Ferramenta `converter` (ffmpeg) ✅ (pacote `cli`; detecta formatos antigos e codecs incompatíveis, só troca o contêiner quando dá, originais vão para `.originais`, normalização de áudio opcional; veja [ferramentas.md](ferramentas.md))
-- Ferramenta `pendrive` (linha de comando e interface)
-- Efeito CRT em ffmpeg, divisão em partes < 4 GB, normalização de áudio
+- Ferramenta `pendrive` na linha de comando ✅ (`tv-chuvisco pendrive`: dias da grade no estilo `do_inicio`, intervalos comerciais, partes de menos de 4 GB, `--simular`, cópia da biblioteca, retomada; veja [pendrive.md](pendrive.md)). Falta a tela "Criar pendrive" na interface
+- Efeito CRT em ffmpeg, divisão em partes < 4 GB, normalização de áudio ✅
 - Teste em pelo menos 3 modelos de TV
 
 ### Fase 4: App Android TV
@@ -51,5 +51,5 @@ Sem servidor e sem instalação: uma página que lê a pasta `biblioteca` direto
 
 ## Em aberto
 
-1. **Fontes das grades históricas.** Onde pesquisar a programação de cada ano (acervos de jornais, guias de TV, fóruns e gravações de fãs).
+1. **Fontes das grades históricas.** Onde pesquisar a programação de cada ano (acervos de jornais, guias de TV, fóruns e gravações de fãs). Ponto de partida: [lista de programas da TV Globinho](programas-tv-globinho.md).
 2. ~~**Biblioteca de exemplo.**~~ Primeira versão: `npm run exemplo:real` baixa Superman (Fleischer), Popeye e Gato Félix em domínio público do Internet Archive (fontes em `CREDITOS.txt`). Falta confirmar o status de cada título com mais cuidado antes de divulgar.

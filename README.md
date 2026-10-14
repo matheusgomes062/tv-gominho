@@ -29,6 +29,7 @@ Você coloca os seus próprios episódios em pastas organizadas, escolhe uma gra
 5. [Pendrive para qualquer TV](docs/pendrive.md)
 6. [Ferramentas de linha de comando (converter vídeos)](docs/ferramentas.md)
 7. [Roteiro e decisões em aberto](docs/roteiro.md)
+8. [Programas exibidos pela TV Globinho (lista para busca)](docs/programas-tv-globinho.md)
 
 ## Rodando o projeto
 

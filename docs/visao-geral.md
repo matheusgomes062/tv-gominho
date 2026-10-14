@@ -37,7 +37,7 @@ Um núcleo único em TypeScript, usado por todos os alvos:
 pacotes/
   nucleo/        # leitura da biblioteca + motor da grade (sem dependência de plataforma)   [Fase 1]
   interface/     # interface web (React + Vite), navegável por controle remoto              [Fase 1]
-  cli/           # ferramenta de linha de comando: converter vídeos ✅, gerar pendrive (ffmpeg) [Fase 3]
+  cli/           # ferramenta de linha de comando: converter vídeos ✅, gerar pendrive (ffmpeg) ✅
   android-tv/    # empacotamento da interface com Capacitor                                 [Fase 4]
   servidor/      # servidor Node: entrega a interface e os vídeos pela rede                 [Fase 5]
 ```

@@ -1,11 +1,11 @@
 # Ferramentas de linha de comando
 
-A TV Chuvisco tem uma ferramenta de linha de comando, o `tv-chuvisco`, para o trabalho pesado de vídeo, que o navegador não faz: converter arquivos antigos e (em breve) gerar o [pendrive](pendrive.md). Ela usa o [ffmpeg](https://ffmpeg.org).
+A TV Chuvisco tem uma ferramenta de linha de comando, o `tv-chuvisco`, para o trabalho pesado de vídeo, que o navegador não faz: converter arquivos antigos e gerar o [pendrive](pendrive.md). Ela usa o [ffmpeg](https://ffmpeg.org).
 
 | Comando | O que faz | Status |
 |---|---|---|
 | `converter` | Converte vídeos antigos ou incompatíveis da biblioteca para MP4 (H.264 + AAC) | Pronto |
-| `pendrive` | Gera o pendrive com a programação pré-renderizada | Em desenvolvimento (Fase 3) |
+| `pendrive` | Gera o pendrive com a programação pré-renderizada em MP4, para tocar em qualquer TV | Pronto |
 | `ajuda` | Mostra os comandos e as opções | Pronto |
 
 ## Requisitos
@@ -147,6 +147,18 @@ npm run cli -- converter ./biblioteca --ffmpeg "C:\ffmpeg\bin\ffmpeg.exe"
 
 Pode interromper com **Ctrl+C** a qualquer momento: o arquivo parcial é apagado e nenhum original é movido pela conversão em andamento. Rodar o mesmo comando de novo continua de onde parou, porque o que já foi convertido é reconhecido e pulado. O comando termina com um resumo (convertidos, falhas, espaço, tempo) e código de saída diferente de zero se algum arquivo falhou.
 
+## `pendrive`
+
+```
+tv-chuvisco pendrive <biblioteca> --destino <pasta> [opções]
+```
+
+Monta a programação de alguns dias da grade e grava arquivos MP4 comuns (`ASSISTA AQUI/Dia 01 - Parte 1.mp4`...) que qualquer TV toca pelo USB, com o efeito CRT feito em filtros do ffmpeg, volume igualado e partes de menos de 4 GB. Tudo sobre as opções, o que é gerado, a velocidade e as limitações está em [pendrive.md](pendrive.md). Para ver o que seria gerado sem renderizar nada:
+
+```sh
+npm run cli -- pendrive ./biblioteca --destino E:\ --dias 3 --simular
+```
+
 ## Para quem contribui
 
 O código fica em `pacotes/cli/` e é compilado em um arquivo só com o Vite (modo SSR para Node), porque o Node roda TypeScript mas não resolve os imports sem extensão do núcleo. Cada comando é um módulo em `src/commands/` registrado em `src/commands/index.ts`. Os módulos reutilizáveis:
@@ -154,3 +166,4 @@ O código fica em `pacotes/cli/` e é compilado em um arquivo só com o Vite (mo
 - `src/ffmpeg/`: localizar o ffmpeg (`locateFfmpeg`), analisar arquivos (`probe`) e rodar com progresso e cancelamento (`run`).
 - `src/node-source.ts`: lê uma pasta do disco como biblioteca (`openNodeLibrary`), para usar com `scanLibrary`.
 - `src/convert/plan.ts`: decisões do conversor (converter, só trocar o contêiner ou pular) e argumentos do ffmpeg, sem nenhuma chamada ao ffmpeg, por isso testados sem ele.
+- `src/pendrive/`: o comando `pendrive`. `rundown.ts` (dias, itens e trechos de episódio, com o motor do núcleo), `parts.ts` (divisão em partes de menos de 4 GB), `crt.ts` (o efeito CRT: máscara e filtros), `segment.ts` (argumentos do ffmpeg e chaves de cache de cada item), `render.ts` (renderizar, juntar, retomar), `settings.ts` (configurações da biblioteca + opções), `names.ts`, `readme.ts`, `copy.ts`, `dest.ts`. Tudo que não chama o ffmpeg é testado sem ele; `commands/pendrive.e2e.test.ts` renderiza de verdade (e é pulado se não houver ffmpeg).

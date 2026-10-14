@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseProbe } from './probe';
+import { parseProbe, parseRatio } from './probe';
 
 describe('parseProbe', () => {
   it('reads duration, video and audio streams', () => {
@@ -36,5 +36,35 @@ describe('parseProbe', () => {
 
   it('copes with empty output', () => {
     expect(parseProbe({})).toMatchObject({ duration: null, video: null, audio: [] });
+  });
+});
+
+describe('frame rate, pixel shape and colours', () => {
+  it('reads them from the first video stream', () => {
+    const info = parseProbe({
+      format: { duration: '10' },
+      streams: [
+        { index: 0, codec_type: 'video', codec_name: 'h264', width: 720, height: 480, avg_frame_rate: '30000/1001', r_frame_rate: '30000/1001', sample_aspect_ratio: '32:27', color_space: 'smpte170m' },
+      ],
+    });
+    expect(info.video!.frameRate).toBeCloseTo(29.97, 2);
+    expect(info.video!.sampleAspectRatio).toBeCloseTo(32 / 27, 6);
+    expect(info.video!.colorSpace).toBe('smpte170m');
+  });
+
+  it('falls back to the other rate, to square pixels and to unknown colours', () => {
+    const info = parseProbe({ streams: [{ codec_type: 'video', codec_name: 'h264', avg_frame_rate: '0/0', r_frame_rate: '25/1', sample_aspect_ratio: '0:1', color_space: 'unknown' }] });
+    expect(info.video).toMatchObject({ frameRate: 25, sampleAspectRatio: 1, colorSpace: null });
+    expect(parseProbe({ streams: [{ codec_type: 'video', codec_name: 'h264' }] }).video).toMatchObject({ frameRate: null, sampleAspectRatio: 1 });
+  });
+});
+
+describe('parseRatio', () => {
+  it('parses fractions and rejects the rest', () => {
+    expect(parseRatio('25/1')).toBe(25);
+    expect(parseRatio('16:9')).toBeCloseTo(16 / 9, 6);
+    expect(parseRatio('0/0')).toBeNull();
+    expect(parseRatio('N/A')).toBeNull();
+    expect(parseRatio(undefined)).toBeNull();
   });
 });

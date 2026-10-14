@@ -10,6 +10,12 @@ export interface VideoStream {
   pixFmt: string | null;
   width: number;
   height: number;
+  /** Frames per second (average), or null when ffprobe doesn't say. */
+  frameRate: number | null;
+  /** Pixel shape (width / height of one pixel); 1 when unknown. */
+  sampleAspectRatio: number;
+  /** ffprobe's `color_space` ("bt709", "bt470bg", "smpte170m"...), or null when the file doesn't say. */
+  colorSpace: string | null;
 }
 
 export interface AudioStream {
@@ -39,6 +45,10 @@ interface RawStream {
   pix_fmt?: string;
   width?: number;
   height?: number;
+  avg_frame_rate?: string;
+  r_frame_rate?: string;
+  sample_aspect_ratio?: string;
+  color_space?: string;
   channels?: number;
   sample_rate?: string;
   tags?: { language?: string };
@@ -49,6 +59,14 @@ const toNumber = (value: unknown): number | null => {
   const number = typeof value === 'string' || typeof value === 'number' ? Number(value) : NaN;
   return Number.isFinite(number) ? number : null;
 };
+
+/** "30000/1001" -> 29.97; "0/0" and garbage -> null. */
+export function parseRatio(text: string | undefined): number | null {
+  const match = /^(\d+(?:\.\d+)?)[/:](\d+(?:\.\d+)?)$/.exec(text ?? '');
+  if (!match || Number(match[2]) === 0) return null;
+  const value = Number(match[1]) / Number(match[2]);
+  return value > 0 && Number.isFinite(value) ? value : null;
+}
 
 /** Turns the JSON printed by `ffprobe -show_format -show_streams` into a MediaInfo. */
 export function parseProbe(json: unknown): MediaInfo {
@@ -64,6 +82,9 @@ export function parseProbe(json: unknown): MediaInfo {
         pixFmt: rawVideo.pix_fmt ?? null,
         width: rawVideo.width ?? 0,
         height: rawVideo.height ?? 0,
+        frameRate: parseRatio(rawVideo.avg_frame_rate) ?? parseRatio(rawVideo.r_frame_rate),
+        sampleAspectRatio: parseRatio(rawVideo.sample_aspect_ratio) ?? 1,
+        colorSpace: rawVideo.color_space && rawVideo.color_space !== 'unknown' ? rawVideo.color_space : null,
       }
     : null;
 
