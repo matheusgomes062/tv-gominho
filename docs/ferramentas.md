@@ -1,0 +1,156 @@
+# Ferramentas de linha de comando
+
+A TV Chuvisco tem uma ferramenta de linha de comando, o `tv-chuvisco`, para o trabalho pesado de vídeo, que o navegador não faz: converter arquivos antigos e (em breve) gerar o [pendrive](pendrive.md). Ela usa o [ffmpeg](https://ffmpeg.org).
+
+| Comando | O que faz | Status |
+|---|---|---|
+| `converter` | Converte vídeos antigos ou incompatíveis da biblioteca para MP4 (H.264 + AAC) | Pronto |
+| `pendrive` | Gera o pendrive com a programação pré-renderizada | Em desenvolvimento (Fase 3) |
+| `ajuda` | Mostra os comandos e as opções | Pronto |
+
+## Requisitos
+
+- [Node.js](https://nodejs.org) 22 ou mais novo.
+- O **ffmpeg** (que inclui o `ffprobe`) instalado:
+
+| Sistema | Como instalar |
+|---|---|
+| Windows | `winget install Gyan.FFmpeg` (depois abra um novo terminal) |
+| Debian / Ubuntu / Raspberry Pi OS | `sudo apt install ffmpeg` |
+| macOS | `brew install ffmpeg` |
+
+A ferramenta procura o ffmpeg nesta ordem: opção `--ffmpeg <caminho>` (o arquivo ou a pasta onde ele está), variável de ambiente `FFMPEG`, o `PATH` do sistema e, no Windows, a pasta onde o `winget` instala. O `ffprobe` é procurado ao lado do ffmpeg. Se não encontrar, a ferramenta explica como instalar.
+
+## Como rodar
+
+Dentro do projeto (depois de `npm install`):
+
+```sh
+npm run cli -- ajuda
+npm run cli -- converter ./biblioteca --simular
+```
+
+O `npm run cli` compila a ferramenta para `pacotes/cli/dist/tv-chuvisco.mjs` (um arquivo só, que não precisa de `node_modules`) e a executa. Depois de compilada, também dá para rodar direto:
+
+```sh
+npm run build -w @tv-chuvisco/cli
+node pacotes/cli/dist/tv-chuvisco.mjs converter ./biblioteca
+```
+
+Em todos os comandos, `--ajuda` mostra as opções, e **Ctrl+C** interrompe com segurança (o arquivo parcial é apagado).
+
+## `converter`
+
+```
+tv-chuvisco converter <biblioteca> [opções]
+```
+
+Procura em `programas/` e `vinhetas/` os vídeos que o app não toca e converte cada um para MP4:
+
+- **Formatos antigos:** AVI, MKV, WMV, RMVB, FLV, MPG, VOB, TS, 3GP e outros (os mesmos que o app avisa que "ainda não são suportados").
+- **MP4/MOV/M4V com codecs incompatíveis:** o formato é tocado, mas o conteúdo não. Exemplos: vídeo HEVC (H.265), MPEG-4 Parte 2 (DivX/Xvid) ou de 10 bits; áudio AC3 ou DTS. A análise é feita com o `ffprobe`.
+
+Arquivos que já são MP4 com H.264 + AAC (ou MP3) são deixados em paz.
+
+`<biblioteca>` é a pasta `biblioteca` ou a pasta que a contém (por exemplo, o pendrive). Por segurança, a ferramenta **só trabalha em pastas que parecem uma biblioteca** (com `programas/`, `vinhetas/` ou `grades/`) e só mexe em arquivos dentro dela.
+
+### O que é feito com cada arquivo
+
+| Situação | O que acontece |
+|---|---|
+| MKV/AVI/etc. com vídeo H.264 e áudio AAC estéreo | **Só troca o contêiner** (sem recodificar): segundos por arquivo, sem perda de qualidade |
+| Vídeo compatível, áudio incompatível (AC3, DTS, MP3, AAC 5.1) | Copia o vídeo e converte só o áudio |
+| Vídeo incompatível | Recodifica o vídeo |
+| MP4 que já funciona | Pulado |
+| Já existe um `.mp4` válido com o mesmo nome (de uma execução anterior) | Pulado: só cuida do original, se for o caso |
+
+O vídeo recodificado fica em **H.264 (perfil High, `yuv420p`)**, com CRF 20 por padrão, e o áudio em **AAC estéreo, 48 kHz, 160 kb/s**. Todo arquivo sai com `+faststart`. Se o arquivo tem várias faixas de áudio, vale a primeira (use `--faixa-audio` para trocar). Legendas e outras faixas não vão para o MP4.
+
+O arquivo novo fica **ao lado do original**, com a extensão `.mp4`. Ele é escrito com um nome temporário (`.nome.parcial.mp4`, oculto) e só recebe o nome final depois de conferido: precisa ter vídeo H.264, áudio (se o original tinha) e a duração do original. Se algo der errado, o temporário é apagado e o original não é tocado.
+
+### O que acontece com os originais
+
+**Nada é apagado, a menos que você peça.** Por padrão, depois de converter, o original é **movido** para a pasta `.originais` da biblioteca, mantendo as subpastas:
+
+```
+biblioteca/programas/dragon-ball/episodios/001.avi
+   vira
+biblioteca/.originais/programas/dragon-ball/episodios/001.avi
+```
+
+A TV Chuvisco ignora pastas que começam com ponto, então os originais não atrapalham. Quando conferir que está tudo certo, apague a pasta `.originais` para liberar espaço. Se já existir um arquivo com o mesmo nome lá, o novo ganha um sufixo (`001 (2).avi`).
+
+| Opção | Efeito nos originais |
+|---|---|
+| (padrão) | Movidos para `.originais/` |
+| `--manter-originais` | Ficam onde estão. O app continua avisando sobre o formato antigo enquanto o `.avi`/`.mkv` estiver na biblioteca. Exceção: um `.mp4` que precisa ser recodificado tem o mesmo nome do arquivo novo, então esse original sempre vai para `.originais/` |
+| `--apagar-originais` | Apagados depois que o MP4 novo foi conferido. Não dá para desfazer |
+
+### Opções
+
+| Opção | O que faz |
+|---|---|
+| `--simular` | Só mostra o que seria feito e por quê. Não altera nada |
+| `--qualidade <n>` | Qualidade do vídeo recodificado (CRF do x264, de 0 a 51). Menor = melhor e maior. Padrão: 20 |
+| `--preset <nome>` | Velocidade do x264: `ultrafast`, `superfast`, `veryfast`, `faster`, `fast`, `medium`, `slow`, `slower`, `veryslow`. Padrão: `medium`. Mais lento gera arquivos menores |
+| `--normalizar-audio` | Iguala o volume (EBU R128, -16 LUFS) dos arquivos que estão sendo convertidos. O áudio desses arquivos é sempre recodificado |
+| `--duas-passadas` | Com `--normalizar-audio`: mede o volume do arquivo antes de normalizar. Mais preciso, um pouco mais lento |
+| `--faixa-audio <n>` | Faixa de áudio a manter, começando em 1 (útil em MKV com dublagem e áudio original). Padrão: 1 |
+| `--manter-originais` | Veja acima |
+| `--apagar-originais` | Veja acima |
+| `--ffmpeg <caminho>` | ffmpeg a usar (o arquivo ou a pasta dele) |
+| `--ajuda` | Mostra a ajuda do comando |
+
+### Exemplos
+
+Ver o que seria feito, sem alterar nada:
+
+```sh
+npm run cli -- converter ./biblioteca --simular
+```
+
+```
+Analisando 6 vídeos...
+6 vídeos analisados; 1 já toca sem conversão.
+
+O que seria feito:
+  [converter] programas/show-a/episodios/001 - Avi.avi
+      formato .avi não é suportado; vídeo MPEG-4 Parte 2 (precisa ser H.264); áudio MP3 (será AAC)
+  [trocar contêiner] programas/show-a/episodios/002 - Mkv.mkv
+      formato .mkv não é suportado; só troca o contêiner, sem recodificar
+  [converter] programas/show-b/episodios/001 - Hevc.mp4
+      vídeo HEVC (H.265) (precisa ser H.264)
+
+3 arquivos para converter (1 só troca o contêiner), 18s de vídeo no total.
+Os originais seriam movidos para .originais/ (nada é apagado).
+```
+
+Converter tudo, com o volume igualado:
+
+```sh
+npm run cli -- converter E:\biblioteca --normalizar-audio
+```
+
+Capricho máximo (demora bastante, gera arquivos menores):
+
+```sh
+npm run cli -- converter ./biblioteca --preset slow --qualidade 18
+```
+
+Usar um ffmpeg que não está no `PATH`:
+
+```sh
+npm run cli -- converter ./biblioteca --ffmpeg "C:\ffmpeg\bin\ffmpeg.exe"
+```
+
+### Interrupções e repetição
+
+Pode interromper com **Ctrl+C** a qualquer momento: o arquivo parcial é apagado e nenhum original é movido pela conversão em andamento. Rodar o mesmo comando de novo continua de onde parou, porque o que já foi convertido é reconhecido e pulado. O comando termina com um resumo (convertidos, falhas, espaço, tempo) e código de saída diferente de zero se algum arquivo falhou.
+
+## Para quem contribui
+
+O código fica em `pacotes/cli/` e é compilado em um arquivo só com o Vite (modo SSR para Node), porque o Node roda TypeScript mas não resolve os imports sem extensão do núcleo. Cada comando é um módulo em `src/commands/` registrado em `src/commands/index.ts`. Os módulos reutilizáveis:
+
+- `src/ffmpeg/`: localizar o ffmpeg (`locateFfmpeg`), analisar arquivos (`probe`) e rodar com progresso e cancelamento (`run`).
+- `src/node-source.ts`: lê uma pasta do disco como biblioteca (`openNodeLibrary`), para usar com `scanLibrary`.
+- `src/convert/plan.ts`: decisões do conversor (converter, só trocar o contêiner ou pular) e argumentos do ffmpeg, sem nenhuma chamada ao ffmpeg, por isso testados sem ele.

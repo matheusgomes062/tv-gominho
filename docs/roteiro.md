@@ -29,7 +29,7 @@ Sem servidor e sem instalação: uma página que lê a pasta `biblioteca` direto
 - Comerciais ✅, tela de "fora do ar" ✅, horários `real` e `do_inicio` ✅ (tela de teste de cores com a hora da volta e volta automática, sobra de meia-noite; maratona que segue pelos próximos dias da grade e retoma ao voltar ao canal)
 
 ### Fase 3: Ferramentas e pendrive
-- Ferramenta `converter` (ffmpeg)
+- Ferramenta `converter` (ffmpeg) ✅ (pacote `cli`; detecta formatos antigos e codecs incompatíveis, só troca o contêiner quando dá, originais vão para `.originais`, normalização de áudio opcional; veja [ferramentas.md](ferramentas.md))
 - Ferramenta `pendrive` (linha de comando e interface)
 - Efeito CRT em ffmpeg, divisão em partes < 4 GB, normalização de áudio
 - Teste em pelo menos 3 modelos de TV

@@ -27,7 +27,8 @@ Você coloca os seus próprios episódios em pastas organizadas, escolhe uma gra
 3. [Formato da grade de programação](docs/grade.md)
 4. [Configurações](docs/configuracoes.md)
 5. [Pendrive para qualquer TV](docs/pendrive.md)
-6. [Roteiro e decisões em aberto](docs/roteiro.md)
+6. [Ferramentas de linha de comando (converter vídeos)](docs/ferramentas.md)
+7. [Roteiro e decisões em aberto](docs/roteiro.md)
 
 ## Rodando o projeto
 
@@ -44,10 +45,12 @@ No navegador, clique em **Escolher biblioteca** e selecione a sua pasta `bibliot
 | Comando | O que faz |
 |---|---|
 | `npm run exemplo:real` | Baixa desenhos clássicos em domínio público (~570 MB) para `exemplo/dominio-publico/biblioteca` |
+| `npm run cli -- converter <biblioteca>` | Converte AVI, MKV e outros vídeos que o app não toca para MP4 (precisa do ffmpeg). Veja [ferramentas](docs/ferramentas.md) |
+| `npm run cli -- ajuda` | Lista os comandos da linha de comando |
 | `npm run comerciais` | Gera comerciais fictícios (anos 90/2000) em `vinhetas/comerciais` da biblioteca de domínio público; narração opcional via Piper (`-- --instalar-voz`) |
-| `npm test` | Testes do núcleo (leitura da biblioteca e motor da grade) |
+| `npm test` | Testes do núcleo (leitura da biblioteca e motor da grade) e da linha de comando |
 | `npm run typecheck` | Verificação de tipos do TypeScript |
-| `npm run build` | Gera a versão final em `pacotes/interface/dist` |
+| `npm run build` | Gera a versão final em `pacotes/interface/dist` e a linha de comando em `pacotes/cli/dist` |
 
 ### Controles
 

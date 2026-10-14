@@ -8,9 +8,10 @@
   ],
   "scripts": {
     "dev": "npm run dev -w @tv-chuvisco/interface --",
-    "build": "npm run build -w @tv-chuvisco/interface --",
+    "build": "npm run build --workspaces --if-present",
+    "cli": "npm run build -w @tv-chuvisco/cli --silent && node pacotes/cli/dist/tv-chuvisco.mjs",
     "test": "vitest run",
-    "typecheck": "tsc -p pacotes/nucleo && tsc -p pacotes/interface",
+    "typecheck": "tsc -p pacotes/nucleo && tsc -p pacotes/interface && tsc -p pacotes/cli",
     "exemplo": "node scripts/gerar-exemplo.mjs",
     "exemplo:real": "node scripts/baixar-exemplo.mjs",
     "comerciais": "node scripts/gerar-comerciais.mjs"
