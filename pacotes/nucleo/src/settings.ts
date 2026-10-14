@@ -17,7 +17,8 @@ export type StartMode = 'tv' | 'library';
 export interface CrtSettings {
   enabled: boolean;
   intensity: CrtIntensity;
-  curvature: boolean;
+  /** Screen curvature in percent: 0 = flat, 100 = strongly bulged. Independent of `intensity`. */
+  curvature: number;
   scanlines: boolean;
 }
 
@@ -43,12 +44,15 @@ export interface Settings {
 
 export type PartialSettings = Partial<Omit<Settings, 'crt'>> & { crt?: Partial<CrtSettings> };
 
+/** Curvature percent that matches the original fixed 'medium' look. */
+export const DEFAULT_CURVATURE = 50;
+
 export const DEFAULT_SETTINGS: Settings = {
   startMode: 'tv',
   startChannel: null,
   channelsPerShow: true,
   schedule: 'continuous',
-  crt: { enabled: true, intensity: 'medium', curvature: true, scanlines: true },
+  crt: { enabled: true, intensity: 'medium', curvature: DEFAULT_CURVATURE, scanlines: true },
   channelChangeStatic: true,
   aspect: '4:3',
   interstitials: true,
@@ -100,7 +104,7 @@ export function sanitizeSettings(value: unknown): PartialSettings {
     result.crt = definedOnly({
       enabled: flag(value.crt, 'enabled'),
       intensity: option(value.crt, 'intensity', ALLOWED.intensity),
-      curvature: flag(value.crt, 'curvature'),
+      curvature: curvatureFromStorage(value.crt.curvature),
       scanlines: flag(value.crt, 'scanlines'),
     });
   }
@@ -188,13 +192,45 @@ function parseCrt(value: unknown, warn: (message: string) => void): Partial<CrtS
   for (const [key, entry] of Object.entries(value)) {
     const label = `crt.${key}`;
     if (key === 'ligado') crt.enabled = bool(label, entry, warn);
-    else if (key === 'curvatura') crt.curvature = bool(label, entry, warn);
+    else if (key === 'curvatura') crt.curvature = curvature(label, entry, warn);
     else if (key === 'linhas') crt.scanlines = bool(label, entry, warn);
     else if (key === 'intensidade') {
       crt.intensity = choice(label, entry, { suave: 'soft', media: 'medium', forte: 'strong' }, warn);
     } else warn(`Opção desconhecida: "${label}". Ela foi ignorada.`);
   }
   return definedOnly(crt);
+}
+
+/**
+ * Curvature from the yaml: a number 0-100 (or "50%"), or the old sim (= default) / não (= 0).
+ * Numbers outside 0-100 are clamped, with a warning.
+ */
+function curvature(key: string, value: unknown, warn: (message: string) => void): number | undefined {
+  let amount: number | undefined;
+  if (typeof value === 'number' && Number.isFinite(value)) amount = value;
+  else if (typeof value === 'boolean') return value ? DEFAULT_CURVATURE : 0;
+  else if (typeof value === 'string') {
+    const text = fold(value.trim());
+    if (text === 'sim' || text === 'true') return DEFAULT_CURVATURE;
+    if (text === 'nao' || text === 'false') return 0;
+    const match = /^(\d+(?:[.,]\d+)?)\s*%?$/.exec(text);
+    if (match) amount = Number(match[1]!.replace(',', '.'));
+  }
+  if (amount === undefined) {
+    warn(`"${key}" deve ser um número de 0 a 100 (ou sim/não), recebi ${show(value)}. Usando o padrão.`);
+    return undefined;
+  }
+  if (amount < 0 || amount > 100) {
+    warn(`"${key}" deve ficar entre 0 e 100 (recebi ${show(value)}). Usei ${amount < 0 ? 0 : 100}.`);
+  }
+  return Math.round(Math.min(100, Math.max(0, amount)));
+}
+
+/** Old stored overrides were booleans: true = default amount, false = flat. */
+function curvatureFromStorage(value: unknown): number | undefined {
+  if (typeof value === 'boolean') return value ? DEFAULT_CURVATURE : 0;
+  if (typeof value === 'number' && Number.isFinite(value)) return Math.round(Math.min(100, Math.max(0, value)));
+  return undefined;
 }
 
 function bool(key: string, value: unknown, warn: (message: string) => void): boolean | undefined {

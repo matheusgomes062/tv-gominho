@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { scanLibrary } from './library';
-import { DEFAULT_SETTINGS, findChannelIndex, mergeSettings, parseSettings, sanitizeSettings } from './settings';
+import { DEFAULT_CURVATURE, DEFAULT_SETTINGS, findChannelIndex, mergeSettings, parseSettings, sanitizeSettings } from './settings';
 import { memorySource } from './test-helpers';
 import type { LibraryWarning, Schedule } from './types';
 
@@ -36,7 +36,7 @@ horario: do_inicio
 crt:
   ligado: sim
   intensidade: forte
-  curvatura: nao
+  curvatura: 35
   linhas: true
 chuvisco_troca_canal: false
 proporcao: esticar
@@ -50,7 +50,7 @@ relogio_na_tela: sim
       startChannel: 'TV Globinho',
       channelsPerShow: false,
       schedule: 'fromStart',
-      crt: { enabled: true, intensity: 'strong', curvature: false, scanlines: true },
+      crt: { enabled: true, intensity: 'strong', curvature: 35, scanlines: true },
       channelChangeStatic: false,
       aspect: 'stretch',
       interstitials: false,
@@ -70,9 +70,42 @@ relogio_na_tela: sim
     expect(mergeSettings(DEFAULT_SETTINGS, settings).crt).toEqual({
       enabled: true,
       intensity: 'soft',
-      curvature: true,
+      curvature: 50,
       scanlines: true,
     });
+  });
+
+  it('reads curvatura as a number, a percentage, or the old sim/não', () => {
+    const curvature = (text: string) => parse(`crt:
+  curvatura: ${text}
+`);
+    expect(curvature('0').settings).toEqual({ crt: { curvature: 0 } });
+    expect(curvature('72').settings).toEqual({ crt: { curvature: 72 } });
+    expect(curvature('"50%"').settings).toEqual({ crt: { curvature: 50 } });
+    expect(curvature('30%').settings).toEqual({ crt: { curvature: 30 } });
+    expect(curvature('12.6').settings).toEqual({ crt: { curvature: 13 } });
+    expect(curvature('sim').settings).toEqual({ crt: { curvature: DEFAULT_CURVATURE } });
+    expect(curvature('não').settings).toEqual({ crt: { curvature: 0 } });
+    expect(curvature('false').settings).toEqual({ crt: { curvature: 0 } });
+    expect(curvature('100').warnings).toEqual([]);
+  });
+
+  it('clamps curvatura outside 0-100 with a warning, and ignores non-numbers', () => {
+    const high = parse(`crt:
+  curvatura: 250
+`);
+    expect(high.settings).toEqual({ crt: { curvature: 100 } });
+    expect(high.warnings[0]!.message).toContain('entre 0 e 100');
+    const low = parse(`crt:
+  curvatura: -5
+`);
+    expect(low.settings).toEqual({ crt: { curvature: 0 } });
+    expect(low.warnings).toHaveLength(1);
+    const bad = parse(`crt:
+  curvatura: bastante
+`);
+    expect(bad.settings).toEqual({});
+    expect(bad.warnings[0]!.message).toContain('"crt.curvatura" deve ser um número de 0 a 100');
   });
 
   it('warns about bad values and unknown options, keeping the default', () => {
@@ -125,6 +158,16 @@ describe('mergeSettings', () => {
 });
 
 describe('sanitizeSettings', () => {
+  it('migrates the old boolean curvature and clamps numbers', () => {
+    const curvature = (value: unknown) => sanitizeSettings({ crt: { curvature: value } });
+    expect(curvature(true)).toEqual({ crt: { curvature: DEFAULT_CURVATURE } });
+    expect(curvature(false)).toEqual({ crt: { curvature: 0 } });
+    expect(curvature(30)).toEqual({ crt: { curvature: 30 } });
+    expect(curvature(400)).toEqual({ crt: { curvature: 100 } });
+    expect(curvature(-1)).toEqual({ crt: { curvature: 0 } });
+    expect(curvature('50')).toEqual({ crt: {} });
+  });
+
   it('keeps valid fields and drops the rest', () => {
     expect(
       sanitizeSettings({

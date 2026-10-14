@@ -7,7 +7,8 @@ export type CrtView = 'picture' | 'static' | 'black';
 
 export interface CrtParams {
   intensity: CrtIntensity;
-  curvature: boolean;
+  /** Screen curvature, 0 (flat) to 100. */
+  curvature: number;
   scanlines: boolean;
   view: CrtView;
   /** 'contain' keeps the video's aspect ratio (letterbox); 'fill' stretches it over the tube. */
@@ -24,8 +25,6 @@ export interface CrtRenderer {
 }
 
 interface Preset {
-  /** Barrel distortion. */
-  curv: number;
   /** Scanline depth. */
   scan: number;
   /** Aperture-grille (RGB stripes) strength. */
@@ -48,12 +47,15 @@ interface Preset {
 }
 
 const PRESETS: Record<CrtIntensity, Preset> = {
-  soft: { curv: 0.045, scan: 0.28, mask: 0.07, vignette: 0.25, aberr: 0.0004, bloom: 0.3, noise: 0.012, flicker: 0.006, jitter: 0.0002, glitch: 0, glass: 0.5 },
-  medium: { curv: 0.075, scan: 0.52, mask: 0.13, vignette: 0.4, aberr: 0.0007, bloom: 0.42, noise: 0.025, flicker: 0.014, jitter: 0.0007, glitch: 0.12, glass: 0.8 },
-  strong: { curv: 0.115, scan: 0.82, mask: 0.22, vignette: 0.62, aberr: 0.0016, bloom: 0.6, noise: 0.05, flicker: 0.03, jitter: 0.002, glitch: 1, glass: 1.1 },
+  soft: { scan: 0.28, mask: 0.07, vignette: 0.25, aberr: 0.0004, bloom: 0.3, noise: 0.012, flicker: 0.006, jitter: 0.0002, glitch: 0, glass: 0.5 },
+  medium: { scan: 0.52, mask: 0.13, vignette: 0.4, aberr: 0.0007, bloom: 0.42, noise: 0.025, flicker: 0.014, jitter: 0.0007, glitch: 0.12, glass: 0.8 },
+  strong: { scan: 0.82, mask: 0.22, vignette: 0.62, aberr: 0.0016, bloom: 0.6, noise: 0.05, flicker: 0.03, jitter: 0.002, glitch: 1, glass: 1.1 },
 };
 
 /** Never render more pixels than this (a 960x720 tube at 1.5x DPR is 1.55M; this keeps Pi-class GPUs happy). */
+/** Barrel distortion at curvature 100 (50 gives 0.075, the old fixed 'medium' look). */
+const MAX_CURV = 0.15;
+
 const MAX_PIXELS = 1_300_000;
 const MAX_DPR = 1.5;
 /** Min ms between renders when nothing but the CRT's own animation changes. */
@@ -193,7 +195,7 @@ void main() {
   vec2 e = 1.0 - abs(q);
   float inside = smoothstep(0.0, aa * 2.0, min(e.x, e.y));
   if (uCurv > 0.0) {
-    float rad = 0.07 + uCurv * 0.6;
+    float rad = uCurv * 1.5; // corner radius grows with the bulge
     vec2 dd = abs(p) - (1.0 - rad);
     float d = length(max(dd, 0.0)) - rad;
     inside *= 1.0 - smoothstep(-aa, aa, d);
@@ -246,7 +248,7 @@ export function createCrtRenderer(canvas: HTMLCanvasElement, videoElement: HTMLV
   let dirty = true;
   let lastTime = -1;
 
-  let params: CrtParams = { intensity: 'medium', curvature: true, scanlines: true, view: 'picture', fit: 'contain', resolution: 1 };
+  let params: CrtParams = { intensity: 'medium', curvature: 50, scanlines: true, view: 'picture', fit: 'contain', resolution: 1 };
   let pic = 0;
   let snow = 0;
   let lastRender = 0;
@@ -373,7 +375,7 @@ export function createCrtRenderer(canvas: HTMLCanvasElement, videoElement: HTMLV
     gl!.uniform1f(u.uSeed!, Math.random() * 100);
     gl!.uniform1f(u.uPic!, pic);
     gl!.uniform1f(u.uStatic!, snow);
-    gl!.uniform1f(u.uCurv!, params.curvature ? preset.curv : 0);
+    gl!.uniform1f(u.uCurv!, Math.min(1, Math.max(0, params.curvature / 100)) * MAX_CURV);
     gl!.uniform1f(u.uScan!, params.scanlines ? preset.scan : 0);
     gl!.uniform1f(u.uMask!, params.scanlines ? preset.mask : 0);
     gl!.uniform1f(u.uVig!, preset.vignette);

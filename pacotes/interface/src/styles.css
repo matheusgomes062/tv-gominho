@@ -451,8 +451,10 @@ h2 {
 }
 
 .crt-fallback.with-curve {
-  border-radius: 4% / 5%;
-  box-shadow: inset 0 0 6vmin 1vmin rgb(0 0 0 / 0.55);
+  /* --crt-curve is 0..1 (curvature percent / 100). */
+  border-radius: calc(var(--crt-curve, 0.5) * 8%) / calc(var(--crt-curve, 0.5) * 10%);
+  box-shadow: inset 0 0 calc(var(--crt-curve, 0.5) * 12vmin) calc(var(--crt-curve, 0.5) * 2vmin)
+    rgb(0 0 0 / calc(var(--crt-curve, 0.5) * 1.1));
 }
 
 .crt-fallback-soft {
@@ -629,6 +631,52 @@ h2 {
 
 .setting-value strong {
   color: var(--text);
+}
+
+.slider-value {
+  min-width: 16em;
+}
+
+.slider-value strong {
+  min-width: 3em;
+  text-align: right;
+}
+
+.slider-track {
+  position: relative;
+  flex: 1;
+  height: 0.5em;
+  margin: 0 0.6em;
+  border-radius: 999px;
+  background: var(--surface-strong);
+  box-shadow: inset 0 0 0 1px var(--muted);
+  cursor: pointer;
+  touch-action: none;
+}
+
+/* A taller invisible hit area, so the thin bar is easy to grab. */
+.slider-track::before {
+  content: '';
+  position: absolute;
+  inset: -0.8em -0.4em;
+}
+
+.slider-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.slider-thumb {
+  position: absolute;
+  top: 50%;
+  width: 1.1em;
+  height: 1.1em;
+  border-radius: 50%;
+  background: var(--text);
+  border: 2px solid var(--accent);
+  transform: translate(-50%, -50%);
 }
 
 /* Player */

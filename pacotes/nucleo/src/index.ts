@@ -3,6 +3,7 @@ export { scanLibrary, findShow, resolveInterstitials } from './library';
 export { parseSchedule } from './schedule';
 export {
   DEFAULT_SETTINGS,
+  DEFAULT_CURVATURE,
   mergeSettings,
   parseSettings,
   sanitizeSettings,
@@ -56,8 +57,13 @@ export {
 } from './dates';
 export {
   basename,
+  dirname,
+  extension,
+  stripExtension,
   isPlayableVideo,
+  isConvertibleVideo,
   isImage,
   naturalCompare,
   PLAYABLE_VIDEO,
+  CONVERTIBLE_VIDEO,
 } from './paths';

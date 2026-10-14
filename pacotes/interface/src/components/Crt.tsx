@@ -1,5 +1,5 @@
 import type { AspectMode, Settings } from '@tv-chuvisco/nucleo';
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { createCrtRenderer, type CrtRenderer, type CrtView } from './crt-renderer';
 
 interface Props {
@@ -78,7 +78,8 @@ export function Crt({ video, settings, aspect, view, onActive }: Props) {
   if (failed) {
     return (
       <div
-        className={`crt-fallback crt-fallback-${settings.intensity} ${settings.scanlines ? 'with-lines' : ''} ${settings.curvature ? 'with-curve' : ''}`}
+        className={`crt-fallback crt-fallback-${settings.intensity} ${settings.scanlines ? 'with-lines' : ''} ${settings.curvature > 0 ? 'with-curve' : ''}`}
+        style={{ '--crt-curve': settings.curvature / 100 } as CSSProperties}
         aria-hidden="true"
       />
     );

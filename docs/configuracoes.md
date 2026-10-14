@@ -24,7 +24,7 @@ No pendrive comum, as mesmas configurações são escolhidas na hora de gerar o 
 | `horario` | `continuo`, `real`, `do_inicio` | `continuo` |
 | `crt.ligado` | sim/não | sim |
 | `crt.intensidade` | `suave`, `media`, `forte` | `media` |
-| `crt.curvatura` | sim/não | sim |
+| `crt.curvatura` | número de 0 a 100 (ou `50%`) | `50` |
 | `crt.linhas` (scanlines) | sim/não | sim |
 | `chuvisco_troca_canal` | sim/não | sim |
 | `proporcao` | `4:3`, `esticar`, `original` | `4:3` |
@@ -53,6 +53,10 @@ Cria um canal extra para cada programa da biblioteca, que passa só os episódio
 - **`do_inicio`**: ao ligar o canal, sempre começa pela abertura do primeiro bloco (o primeiro item da grade), como uma maratona, e segue em ordem sem olhar o relógio. Os espaços entre blocos são pulados. Quando o último item do dia acaba, a maratona continua com o próximo dia de exibição da grade (assim os episódios avançam, em vez de repetir o mesmo dia): depois da sexta-feira vem a segunda. Se o dia em que você ligou é folga, começa pelo último dia de exibição.
   - **Mudar de canal e voltar:** a maratona continua de onde estaria, como se tivesse passado o tempo todo. O início de cada maratona fica guardado só enquanto a página estiver aberta: ao recarregar, ou ao trocar `horario` e voltar, ela recomeça pela abertura.
 
+### `crt.curvatura`
+
+Quanto a tela do tubo é abaulada, em porcentagem: `0` é uma tela perfeitamente reta (a imagem aparece inteira, sem cortes), `50` (padrão) é a curva de uma TV comum e `100` é bem arredondada, com cantos e bordas escuras mais fortes. Aceita `50` ou `"50%"`. Não depende de `crt.intensidade`. Valores fora de 0 a 100 geram um aviso e viram 0 ou 100. Por compatibilidade, `sim` vale o padrão (`50`) e `não` vale `0`. No menu, é uma barra: use ← → (de 10 em 10) ou arraste.
+
 ### `vinhetas` e `comerciais`
 
 Valem de forma independente. `vinhetas: não` tira as vinhetas das grades e as de `intervalos` que preenchem os espaços entre blocos; `comerciais: não` tira os comerciais (itens `comerciais` da grade e os de `vinhetas/comerciais/`, inclusive no preenchimento). Os episódios e os horários dos blocos não mudam.
@@ -67,6 +71,7 @@ Valem de forma independente. `vinhetas: não` tira as vinhetas das grades e as d
 horario: real
 crt:
   intensidade: suave
+  curvatura: 30
 comerciais: false
 ```
 

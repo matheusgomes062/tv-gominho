@@ -1,5 +1,5 @@
 import type { PartialSettings, Schedule, Settings } from '@tv-chuvisco/nucleo';
-import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { focusFirst, useSpatialNav } from '../nav';
 import { useSettings } from '../settings';
 
@@ -23,6 +23,8 @@ interface Row {
   /** Shown indented, under the setting it depends on. */
   indent?: boolean;
   options: Option<unknown>[];
+  /** A 0-100 amount adjusted with a slider instead of cycling through `options`. */
+  slider?: { step: number };
   get(settings: Settings): unknown;
   set(value: unknown): PartialSettings;
 }
@@ -38,6 +40,7 @@ function row<V>(definition: {
   hint?: string;
   indent?: boolean;
   options: Option<NoInfer<V>>[];
+  slider?: { step: number };
   get(settings: Settings): V;
   set(value: NoInfer<V>): PartialSettings;
 }): Row {
@@ -134,7 +137,8 @@ function buildGroups(channels: Schedule[], current: string | null): Group[] {
           key: 'crt.curvature',
           label: 'Tela curva',
           indent: true,
-          options: YES_NO,
+          options: [],
+          slider: { step: 10 },
           get: (s) => s.crt.curvature,
           set: (curvature) => ({ crt: { curvature } }),
         }),
@@ -211,11 +215,26 @@ export function SettingsScreen({ channels, onBack }: Props) {
     setRestored(false);
   };
 
+  const setAmount = (item: Row, amount: number) => {
+    const clamped = Math.min(100, Math.max(0, Math.round(amount)));
+    if (clamped !== item.get(settings)) update(item.set(clamped));
+    setRestored(false);
+  };
+  const nudge = (item: Row, direction: 1 | -1) => {
+    const step = item.slider!.step;
+    setAmount(item, Math.round((item.get(settings) as number) / step) * step + direction * step);
+  };
+  const amountAt = (event: PointerEvent<HTMLElement>) => {
+    const box = event.currentTarget.getBoundingClientRect();
+    return box.width > 0 ? ((event.clientX - box.left) / box.width) * 100 : 0;
+  };
+
   // Left/Right change the value (nav.ts leaves them alone on [data-nav-adjust]); Enter clicks, which goes forward.
   const onKeyDown = (item: Row) => (event: KeyboardEvent) => {
-    if (event.key === 'ArrowLeft') cycle(item, -1);
-    else if (event.key === 'ArrowRight') cycle(item, 1);
-    else return;
+    const direction = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
+    if (direction === 0) return;
+    if (item.slider) nudge(item, direction);
+    else cycle(item, direction);
     event.preventDefault();
   };
 
@@ -234,7 +253,9 @@ export function SettingsScreen({ channels, onBack }: Props) {
           <div className="setting-list">
             {group.rows.map((item) => {
               const value = item.get(settings);
-              const label = item.options.find((option) => option.value === value)?.label ?? String(value);
+              const label = item.slider
+                ? `${value}%`
+                : (item.options.find((option) => option.value === value)?.label ?? String(value));
               const origin = isSet(overrides, item.key)
                 ? 'alterado por você'
                 : isSet(fromLibrary, item.key)
@@ -247,7 +268,11 @@ export function SettingsScreen({ channels, onBack }: Props) {
                   data-nav-adjust
                   data-setting={item.key}
                   className={`setting-row ${item.indent ? 'indent' : ''}`}
-                  onClick={() => cycle(item, 1)}
+                  onClick={(event) => {
+                    if (!item.slider) cycle(item, 1);
+                    // Enter/OK on a slider (detail 0) steps up and wraps; pointer clicks are handled on the track.
+                    else if (event.detail === 0) setAmount(item, (value as number) >= 100 ? 0 : (value as number) + item.slider.step);
+                  }}
                   onKeyDown={onKeyDown(item)}
                 >
                   <span className="setting-text">
@@ -255,11 +280,37 @@ export function SettingsScreen({ channels, onBack }: Props) {
                     {item.hint && <span className="setting-hint">{item.hint}</span>}
                   </span>
                   {origin && <span className="setting-origin">{origin}</span>}
-                  <span className="setting-value">
-                    <span aria-hidden="true">‹</span>
-                    <strong>{label}</strong>
-                    <span aria-hidden="true">›</span>
-                  </span>
+                  {item.slider ? (
+                    <span className="setting-value slider-value">
+                      <span aria-hidden="true">‹</span>
+                      <span
+                        className="slider-track"
+                        role="slider"
+                        aria-label={item.label}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={value as number}
+                        onPointerDown={(event) => {
+                          event.currentTarget.setPointerCapture(event.pointerId);
+                          setAmount(item, amountAt(event));
+                        }}
+                        onPointerMove={(event) => {
+                          if (event.currentTarget.hasPointerCapture(event.pointerId)) setAmount(item, amountAt(event));
+                        }}
+                      >
+                        <span className="slider-fill" style={{ width: `${value}%` }} />
+                        <span className="slider-thumb" style={{ left: `${value}%` }} />
+                      </span>
+                      <strong>{label}</strong>
+                      <span aria-hidden="true">›</span>
+                    </span>
+                  ) : (
+                    <span className="setting-value">
+                      <span aria-hidden="true">‹</span>
+                      <strong>{label}</strong>
+                      <span aria-hidden="true">›</span>
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -285,7 +336,7 @@ export function SettingsScreen({ channels, onBack }: Props) {
         </p>
       </section>
 
-      <p className="muted keys">↑ ↓ escolhem a opção · ← → (ou OK) mudam o valor · Esc volta ao menu</p>
+      <p className="muted keys">↑ ↓ escolhem a opção · ← → (ou OK) mudam o valor; na barra, ← → mexem de 10 em 10 ou arraste · Esc volta ao menu</p>
     </main>
   );
 }
