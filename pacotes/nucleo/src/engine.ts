@@ -18,9 +18,9 @@ import { createRng, hashString, pick, shuffled, type Rng } from './random';
 import type { Episode, Library, Schedule, Show } from './types';
 
 export interface PlanOptions {
-  /** Play bumpers (vinhetas). Default true. */
+  /** Play bumpers (vinhetas), also as gap fillers. Default true. */
   interstitials?: boolean;
-  /** Play commercials. Default true. */
+  /** Play commercials (vinhetas/comerciais), also as gap fillers. Independent of `interstitials`. Default true. */
   commercials?: boolean;
 }
 
@@ -48,7 +48,7 @@ export interface DayPlan {
 /** Decides which episodes and bumpers air on `date` ("YYYY-MM-DD"). */
 export function planDay(schedule: Schedule, library: Library, date: string, options: PlanOptions = {}): DayPlan {
   const useInterstitials = options.interstitials ?? true;
-  const useCommercials = (options.commercials ?? true) && useInterstitials;
+  const useCommercials = options.commercials ?? true;
 
   const days = new Set<Weekday>(schedule.days.length > 0 ? schedule.days : WEEKDAYS);
   const requested = isoToDayNumber(date);
@@ -87,6 +87,7 @@ export function planDay(schedule: Schedule, library: Library, date: string, opti
           items.push({ kind: 'episode', path: episode.path, show, episode, episodeIndex });
         }
       } else if (item.type === 'interstitial') {
+        // Always draw, even when switched off, so the other picks of the day don't change.
         const choice = pick(rng, resolveInterstitials(library, item.ref));
         if (useInterstitials && choice) {
           items.push({ kind: 'interstitial', path: choice.path, category: choice.category });
@@ -105,12 +106,10 @@ export function planDay(schedule: Schedule, library: Library, date: string, opti
     return { start: block.start, items };
   });
 
-  const fillers = useInterstitials
-    ? [
-        ...resolveInterstitials(library, 'intervalos'),
-        ...(useCommercials ? resolveInterstitials(library, 'comerciais') : []),
-      ].map((item) => item.path)
-    : [];
+  const fillers = [
+    ...(useInterstitials ? resolveInterstitials(library, 'intervalos') : []),
+    ...(useCommercials ? resolveInterstitials(library, 'comerciais') : []),
+  ].map((item) => item.path);
 
   return {
     scheduleId: schedule.id,

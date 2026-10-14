@@ -1,4 +1,5 @@
 import type { Weekday } from './dates';
+import type { PartialSettings, Settings } from './settings';
 
 /**
  * Where the library files come from: a folder picked in the browser, the Node
@@ -77,5 +78,9 @@ export interface Library {
   shows: Show[];
   interstitials: Interstitial[];
   schedules: Schedule[];
+  /** DEFAULT_SETTINGS with the library's configuracoes.yaml on top. */
+  settings: Settings;
+  /** Only what configuracoes.yaml sets (empty when there is no file). */
+  settingsFile: PartialSettings;
   warnings: LibraryWarning[];
 }

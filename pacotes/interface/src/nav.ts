@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 
 // Remote-control style navigation: arrow keys move focus to the nearest
 // [data-nav] element in that direction; Enter clicks it (native for buttons).
+// An element with [data-nav-adjust] (e.g. a settings row) keeps Left/Right for
+// itself: it handles them in its own onKeyDown instead of moving focus.
 
 const DIRECTIONS: Record<string, [number, number]> = {
   ArrowUp: [0, -1],
@@ -55,6 +57,7 @@ export function useSpatialNav(onBack?: () => void) {
     const handler = (event: KeyboardEvent) => {
       const direction = DIRECTIONS[event.key];
       if (direction) {
+        if (direction[0] !== 0 && document.activeElement?.hasAttribute('data-nav-adjust')) return;
         event.preventDefault();
         moveFocus(direction);
       } else if (BACK_KEYS.has(event.key) && onBack) {

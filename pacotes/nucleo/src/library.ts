@@ -12,6 +12,7 @@ import {
   titleFromSlug,
 } from './paths';
 import { parseSchedule } from './schedule';
+import { DEFAULT_SETTINGS, mergeSettings, parseSettings, type PartialSettings } from './settings';
 import type {
   Episode,
   Interstitial,
@@ -42,6 +43,7 @@ export async function scanLibrary(source: LibrarySource): Promise<Library> {
   const showFiles = new Map<string, ShowFiles>();
   const interstitials: Interstitial[] = [];
   const schedulePaths: string[] = [];
+  let settingsPath: string | undefined;
 
   for (const path of source.files) {
     if (!path.toLowerCase().startsWith(root.toLowerCase())) continue;
@@ -67,6 +69,8 @@ export async function scanLibrary(source: LibrarySource): Promise<Library> {
       interstitials.push({ path, category: parts[1]!.toLowerCase(), relativePath: parts.slice(1).join('/') });
     } else if (section === 'grades' && parts.length === 2 && isYaml(path)) {
       schedulePaths.push(path);
+    } else if (parts.length === 1 && /^configuracoes\.ya?ml$/i.test(parts[0]!)) {
+      settingsPath = path;
     }
   }
 
@@ -91,7 +95,12 @@ export async function scanLibrary(source: LibrarySource): Promise<Library> {
     if (schedule) schedules.push(schedule);
   }
 
-  const library: Library = { root, shows, interstitials, schedules, warnings };
+  const settingsFile: PartialSettings = settingsPath
+    ? parseSettings(settingsPath, await source.readText(settingsPath), warnings)
+    : {};
+  const settings = mergeSettings(DEFAULT_SETTINGS, settingsFile);
+
+  const library: Library = { root, shows, interstitials, schedules, settings, settingsFile, warnings };
   for (const schedule of schedules) validateReferences(schedule, library);
   return library;
 }

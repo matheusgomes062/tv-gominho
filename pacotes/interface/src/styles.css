@@ -372,6 +372,24 @@ h2 {
   cursor: default;
 }
 
+/*
+ * The picture frame (`proporcao`): .tv-screen is the box that holds the video,
+ * the static and the CRT overlay. Its container carries aspect-4-3,
+ * aspect-stretch or aspect-original.
+ */
+.tv-screen {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+.aspect-4-3 > .tv-screen {
+  width: min(100vw, 133.333vh);
+  height: min(100vh, 75vw);
+  margin: auto;
+}
+
 .tv-video,
 .player-video {
   width: 100%;
@@ -380,9 +398,19 @@ h2 {
   background: #000;
 }
 
-.tv-static {
+.aspect-stretch .tv-video,
+.aspect-stretch .player-video {
+  object-fit: fill;
+}
+
+.tv-static,
+.tv-black {
   position: absolute;
   inset: 0;
+}
+
+.tv-black {
+  background: #000;
 }
 
 .tv-tuning {
@@ -418,6 +446,19 @@ h2 {
 
 .osd-name {
   font-size: 1.1em;
+}
+
+.osd-clock {
+  position: absolute;
+  top: 6%;
+  left: 6%;
+  color: var(--osd);
+  font-family: 'Courier New', ui-monospace, monospace;
+  font-weight: 700;
+  font-size: 1.8em;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 0.3em rgb(93 255 106 / 0.7), 0.08em 0.08em 0 #000;
+  pointer-events: none;
 }
 
 .osd-info {
@@ -473,6 +514,69 @@ h2 {
 .tv.show-pointer .tv-menu-button {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* Settings */
+.settings {
+  max-width: 60rem;
+}
+
+.setting-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.setting-row {
+  font: inherit;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.7em 1em;
+  cursor: pointer;
+}
+
+.setting-row:hover {
+  background: var(--surface-strong);
+}
+
+.setting-row.indent {
+  margin-left: 2em;
+  width: calc(100% - 2em);
+}
+
+.setting-text {
+  flex: 1;
+  display: grid;
+  gap: 0.15em;
+}
+
+.setting-hint,
+.setting-origin {
+  color: var(--muted);
+  font-size: 0.75em;
+}
+
+.setting-origin {
+  font-style: italic;
+}
+
+.setting-value {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  min-width: 9em;
+  justify-content: space-between;
+  color: var(--accent);
+}
+
+.setting-value strong {
+  color: var(--text);
 }
 
 /* Player */

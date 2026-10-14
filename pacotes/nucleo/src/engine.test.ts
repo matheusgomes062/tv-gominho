@@ -95,9 +95,31 @@ describe('planDay', () => {
     expect(kinds(noCommercials)).toEqual(['interstitial', 'episode', 'interstitial', 'episode', 'episode', 'episode']);
     expect(noCommercials.fillers.every((path) => path.includes('/intervalos/'))).toBe(true);
 
-    const nothing = planDay(grade, lib, '2003-03-03', { interstitials: false });
+    const noBumpers = planDay(grade, lib, '2003-03-03', { interstitials: false });
+    expect(kinds(noBumpers)).toEqual(['episode', 'episode', 'episode', 'interstitial', 'interstitial', 'episode']);
+    expect(noBumpers.fillers.every((path) => path.includes('/comerciais/'))).toBe(true);
+
+    const nothing = planDay(grade, lib, '2003-03-03', { interstitials: false, commercials: false });
     expect(kinds(nothing)).toEqual(['episode', 'episode', 'episode', 'episode']);
     expect(nothing.fillers).toEqual([]);
+  });
+
+  it('keeps the same episodes whatever is switched off', async () => {
+    const lib = await library();
+    const grade = lib.schedules[0]!;
+    const episodes = (plan: DayPlan) =>
+      plan.blocks.flatMap((b) => b.items).filter((item) => item.kind === 'episode').map((item) => item.path);
+    const all = episodes(planDay(grade, lib, '2003-03-03'));
+    expect(episodes(planDay(grade, lib, '2003-03-03', { interstitials: false, commercials: false }))).toEqual(all);
+  });
+
+  it('builds a timeline without bumper or commercial filler when they are off', async () => {
+    const lib = await library();
+    const grade = lib.schedules[0]!;
+    const durationOf = () => 600;
+    const plan = planDay(grade, lib, '2003-03-03', { interstitials: false, commercials: false });
+    const timeline = buildTimeline(plan, durationOf);
+    expect(timeline.entries.some((entry) => entry.kind === 'filler' || entry.kind === 'interstitial')).toBe(false);
   });
 
   it('lists every file whose duration is needed', async () => {

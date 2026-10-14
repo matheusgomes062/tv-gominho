@@ -2,6 +2,20 @@ export * from './types';
 export { scanLibrary, findShow, resolveInterstitials } from './library';
 export { parseSchedule } from './schedule';
 export {
+  DEFAULT_SETTINGS,
+  mergeSettings,
+  parseSettings,
+  sanitizeSettings,
+  findChannelIndex,
+  type Settings,
+  type PartialSettings,
+  type CrtSettings,
+  type CrtIntensity,
+  type ScheduleMode,
+  type AspectMode,
+  type StartMode,
+} from './settings';
+export {
   planDay,
   requiredPaths,
   buildTimeline,

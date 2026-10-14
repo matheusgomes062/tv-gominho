@@ -1,53 +1,88 @@
-import { createAutoSchedule, createShowChannels, type Library, type Schedule } from '@tv-chuvisco/nucleo';
-import { useCallback, useMemo, useState } from 'react';
+import { createAutoSchedule, createShowChannels, findChannelIndex, type Library } from '@tv-chuvisco/nucleo';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Durations } from './media';
 import { LibraryMode } from './screens/LibraryMode';
 import { Menu } from './screens/Menu';
 import { Player } from './screens/Player';
+import { SettingsScreen } from './screens/Settings';
 import { ShowPage } from './screens/ShowPage';
 import { TvMode } from './screens/TvMode';
 import { Warnings } from './screens/Warnings';
 import { Welcome } from './screens/Welcome';
+import { SettingsProvider, useSettings } from './settings';
 import type { BrowserLibrary } from './sources/types';
 
 interface Session {
+  /** Changes with every opened folder, so the screens below start fresh. */
+  id: number;
   source: BrowserLibrary;
   library: Library;
   durations: Durations;
-  channels: Schedule[];
 }
 
 type View =
   | { name: 'tv' }
   | { name: 'menu' }
+  | { name: 'settings' }
   | { name: 'warnings' }
   | { name: 'library'; focusShow?: string }
   | { name: 'show'; showId: string; focusEpisode?: number }
   | { name: 'player'; showId: string; index: number };
 
-const CHANNELS_PER_SHOW = true;
 const CHANNEL_KEY = 'tv-chuvisco.canal';
+
+function savedChannel(): number | undefined {
+  try {
+    const saved = localStorage.getItem(CHANNEL_KEY);
+    return saved === null ? undefined : Number(saved) || 0;
+  } catch {
+    return undefined;
+  }
+}
 
 export function App() {
   const [session, setSession] = useState<Session | null>(null);
-  const [view, setView] = useState<View>({ name: 'tv' });
-  const [channel, setChannelState] = useState(() => {
-    try {
-      return Number(localStorage.getItem(CHANNEL_KEY)) || 0;
-    } catch {
-      return 0;
-    }
-  });
+  const nextId = useRef(0);
 
   const open = useCallback((source: BrowserLibrary, library: Library) => {
-    const auto = createAutoSchedule(library);
-    const base = library.schedules.length > 0 ? library.schedules : auto ? [auto] : [];
-    // Setting `canais_por_programa` (default on) will be wired here in phase 2.
-    const showChannels = CHANNELS_PER_SHOW ? createShowChannels(library) : [];
-    const channels = [...base, ...showChannels];
-    setSession({ source, library, durations: new Durations(source), channels });
-    setView({ name: 'tv' });
+    setSession({ id: nextId.current++, source, library, durations: new Durations(source) });
   }, []);
+
+  if (!session) return <Welcome onOpen={open} />;
+  return (
+    <SettingsProvider key={session.id} libraryName={session.source.name} library={session.library}>
+      <Main
+        session={session}
+        onChangeFolder={() => {
+          session.source.dispose();
+          setSession(null);
+        }}
+      />
+    </SettingsProvider>
+  );
+}
+
+function Main({ session, onChangeFolder }: { session: Session; onChangeFolder(): void }) {
+  const { source, library, durations } = session;
+  const { settings } = useSettings();
+
+  const base = useMemo(() => {
+    const auto = createAutoSchedule(library);
+    return library.schedules.length > 0 ? library.schedules : auto ? [auto] : [];
+  }, [library]);
+  const channels = useMemo(
+    () => (settings.channelsPerShow ? [...base, ...createShowChannels(library)] : base),
+    [base, library, settings.channelsPerShow],
+  );
+
+  const [view, setView] = useState<View>(settings.startMode === 'library' ? { name: 'library' } : { name: 'tv' });
+  // A channel saved by the last visit wins over `canal_inicial`, which only applies the first time.
+  const [channel, setChannelState] = useState(() => {
+    const saved = savedChannel();
+    if (saved !== undefined) return saved;
+    const start = settings.startChannel === null ? -1 : findChannelIndex(channels, settings.startChannel);
+    return Math.max(0, start);
+  });
 
   const setChannel = useCallback((index: number) => {
     setChannelState(index);
@@ -58,19 +93,16 @@ export function App() {
     }
   }, []);
 
+  const safeChannel = channel < channels.length ? channel : 0;
+
   const toTv = useCallback(() => setView({ name: 'tv' }), []);
   const toMenu = useCallback(() => setView({ name: 'menu' }), []);
   const toLibrary = useCallback((focusShow?: string) => setView({ name: 'library', focusShow }), []);
 
   const show = useMemo(() => {
-    if (!session || !('showId' in view)) return undefined;
-    return session.library.shows.find((s) => s.id === view.showId);
-  }, [session, view]);
-
-  if (!session) return <Welcome onOpen={open} />;
-
-  const { source, library, durations, channels } = session;
-  const safeChannel = channel < channels.length ? channel : 0;
+    if (!('showId' in view)) return undefined;
+    return library.shows.find((s) => s.id === view.showId);
+  }, [library, view]);
 
   switch (view.name) {
     case 'tv':
@@ -98,12 +130,12 @@ export function App() {
           }}
           onLibrary={() => toLibrary()}
           onWarnings={() => setView({ name: 'warnings' })}
-          onChangeFolder={() => {
-            source.dispose();
-            setSession(null);
-          }}
+          onSettings={() => setView({ name: 'settings' })}
+          onChangeFolder={onChangeFolder}
         />
       );
+    case 'settings':
+      return <SettingsScreen channels={channels} onBack={toMenu} />;
     case 'warnings':
       return <Warnings warnings={library.warnings} onBack={toMenu} />;
     case 'library':

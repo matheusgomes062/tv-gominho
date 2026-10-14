@@ -1,0 +1,180 @@
+import { describe, expect, it } from 'vitest';
+import { scanLibrary } from './library';
+import { DEFAULT_SETTINGS, findChannelIndex, mergeSettings, parseSettings, sanitizeSettings } from './settings';
+import { memorySource } from './test-helpers';
+import type { LibraryWarning, Schedule } from './types';
+
+function parse(text: string) {
+  const warnings: LibraryWarning[] = [];
+  const settings = parseSettings('configuracoes.yaml', text, warnings);
+  return { settings, warnings };
+}
+
+describe('parseSettings', () => {
+  it('returns nothing for an empty file', () => {
+    expect(parse('')).toEqual({ settings: {}, warnings: [] });
+    expect(parse('# só comentários\n')).toEqual({ settings: {}, warnings: [] });
+  });
+
+  it('reads only what the file sets, so it can be merged over the defaults', () => {
+    const { settings, warnings } = parse('horario: real\ncomerciais: false\n');
+    expect(warnings).toEqual([]);
+    expect(settings).toEqual({ schedule: 'real', commercials: false });
+    expect(mergeSettings(DEFAULT_SETTINGS, settings)).toEqual({
+      ...DEFAULT_SETTINGS,
+      schedule: 'real',
+      commercials: false,
+    });
+  });
+
+  it('reads every option with its pt-BR values', () => {
+    const { settings, warnings } = parse(`
+modo_inicial: biblioteca
+canal_inicial: TV Globinho
+canais_por_programa: não
+horario: do_inicio
+crt:
+  ligado: sim
+  intensidade: forte
+  curvatura: nao
+  linhas: true
+chuvisco_troca_canal: false
+proporcao: esticar
+vinhetas: não
+comerciais: sim
+relogio_na_tela: sim
+`);
+    expect(warnings).toEqual([]);
+    expect(settings).toEqual({
+      startMode: 'library',
+      startChannel: 'TV Globinho',
+      channelsPerShow: false,
+      schedule: 'fromStart',
+      crt: { enabled: true, intensity: 'strong', curvature: false, scanlines: true },
+      channelChangeStatic: false,
+      aspect: 'stretch',
+      interstitials: false,
+      commercials: true,
+      clock: true,
+    });
+  });
+
+  it('accepts 4:3 and values with accents or capitals', () => {
+    expect(parse('proporcao: 4:3').settings).toEqual({ aspect: '4:3' });
+    expect(parse('crt:\n  intensidade: Média').settings).toEqual({ crt: { intensity: 'medium' } });
+    expect(parse('relogio_na_tela: SIM').settings).toEqual({ clock: true });
+  });
+
+  it('merges a partial crt block over the default crt', () => {
+    const { settings } = parse('crt:\n  intensidade: suave\n');
+    expect(mergeSettings(DEFAULT_SETTINGS, settings).crt).toEqual({
+      enabled: true,
+      intensity: 'soft',
+      curvature: true,
+      scanlines: true,
+    });
+  });
+
+  it('warns about bad values and unknown options, keeping the default', () => {
+    const { settings, warnings } = parse(`
+horario: sempre
+comerciais: talvez
+crt:
+  intensidade: 11
+  brilho: sim
+foo: bar
+canal_inicial: 3
+`);
+    expect(settings).toEqual({});
+    expect(warnings.map((w) => w.message)).toEqual([
+      expect.stringContaining('"horario" deve ser continuo, real, do_inicio'),
+      expect.stringContaining('"comerciais" deve ser sim ou não'),
+      expect.stringContaining('"crt.intensidade" deve ser suave, media, forte'),
+      expect.stringContaining('Opção desconhecida: "crt.brilho"'),
+      expect.stringContaining('Opção desconhecida: "foo"'),
+      expect.stringContaining('"canal_inicial"'),
+    ]);
+    expect(warnings.every((w) => w.path === 'configuracoes.yaml')).toBe(true);
+  });
+
+  it('says marca_dagua and idioma are not supported yet', () => {
+    const { settings, warnings } = parse('marca_dagua: logo.png\nidioma: en\n');
+    expect(settings).toEqual({});
+    expect(warnings).toHaveLength(2);
+    expect(warnings[0]!.message).toContain('ainda não é suportada');
+  });
+
+  it('warns about broken YAML and non-mapping files', () => {
+    expect(parse('horario: [real').warnings[0]!.message).toContain('Erro de sintaxe');
+    expect(parse('- a\n- b\n').warnings).toHaveLength(1);
+  });
+});
+
+describe('mergeSettings', () => {
+  it('layers on top without mutating the base', () => {
+    const user = mergeSettings(DEFAULT_SETTINGS, { crt: { enabled: false }, clock: true });
+    expect(user.crt).toEqual({ ...DEFAULT_SETTINGS.crt, enabled: false });
+    expect(user.clock).toBe(true);
+    expect(DEFAULT_SETTINGS.clock).toBe(false);
+    expect(DEFAULT_SETTINGS.crt.enabled).toBe(true);
+  });
+
+  it('ignores undefined fields', () => {
+    expect(mergeSettings(DEFAULT_SETTINGS, { clock: undefined, crt: { scanlines: undefined } })).toEqual(DEFAULT_SETTINGS);
+  });
+});
+
+describe('sanitizeSettings', () => {
+  it('keeps valid fields and drops the rest', () => {
+    expect(
+      sanitizeSettings({
+        aspect: 'stretch',
+        schedule: 'sempre',
+        clock: 'yes',
+        startChannel: null,
+        crt: { enabled: false, intensity: 'loud', extra: 1 },
+        other: true,
+      }),
+    ).toEqual({ aspect: 'stretch', startChannel: null, crt: { enabled: false } });
+    expect(sanitizeSettings('x')).toEqual({});
+    expect(sanitizeSettings(null)).toEqual({});
+  });
+});
+
+describe('findChannelIndex', () => {
+  const channels = [
+    { id: 'manha', name: 'TV Globinho' },
+    { id: '__programa:bob', name: 'Bob Esponja' },
+  ] as Schedule[];
+
+  it('matches name or id, ignoring case and accents', () => {
+    expect(findChannelIndex(channels, 'tv globinho')).toBe(0);
+    expect(findChannelIndex(channels, 'Manhã')).toBe(0);
+    expect(findChannelIndex(channels, 'bob esponja')).toBe(1);
+    expect(findChannelIndex(channels, 'nada')).toBe(-1);
+  });
+});
+
+describe('scanLibrary settings', () => {
+  const files = { 'programas/bob/episodios/001.mp4': '', 'programas/bob/programa.yaml': 'titulo: Bob' };
+
+  it('uses the defaults when there is no configuracoes.yaml', async () => {
+    const library = await scanLibrary(memorySource(files));
+    expect(library.settings).toEqual(DEFAULT_SETTINGS);
+    expect(library.settingsFile).toEqual({});
+  });
+
+  it('reads configuracoes.yaml, also inside a nested biblioteca/ folder', async () => {
+    const text = 'horario: real\ncrt:\n  ligado: não\nhorario2: x\n';
+    for (const prefix of ['', 'biblioteca/']) {
+      const library = await scanLibrary(
+        memorySource(Object.fromEntries([...Object.entries(files), ['configuracoes.yaml', text]].map(([k, v]) => [prefix + k, v]))),
+      );
+      expect(library.settings.schedule).toBe('real');
+      expect(library.settings.crt).toEqual({ ...DEFAULT_SETTINGS.crt, enabled: false });
+      expect(library.settingsFile).toEqual({ schedule: 'real', crt: { enabled: false } });
+      expect(library.warnings.map((w) => w.message)).toEqual([expect.stringContaining('"horario2"')]);
+      expect(library.warnings[0]!.path).toBe(`${prefix}configuracoes.yaml`);
+    }
+  });
+});

@@ -2,6 +2,7 @@ import type { Show } from '@tv-chuvisco/nucleo';
 import { useEffect, useRef, useState } from 'react';
 import { useFlash } from '../components/useFlash';
 import { BACK_KEYS } from '../nav';
+import { aspectClass, useSettings } from '../settings';
 import type { BrowserLibrary } from '../sources/types';
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
 /** On-demand player for Library mode: plays the episode, then the next one. */
 export function Player({ source, show, index, onIndex, onBack }: Props) {
   const video = useRef<HTMLVideoElement>(null);
+  const { settings } = useSettings();
   const [error, setError] = useState(false);
   const [title, showTitle] = useFlash(4000, true);
   const episode = show.episodes[index]!;
@@ -55,15 +57,17 @@ export function Player({ source, show, index, onIndex, onBack }: Props) {
   }, [index, show.episodes.length, onBack, onIndex, showTitle]);
 
   return (
-    <main className="player" onMouseMove={showTitle}>
-      <video
-        ref={video}
-        className="player-video"
-        controls
-        playsInline
-        onEnded={() => (index + 1 < show.episodes.length ? onIndex(index + 1) : onBack())}
-        onError={() => setError(true)}
-      />
+    <main className={`player ${aspectClass(settings.aspect)}`} onMouseMove={showTitle}>
+      <div className="tv-screen">
+        <video
+          ref={video}
+          className="player-video"
+          controls
+          playsInline
+          onEnded={() => (index + 1 < show.episodes.length ? onIndex(index + 1) : onBack())}
+          onError={() => setError(true)}
+        />
+      </div>
       {(title || error) && (
         <div className="player-title">
           <button className="button" onClick={onBack}>

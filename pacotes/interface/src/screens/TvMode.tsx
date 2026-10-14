@@ -11,10 +11,12 @@ import {
   type TimelineEntry,
 } from '@tv-chuvisco/nucleo';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Clock } from '../components/Clock';
 import { Static } from '../components/Static';
 import { useFlash } from '../components/useFlash';
 import type { Durations } from '../media';
 import { BACK_KEYS } from '../nav';
+import { aspectClass, useSettings } from '../settings';
 import type { BrowserLibrary } from '../sources/types';
 
 interface Props {
@@ -40,6 +42,9 @@ const OSD_MS = 4000;
 
 export function TvMode({ source, library, durations, channels, channel, onChannel, onMenu }: Props) {
   const schedule = channels[channel];
+  const { settings } = useSettings();
+  // Settings that change what plays: tune() runs again when they do.
+  const { interstitials, commercials, schedule: scheduleMode } = settings;
   const video = useRef<HTMLVideoElement>(null);
   const timeline = useRef<Timeline | null>(null);
   const index = useRef(0);
@@ -102,7 +107,7 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
       }
       const startedAt = performance.now();
       setStatus({ name: 'tuning', done: 0, total: 0 });
-      const plan = planDay(schedule, library, localIsoDate(new Date()));
+      const plan = planDay(schedule, library, localIsoDate(new Date()), { interstitials, commercials });
       await durations.load(requiredPaths(plan), (done, total) => {
         if (token === generation.current) setStatus({ name: 'tuning', done, total });
       });
@@ -114,6 +119,8 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
       if (token !== generation.current) return;
 
       timeline.current = built;
+      // TODO(phase 2): `horario`. `scheduleMode` is 'continuous' | 'real' | 'fromStart'; only
+      // 'continuous' is implemented (locate() below). 'real' and 'fromStart' plug in here.
       const position = locate(built, secondsSinceMidnight(new Date()));
       if (!position) {
         setStatus({ name: 'empty' });
@@ -121,7 +128,7 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
       }
       void play(position.index, position.offset, token);
     },
-    [schedule, library, durations, play],
+    [schedule, library, durations, play, interstitials, commercials, scheduleMode],
   );
   tuneRef.current = tune;
 
@@ -163,61 +170,71 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
     return () => window.removeEventListener('keydown', handler);
   }, [changeChannel, channels.length, onChannel, onMenu, status.name, showInfo]);
 
-  const showStatic = status.name === 'tuning' || status.name === 'idle';
+  // Off-air/unplayable gaps always show static; `chuvisco_troca_canal` only decides about tuning.
+  const showStatic = (status.name === 'tuning' && settings.channelChangeStatic) || status.name === 'idle';
+  const showBlack = status.name === 'tuning' && !settings.channelChangeStatic;
   const item = entry?.item;
 
   return (
     <main
-      className={`tv ${pointer ? 'show-pointer' : ''}`}
+      className={`tv ${aspectClass(settings.aspect)} ${pointer ? 'show-pointer' : ''}`}
       onMouseMove={showPointer}
       onDoubleClick={() => void document.documentElement.requestFullscreen?.().catch(() => undefined)}
     >
-      <video
-        ref={video}
-        className="tv-video"
-        playsInline
-        onPlaying={() => setStatus({ name: 'playing' })}
-        onEnded={() => play(index.current + 1, 0, generation.current)}
-        onError={() => {
-          // Unplayable file: skip it after a moment of static.
-          if (!video.current?.getAttribute('src')) return;
-          setStatus({ name: 'idle' });
-          const token = generation.current;
-          idleTimer.current = window.setTimeout(() => play(index.current + 1, 0, token), 1500);
-        }}
-      />
-      {showStatic && <Static className="tv-static" />}
+      {/* The picture: a 4:3 frame, or the whole screen (see `proporcao`). Everything drawn on the TV goes inside. */}
+      <div className="tv-screen">
+        <video
+          ref={video}
+          className="tv-video"
+          playsInline
+          onPlaying={() => setStatus({ name: 'playing' })}
+          onEnded={() => play(index.current + 1, 0, generation.current)}
+          onError={() => {
+            // Unplayable file: skip it after a moment of static.
+            if (!video.current?.getAttribute('src')) return;
+            setStatus({ name: 'idle' });
+            const token = generation.current;
+            idleTimer.current = window.setTimeout(() => play(index.current + 1, 0, token), 1500);
+          }}
+        />
+        {showStatic && <Static className="tv-static" />}
+        {showBlack && <div className="tv-black" />}
 
-      {status.name === 'tuning' && status.total > 0 && (
-        <p className="tv-tuning">
-          Sintonizando… {status.done}/{status.total}
-        </p>
-      )}
+        {/* TODO(phase 2): CRT. The WebGL overlay (settings.crt) goes here: over the picture, under the OSD. */}
 
-      {(osd || status.name === 'tuning') && schedule && (
-        <div className="osd-channel">
-          <span className="osd-number">CH {String(channel + 1).padStart(2, '0')}</span>
-          <span className="osd-name">{schedule.name}</span>
-        </div>
-      )}
+        {status.name === 'tuning' && status.total > 0 && (
+          <p className="tv-tuning">
+            Sintonizando… {status.done}/{status.total}
+          </p>
+        )}
 
-      {info && entry && (
-        <div className="osd-info">
-          {item?.kind === 'episode' ? (
-            <>
-              <strong>{item.show.title}</strong>
-              <span>{item.episode.title}</span>
-            </>
-          ) : (
-            <strong>Intervalo</strong>
-          )}
-          {nextEntry?.item?.kind === 'episode' && (
-            <span className="osd-next">
-              A seguir: {nextEntry.item.show.title} · {nextEntry.item.episode.title}
-            </span>
-          )}
-        </div>
-      )}
+        {(osd || status.name === 'tuning') && schedule && (
+          <div className="osd-channel">
+            <span className="osd-number">CH {String(channel + 1).padStart(2, '0')}</span>
+            <span className="osd-name">{schedule.name}</span>
+          </div>
+        )}
+
+        {settings.clock && <Clock />}
+
+        {info && entry && (
+          <div className="osd-info">
+            {item?.kind === 'episode' ? (
+              <>
+                <strong>{item.show.title}</strong>
+                <span>{item.episode.title}</span>
+              </>
+            ) : (
+              <strong>Intervalo</strong>
+            )}
+            {nextEntry?.item?.kind === 'episode' && (
+              <span className="osd-next">
+                A seguir: {nextEntry.item.show.title} · {nextEntry.item.episode.title}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
 
       {status.name === 'blocked' && (
         <button className="tv-blocked button primary" onClick={() => void video.current?.play()}>

@@ -10,10 +10,11 @@ interface Props {
   onWatch(channel: number): void;
   onLibrary(): void;
   onWarnings(): void;
+  onSettings(): void;
   onChangeFolder(): void;
 }
 
-export function Menu({ channels, channel, warningCount, libraryName, onWatch, onLibrary, onWarnings, onChangeFolder }: Props) {
+export function Menu({ channels, channel, warningCount, libraryName, onWatch, onLibrary, onWarnings, onSettings, onChangeFolder }: Props) {
   useSpatialNav(() => onWatch(channel));
   useEffect(() => focusFirst(), []);
 
@@ -45,6 +46,9 @@ export function Menu({ channels, channel, warningCount, libraryName, onWatch, on
         <div className="menu-grid">
           <button data-nav className="button" onClick={onLibrary}>
             Biblioteca
+          </button>
+          <button data-nav className="button" onClick={onSettings}>
+            Configurações
           </button>
           <button data-nav className="button" onClick={onWarnings}>
             Avisos ({warningCount})
