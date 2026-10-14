@@ -11,7 +11,9 @@
     "build": "npm run build -w @tv-chuvisco/interface --",
     "test": "vitest run",
     "typecheck": "tsc -p pacotes/nucleo && tsc -p pacotes/interface",
-    "exemplo": "node scripts/gerar-exemplo.mjs"
+    "exemplo": "node scripts/gerar-exemplo.mjs",
+    "exemplo:real": "node scripts/baixar-exemplo.mjs",
+    "comerciais": "node scripts/gerar-comerciais.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

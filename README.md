@@ -43,6 +43,8 @@ No navegador, clique em **Escolher biblioteca** e selecione a sua pasta `bibliot
 
 | Comando | O que faz |
 |---|---|
+| `npm run exemplo:real` | Baixa desenhos clássicos em domínio público (~570 MB) para `exemplo/dominio-publico/biblioteca` |
+| `npm run comerciais` | Gera comerciais fictícios (anos 90/2000) em `vinhetas/comerciais` da biblioteca de domínio público; narração opcional via Piper (`-- --instalar-voz`) |
 | `npm test` | Testes do núcleo (leitura da biblioteca e motor da grade) |
 | `npm run typecheck` | Verificação de tipos do TypeScript |
 | `npm run build` | Gera a versão final em `pacotes/interface/dist` |
@@ -51,7 +53,7 @@ No navegador, clique em **Escolher biblioteca** e selecione a sua pasta `bibliot
 
 | Tecla | Na TV | Na biblioteca |
 |---|---|---|
-| ↑ ↓ | Troca de canal | Navega |
+| ↑ ↓ | Troca de canal (grades e programas) | Navega |
 | ← → | | Navega (no player: volta/avança 10 s) |
 | Enter / OK | Mostra o que está passando | Abre |
 | Esc / Backspace | Abre o menu | Volta |
