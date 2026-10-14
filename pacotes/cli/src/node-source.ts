@@ -1,4 +1,4 @@
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { lstat, readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import type { LibrarySource } from '@tv-chuvisco/nucleo';
 import { CliError } from './errors';
@@ -12,6 +12,12 @@ export interface NodeLibrarySource extends LibrarySource {
   dir: string;
   /** Absolute path of a library path. Throws when it would leave the folder. */
   resolve(relativePath: string): string;
+  /**
+   * Like `resolve`, for a path about to be written, created or moved into: refuses
+   * when any existing folder or file on the way is a symbolic link (or junction),
+   * so a library can't redirect writes outside itself.
+   */
+  resolveForWrite(relativePath: string): Promise<string>;
 }
 
 /** Same rules as the browser adapters: no dotfiles, no system folders. Symlinks are not followed. */
@@ -45,6 +51,7 @@ export async function openNodeLibrary(folder: string): Promise<NodeLibrarySource
     dir,
     files,
     resolve,
+    resolveForWrite: (relativePath) => resolveForWrite(dir, relativePath),
     readText: (relativePath) => readFile(resolve(relativePath), 'utf8'),
   };
 }
@@ -55,6 +62,19 @@ export function resolveInside(dir: string, relativePath: string): string {
   const relative = path.relative(dir, target);
   if (relative === '' || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     throw new CliError(`Caminho fora da biblioteca: ${relativePath}`);
+  }
+  return target;
+}
+
+/** See `NodeLibrarySource.resolveForWrite`. */
+export async function resolveForWrite(dir: string, relativePath: string): Promise<string> {
+  const target = resolveInside(dir, relativePath);
+  let current = dir;
+  for (const part of path.relative(dir, target).split(path.sep)) {
+    current = path.join(current, part);
+    const info = await lstat(current).catch(() => null);
+    if (!info) break; // Doesn't exist yet: nothing below it can be a link.
+    if (info.isSymbolicLink()) throw new CliError(`Atalho (link simbólico) dentro da biblioteca, por segurança nada foi gravado: ${relativePath}`);
   }
   return target;
 }

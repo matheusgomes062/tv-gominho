@@ -51,14 +51,43 @@ export function resolveExecutable(value: string, name: 'ffmpeg' | 'ffprobe', pla
   return value;
 }
 
-/** Candidates in priority order: flag, FFMPEG variable, PATH, then well-known install folders. */
+/**
+ * Absolute path of `name` found in the PATH's absolute folders, or null. Done by hand
+ * because spawning a bare name on Windows searches the current folder first, so an
+ * ffmpeg.exe planted in a library (e.g. on a shared USB stick) would run instead.
+ */
+export function findOnPath(name: string, env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform): string | null {
+  const pathValue = env.PATH ?? env.Path ?? '';
+  const delimiter = platform === 'win32' ? ';' : ':';
+  for (const folder of pathValue.split(delimiter)) {
+    if (!folder || !path.isAbsolute(folder)) continue;
+    const file = path.join(folder, exe(name, platform));
+    try {
+      if (statSync(file).isFile()) return file;
+    } catch {
+      // Not in this folder.
+    }
+  }
+  return null;
+}
+
+/** An explicit value that isn't a path (e.g. "ffmpeg") is looked up in the PATH, never the current folder. */
+function absoluteCommand(value: string, name: 'ffmpeg' | 'ffprobe', env: NodeJS.ProcessEnv, platform: NodeJS.Platform): string {
+  const resolved = resolveExecutable(value, name, platform);
+  if (path.isAbsolute(resolved)) return resolved;
+  if (/[\\/]/.test(resolved)) return path.resolve(resolved);
+  return findOnPath(resolved.replace(/\.exe$/i, ''), env, platform) ?? resolved;
+}
+
+/** Candidates in priority order: flag, FFMPEG variable, PATH, then well-known install folders. All absolute when found. */
 export function ffmpegCandidates(options: LocateOptions = {}): string[] {
   const env = options.env ?? process.env;
   const platform = options.platform ?? process.platform;
   const candidates: string[] = [];
-  if (options.ffmpeg) candidates.push(resolveExecutable(options.ffmpeg, 'ffmpeg', platform));
-  if (env.FFMPEG) candidates.push(resolveExecutable(env.FFMPEG, 'ffmpeg', platform));
-  candidates.push('ffmpeg');
+  if (options.ffmpeg) candidates.push(absoluteCommand(options.ffmpeg, 'ffmpeg', env, platform));
+  if (env.FFMPEG) candidates.push(absoluteCommand(env.FFMPEG, 'ffmpeg', env, platform));
+  const onPath = findOnPath('ffmpeg', env, platform);
+  if (onPath) candidates.push(onPath);
   if (platform === 'win32') candidates.push(...wingetInstalls(env));
   return candidates;
 }
@@ -107,11 +136,10 @@ export async function locateFfmpeg(options: LocateOptions = {}): Promise<FfmpegT
       continue;
     }
     const probeCandidates = [
-      env.FFPROBE && resolveExecutable(env.FFPROBE, 'ffprobe', platform),
-      // A bare "ffmpeg" means PATH, so ffprobe should come from the PATH too.
-      candidate === 'ffmpeg' ? 'ffprobe' : siblingProbe(candidate, platform),
-      'ffprobe',
-    ].filter((item): item is string => Boolean(item));
+      env.FFPROBE && absoluteCommand(env.FFPROBE, 'ffprobe', env, platform),
+      siblingProbe(candidate, platform),
+      findOnPath('ffprobe', env, platform),
+    ].filter((item): item is string => Boolean(item) && path.isAbsolute(item as string));
     for (const ffprobe of probeCandidates) {
       if ((await checkBinary(ffprobe)) !== null) return { ffmpeg: candidate, ffprobe, version };
     }

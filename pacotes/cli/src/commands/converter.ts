@@ -375,7 +375,9 @@ async function convertOne(source: NodeLibrarySource, tools: FfmpegTools, item: I
   const { info, plan } = item;
   if (!info || !plan) throw new CliError('Item sem análise.');
   const input = source.resolve(item.path);
-  const temp = source.resolve(tempPath(item.path));
+  const temp = await source.resolveForWrite(tempPath(item.path));
+  // A leftover temp file (or a planted link with its name) goes first: ffmpeg would write through a link.
+  await rm(temp, { force: true });
   let encode = settings.encode;
 
   try {
@@ -433,15 +435,15 @@ async function finalize(source: NodeLibrarySource, root: string, item: Item, set
     await rm(source.resolve(tempPath(item.path)), { force: true });
     return false;
   }
-  const original = source.resolve(item.path);
-  const target = source.resolve(item.target);
-  const temp = source.resolve(tempPath(item.path));
+  const original = await source.resolveForWrite(item.path);
+  const target = await source.resolveForWrite(item.target);
+  const temp = await source.resolveForWrite(tempPath(item.path));
   const sameName = samePath(item.path, item.target);
 
   /** Moves the original into .originais/ and returns where it went. */
   async function moveToOriginals(): Promise<string> {
     const destination = freeName(originalsPath(root, item.path), (candidate) => existsSync(source.resolve(candidate)));
-    const absolute = source.resolve(destination);
+    const absolute = await source.resolveForWrite(destination);
     await mkdir(path.dirname(absolute), { recursive: true });
     await rename(original, absolute);
     return absolute;
