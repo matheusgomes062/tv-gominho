@@ -1,5 +1,6 @@
 import type { Show } from '@tv-chuvisco/nucleo';
 import { useEffect, useRef, useState } from 'react';
+import { Crt } from '../components/Crt';
 import { useFlash } from '../components/useFlash';
 import { BACK_KEYS } from '../nav';
 import { aspectClass, useSettings } from '../settings';
@@ -18,6 +19,10 @@ export function Player({ source, show, index, onIndex, onBack }: Props) {
   const video = useRef<HTMLVideoElement>(null);
   const { settings } = useSettings();
   const [error, setError] = useState(false);
+  // While the CRT canvas draws, the <video> is invisible, so its native controls are replaced by our own bar.
+  const [crtActive, setCrtActive] = useState(false);
+  const [paused, setPaused] = useState(true);
+  const [clock, setClock] = useState({ time: 0, duration: 0 });
   const [title, showTitle] = useFlash(4000, true);
   const episode = show.episodes[index]!;
 
@@ -61,13 +66,43 @@ export function Player({ source, show, index, onIndex, onBack }: Props) {
       <div className="tv-screen">
         <video
           ref={video}
-          className="player-video"
-          controls
+          className={`player-video ${crtActive ? 'crt-hidden' : ''}`}
+          controls={!crtActive}
           playsInline
+          onPlay={() => setPaused(false)}
+          onPause={() => setPaused(true)}
+          onTimeUpdate={(event) => setClock({ time: event.currentTarget.currentTime, duration: event.currentTarget.duration || 0 })}
           onEnded={() => (index + 1 < show.episodes.length ? onIndex(index + 1) : onBack())}
           onError={() => setError(true)}
         />
+        {settings.crt.enabled && (
+          <Crt video={video} settings={settings.crt} aspect={settings.aspect} view="picture" onActive={setCrtActive} />
+        )}
       </div>
+      {crtActive && (title || paused) && (
+        <div className="player-controls">
+          <div
+            className="player-progress"
+            role="slider"
+            aria-label="Posição"
+            aria-valuemin={0}
+            aria-valuemax={Math.round(clock.duration)}
+            aria-valuenow={Math.round(clock.time)}
+            onClick={(event) => {
+              const element = video.current;
+              if (!element || !clock.duration) return;
+              const box = event.currentTarget.getBoundingClientRect();
+              element.currentTime = clock.duration * Math.min(1, Math.max(0, (event.clientX - box.left) / box.width));
+            }}
+          >
+            <div className="player-progress-fill" style={{ width: `${clock.duration ? (clock.time / clock.duration) * 100 : 0}%` }} />
+          </div>
+          <span>
+            {paused ? '❚❚' : '▶'} {formatTime(clock.time)} / {formatTime(clock.duration)}
+          </span>
+          <span className="player-hint">OK: pausar · ← → : 10 s · ↑ ↓ : episódio · Voltar: sair</span>
+        </div>
+      )}
       {(title || error) && (
         <div className="player-title">
           <button className="button" onClick={onBack}>
@@ -86,4 +121,10 @@ export function Player({ source, show, index, onIndex, onBack }: Props) {
       )}
     </main>
   );
+}
+
+function formatTime(seconds: number): string {
+  const total = Math.max(0, Math.floor(seconds));
+  const m = Math.floor(total / 60);
+  return `${m}:${String(total % 60).padStart(2, '0')}`;
 }

@@ -45,12 +45,17 @@ export interface DayPlan {
   seed: number;
 }
 
+/** The weekdays a schedule airs on (all of them when `dias` is empty). */
+export function scheduleDays(schedule: Schedule): Set<Weekday> {
+  return new Set<Weekday>(schedule.days.length > 0 ? schedule.days : WEEKDAYS);
+}
+
 /** Decides which episodes and bumpers air on `date` ("YYYY-MM-DD"). */
 export function planDay(schedule: Schedule, library: Library, date: string, options: PlanOptions = {}): DayPlan {
   const useInterstitials = options.interstitials ?? true;
   const useCommercials = options.commercials ?? true;
 
-  const days = new Set<Weekday>(schedule.days.length > 0 ? schedule.days : WEEKDAYS);
+  const days = scheduleDays(schedule);
   const requested = isoToDayNumber(date);
   let airingDay = requested;
   while (!days.has(weekdayOf(airingDay))) airingDay--;
@@ -156,6 +161,12 @@ export interface TimelineOptions {
    * so the channel is always on air. Default: 10 minutes.
    */
   maxGapFill?: number;
+  /**
+   * Keep gaps longer than `maxGapFill` as holes in the timeline (the next block
+   * starts at its own time, nothing is on air in between) instead of skipping
+   * them. Used by `horario: real`. Default false.
+   */
+  keepLongGaps?: boolean;
 }
 
 /** Lays out a day plan in time. `durationOf` returns seconds, or undefined if unknown. */
@@ -187,6 +198,7 @@ export function buildTimeline(
       // gap <= 0: the previous block ran late, so this one starts late (never cut an episode).
       // gap > maxGapFill: skip the dead air.
       if (gap > 0 && gap <= maxGapFill) t = fillGap(entries, t, gap, fillers, rng);
+      else if (gap > maxGapFill && options.keepLongGaps) t = block.start;
     }
     for (const item of block.items) {
       const duration = known(item.path);

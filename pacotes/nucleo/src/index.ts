@@ -30,6 +30,22 @@ export {
   type TimelineOptions,
   type Position,
 } from './engine';
+export {
+  isAiringDay,
+  airingDate,
+  nextAiringDate,
+  nextOnAir,
+  resumeAt,
+  locateReal,
+  resolveReal,
+  resolveFromStart,
+  MAX_SPILLOVER,
+  type Resume,
+  type RealPosition,
+  type RealTune,
+  type FromStartTune,
+  type TimelineOf,
+} from './modes';
 export { createAutoSchedule, createShowChannels, AUTO_SCHEDULE_ID, SHOW_CHANNEL_PREFIX } from './auto';
 export {
   localIsoDate,

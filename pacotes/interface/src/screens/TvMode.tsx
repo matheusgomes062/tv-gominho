@@ -1,17 +1,27 @@
 import {
   buildTimeline,
+  formatTimeOfDay,
   localIsoDate,
   locate,
+  nextAiringDate,
   planDay,
   requiredPaths,
+  resolveFromStart,
+  resolveReal,
+  resumeAt,
   secondsSinceMidnight,
   type Library,
+  type Resume,
   type Schedule,
+  type ScheduleMode,
   type Timeline,
   type TimelineEntry,
+  type TimelineOptions,
 } from '@tv-chuvisco/nucleo';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Clock } from '../components/Clock';
+import { OffAir } from '../components/OffAir';
+import { Crt } from '../components/Crt';
 import { Static } from '../components/Static';
 import { useFlash } from '../components/useFlash';
 import type { Durations } from '../media';
@@ -33,12 +43,38 @@ type Status =
   | { name: 'tuning'; done: number; total: number }
   | { name: 'playing' }
   | { name: 'idle' }
+  /** `horario: real` with nothing scheduled: the test card, until `resume`. */
+  | { name: 'offair'; resume: Resume }
   | { name: 'blocked' }
   | { name: 'empty' };
 
 /** Minimum time on static when changing channels: it's part of the fun. */
 const MIN_STATIC_MS = 700;
 const OSD_MS = 4000;
+/** `horario: real` re-checks the clock this often, to notice the computer waking up from sleep. */
+const CLOCK_CHECK_MS = 10_000;
+/** A real-clock video this far from the wall clock is out of sync: tune again. */
+const MAX_DRIFT_SECONDS = 5;
+
+/**
+ * Marathons (`horario: do_inicio`) of this session, per channel: when each one
+ * started and from which day. Going back to the channel resumes it as if it
+ * had kept running; reloading the page starts over. See docs/configuracoes.md.
+ */
+const marathons = new Map<string, { startedAt: number; startDate: string }>();
+
+function timelineOptions(mode: ScheduleMode): TimelineOptions {
+  // real: blocks start at their time, long gaps are off the air. do_inicio: no gaps at all.
+  if (mode === 'real') return { keepLongGaps: true };
+  if (mode === 'fromStart') return { maxGapFill: 0 };
+  return {};
+}
+
+/** The wall-clock moment (ms) a channel comes back. */
+function resumeTime(resume: Resume): number {
+  const [year, month, day] = resume.date.split('-').map(Number) as [number, number, number];
+  return new Date(year, month - 1, day, 0, 0, resume.seconds).getTime();
+}
 
 export function TvMode({ source, library, durations, channels, channel, onChannel, onMenu }: Props) {
   const schedule = channels[channel];
@@ -50,6 +86,12 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
   const index = useRef(0);
   const idleTimer = useRef<number | undefined>(undefined);
   const generation = useRef(0);
+  // `horario: real`: the timer that returns from "fora do ar", when it fires, and the clock shift of the timeline on air.
+  const resumeTimer = useRef<number | undefined>(undefined);
+  const resumeAtMs = useRef(0);
+  const dayShift = useRef(0);
+  // True while the CRT canvas is drawing the picture (the plain <video>/static/black layers hide).
+  const [crtActive, setCrtActive] = useState(false);
 
   const [status, setStatus] = useState<Status>({ name: 'tuning', done: 0, total: 0 });
   const [entry, setEntry] = useState<TimelineEntry>();
@@ -59,6 +101,33 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
   const [pointer, showPointer] = useFlash(2500);
   // play() needs the latest tune() without re-creating itself.
   const tuneRef = useRef<(token: number) => Promise<void>>(async () => undefined);
+  const nextDayRef = useRef<(token: number) => Promise<void>>(async () => undefined);
+  const modeRef = useRef(scheduleMode);
+  modeRef.current = scheduleMode;
+  const statusRef = useRef(status);
+  statusRef.current = status;
+
+  /** Shows the "fora do ar" card until `resume`, then tunes again. */
+  const goOffAir = useCallback((resume: Resume, token: number) => {
+    const element = video.current;
+    clearTimeout(idleTimer.current);
+    element?.pause();
+    element?.removeAttribute('src');
+    element?.load();
+    index.current = 0;
+    setEntry(undefined);
+    setNextEntry(undefined);
+    setStatus({ name: 'offair', resume });
+    resumeAtMs.current = resumeTime(resume);
+    clearTimeout(resumeTimer.current);
+    // A little late rather than a little early: tune() reads the clock again.
+    resumeTimer.current = window.setTimeout(
+      () => {
+        if (token === generation.current) void tuneRef.current(token);
+      },
+      Math.max(0, resumeAtMs.current - Date.now()) + 100,
+    );
+  }, []);
 
   /** Plays timeline entry `i`, starting `offset` seconds in. */
   const play = useCallback(
@@ -69,14 +138,30 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
       clearTimeout(idleTimer.current);
 
       if (i >= current.entries.length) {
-        // End of the day's loop: tune again, which also picks up a new day after midnight.
-        void tuneRef.current(token);
+        if (modeRef.current === 'fromStart') void nextDayRef.current(token);
+        // End of the day's loop (continuous) or of the day's schedule (real): tune again,
+        // which also picks up a new day after midnight, or the "fora do ar" card.
+        else void tuneRef.current(token);
         return;
+      }
+      if (modeRef.current === 'real' && offset === 0) {
+        // The next block has not started yet: nothing on air in between.
+        const now = new Date();
+        const startsIn = current.entries[i]!.start - dayShift.current - secondsSinceMidnight(now);
+        if (startsIn > 1) {
+          goOffAir(resumeAt(localIsoDate(now), current.entries[i]!.start - dayShift.current), token);
+          return;
+        }
       }
       index.current = i;
       const item = current.entries[i]!;
       setEntry(item);
-      setNextEntry(current.entries.slice(i + 1).find((e) => e.kind === 'episode'));
+      // The day loops in continuous mode, so after the last episode comes the first. Real and
+      // do_inicio have nothing to announce past the end of the day's timeline.
+      const isEpisode = (e: TimelineEntry) => e.kind === 'episode';
+      setNextEntry(
+        current.entries.slice(i + 1).find(isEpisode) ?? (modeRef.current === 'continuous' ? current.entries.find(isEpisode) : undefined),
+      );
 
       if (item.kind === 'idle' || !item.path) {
         element.removeAttribute('src');
@@ -95,10 +180,22 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
         if (token === generation.current && error.name === 'NotAllowedError') setStatus({ name: 'blocked' });
       });
     },
-    [source],
+    [source, goOffAir],
   );
 
-  /** Builds today's timeline for the channel and jumps to what is on air now. */
+  /** Plans and lays out one day of the channel (durations are read as needed). */
+  const loadTimeline = useCallback(
+    async (date: string, token: number, mode: ScheduleMode): Promise<Timeline> => {
+      const plan = planDay(schedule!, library, date, { interstitials, commercials });
+      await durations.load(requiredPaths(plan), (done, total) => {
+        if (token === generation.current) setStatus({ name: 'tuning', done, total });
+      });
+      return buildTimeline(plan, durations.get, timelineOptions(mode));
+    },
+    [schedule, library, durations, interstitials, commercials],
+  );
+
+  /** Builds the channel's timeline and jumps to what is on air now, according to `horario`. */
   const tune = useCallback(
     async (token: number) => {
       if (!schedule) {
@@ -106,21 +203,74 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
         return;
       }
       const startedAt = performance.now();
+      clearTimeout(resumeTimer.current);
       setStatus({ name: 'tuning', done: 0, total: 0 });
-      const plan = planDay(schedule, library, localIsoDate(new Date()), { interstitials, commercials });
-      await durations.load(requiredPaths(plan), (done, total) => {
-        if (token === generation.current) setStatus({ name: 'tuning', done, total });
-      });
-      if (token !== generation.current) return;
+      const mode = scheduleMode;
+      const timelineOf = (date: string) => loadTimeline(date, token, mode);
+      /** Keeps the static on for a moment, like changing channels on a real TV. */
+      const staticMoment = async () => {
+        const wait = MIN_STATIC_MS - (performance.now() - startedAt);
+        if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+      };
+      if (mode !== 'fromStart') marathons.delete(schedule.id);
+      dayShift.current = 0;
 
-      const built = buildTimeline(plan, durations.get);
-      const wait = MIN_STATIC_MS - (performance.now() - startedAt);
-      if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+      if (mode === 'real') {
+        // The first pass reads the durations; the clock is read again after the static, so the position is exact.
+        const resolve = () => {
+          const now = new Date();
+          return resolveReal(schedule, localIsoDate(now), secondsSinceMidnight(now), timelineOf);
+        };
+        await resolve();
+        if (token !== generation.current) return;
+        await staticMoment();
+        const tuned = await resolve();
+        if (token !== generation.current) return;
+        if (!tuned) {
+          setStatus({ name: 'empty' });
+          return;
+        }
+        if (tuned.offAir) {
+          timeline.current = null;
+          goOffAir(tuned.resume, token);
+          return;
+        }
+        timeline.current = tuned.timeline;
+        dayShift.current = tuned.shift;
+        void play(tuned.index, tuned.offset, token);
+        return;
+      }
+
+      if (mode === 'fromStart') {
+        const resolve = (commit: boolean) => {
+          let marathon = marathons.get(schedule.id);
+          if (!marathon) {
+            marathon = { startedAt: Date.now(), startDate: localIsoDate(new Date()) };
+            if (commit) marathons.set(schedule.id, marathon);
+          }
+          return resolveFromStart(schedule, marathon.startDate, (Date.now() - marathon.startedAt) / 1000, timelineOf);
+        };
+        await resolve(false);
+        if (token !== generation.current) return;
+        await staticMoment();
+        // A new marathon starts now, after the static; a running one resumes where it would be.
+        const tuned = await resolve(true);
+        if (token !== generation.current) return;
+        if (!tuned) {
+          setStatus({ name: 'empty' });
+          return;
+        }
+        timeline.current = tuned.timeline;
+        void play(tuned.index, tuned.offset, token);
+        return;
+      }
+
+      const built = await timelineOf(localIsoDate(new Date()));
+      if (token !== generation.current) return;
+      await staticMoment();
       if (token !== generation.current) return;
 
       timeline.current = built;
-      // TODO(phase 2): `horario`. `scheduleMode` is 'continuous' | 'real' | 'fromStart'; only
-      // 'continuous' is implemented (locate() below). 'real' and 'fromStart' plug in here.
       const position = locate(built, secondsSinceMidnight(new Date()));
       if (!position) {
         setStatus({ name: 'empty' });
@@ -128,9 +278,29 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
       }
       void play(position.index, position.offset, token);
     },
-    [schedule, library, durations, play, interstitials, commercials, scheduleMode],
+    [schedule, scheduleMode, loadTimeline, goOffAir, play],
   );
   tuneRef.current = tune;
+
+  /** `horario: do_inicio`: the day's timeline is over, the marathon goes on with the next airing day. */
+  const nextDay = useCallback(
+    async (token: number) => {
+      const current = timeline.current;
+      if (!schedule || !current) return;
+      const next = await resolveFromStart(schedule, nextAiringDate(schedule, current.date), 0, (date) =>
+        loadTimeline(date, token, 'fromStart'),
+      );
+      if (token !== generation.current) return;
+      if (!next) {
+        setStatus({ name: 'empty' });
+        return;
+      }
+      timeline.current = next.timeline;
+      void play(next.index, next.offset, token);
+    },
+    [schedule, loadTimeline, play],
+  );
+  nextDayRef.current = nextDay;
 
   // Tune whenever the channel changes.
   useEffect(() => {
@@ -141,9 +311,39 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
     return () => {
       generation.current++;
       clearTimeout(idleTimer.current);
+      clearTimeout(resumeTimer.current);
       element?.pause();
     };
   }, [tune, showOsd]);
+
+  // `horario: real` follows the wall clock, which keeps running while the tab sleeps or the computer is suspended:
+  // check it now and then, and when the tab comes back. Out-of-sync video or a missed comeback tune again.
+  useEffect(() => {
+    if (scheduleMode !== 'real') return;
+    const check = () => {
+      if (document.visibilityState === 'hidden') return;
+      const token = generation.current;
+      const current = statusRef.current;
+      if (current.name === 'offair') {
+        if (Date.now() >= resumeAtMs.current) void tuneRef.current(token);
+        return;
+      }
+      const day = timeline.current;
+      const playing = day?.entries[index.current];
+      if (!day || !playing || (current.name !== 'playing' && current.name !== 'idle')) return;
+      const position = secondsSinceMidnight(new Date()) + dayShift.current - playing.start;
+      const actual = current.name === 'playing' ? (video.current?.currentTime ?? position) : position;
+      if (position >= playing.duration + 1 || Math.abs(position - actual) > MAX_DRIFT_SECONDS) void tuneRef.current(token);
+    };
+    const timer = window.setInterval(check, CLOCK_CHECK_MS);
+    document.addEventListener('visibilitychange', check);
+    window.addEventListener('focus', check);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', check);
+      window.removeEventListener('focus', check);
+    };
+  }, [scheduleMode]);
 
   const changeChannel = useCallback(
     (delta: number) => {
@@ -185,7 +385,7 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
       <div className="tv-screen">
         <video
           ref={video}
-          className="tv-video"
+          className={`tv-video ${crtActive ? 'crt-hidden' : ''}`}
           playsInline
           onPlaying={() => setStatus({ name: 'playing' })}
           onEnded={() => play(index.current + 1, 0, generation.current)}
@@ -197,10 +397,21 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
             idleTimer.current = window.setTimeout(() => play(index.current + 1, 0, token), 1500);
           }}
         />
-        {showStatic && <Static className="tv-static" />}
-        {showBlack && <div className="tv-black" />}
+        {!crtActive && showStatic && <Static className="tv-static" />}
+        {!crtActive && showBlack && <div className="tv-black" />}
 
-        {/* TODO(phase 2): CRT. The WebGL overlay (settings.crt) goes here: over the picture, under the OSD. */}
+        {/* The CRT tube draws the video, the static and the black screen itself (see components/Crt.tsx). */}
+        {settings.crt.enabled && (
+          <Crt
+            video={video}
+            settings={settings.crt}
+            aspect={settings.aspect}
+            view={showStatic ? 'static' : showBlack ? 'black' : 'picture'}
+            onActive={setCrtActive}
+          />
+        )}
+
+        {status.name === 'offair' && schedule && <OffAir channelName={schedule.name} resume={status.resume} />}
 
         {status.name === 'tuning' && status.total > 0 && (
           <p className="tv-tuning">
@@ -229,7 +440,8 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
             )}
             {nextEntry?.item?.kind === 'episode' && (
               <span className="osd-next">
-                A seguir: {nextEntry.item.show.title} · {nextEntry.item.episode.title}
+                A seguir{scheduleMode === 'real' ? ` às ${formatTimeOfDay(nextEntry.start - dayShift.current)}` : ''}:{' '}
+                {nextEntry.item.show.title} · {nextEntry.item.episode.title}
               </span>
             )}
           </div>

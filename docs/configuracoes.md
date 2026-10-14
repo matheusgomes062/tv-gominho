@@ -44,9 +44,14 @@ Cria um canal extra para cada programa da biblioteca, que passa só os episódio
 
 ### `horario`
 
-- **`continuo`** (padrão): a grade do dia se repete sem parar, 24 horas por dia. Você liga a qualquer hora e está passando algo, mas no meio do episódio, como numa TV ao vivo.
-- **`real`**: segue o relógio de verdade. Fora dos horários da grade aparece uma tela de "fora do ar" com o horário da volta.
-- **`do_inicio`**: sempre começa pela abertura do primeiro bloco, como uma maratona.
+- **`continuo`** (padrão): a grade do dia se repete sem parar, 24 horas por dia. Você liga a qualquer hora e está passando algo, mas no meio do episódio, como numa TV ao vivo. Nos dias fora de `dias`, reprisa o último dia de exibição.
+- **`real`**: segue o relógio de verdade.
+  - Cada bloco começa no `horario` que a grade define. Espaços de até 10 minutos entre blocos são preenchidos com vinhetas e comerciais; espaços maiores ficam **fora do ar**. Um bloco que atrasa (porque o anterior passou do horário) começa atrasado, sem cortar nada, e não há fora do ar entre os dois.
+  - Quando não há nada programado (antes do primeiro bloco, entre blocos distantes, depois do último item, ou o dia todo nos dias fora de `dias`), aparece uma tela de teste de cores com "Fora do ar" e a hora da volta: "Voltamos às 08:00", "Voltamos amanhã às 08:00" ou "Voltamos segunda-feira às 08:00". A volta é automática, na hora certa. Se o computador dormir ou a aba ficar em segundo plano, o relógio é conferido de novo ao acordar.
+  - Meia-noite: um bloco nunca é cortado. Se a programação de ontem ainda está passando depois das 00:00 (até 6 horas depois), ela continua até acabar, mesmo que hoje seja folga; depois vale a grade de hoje. Os episódios continuam sendo os do dia em que o bloco começou.
+  - Ao ligar no meio de um episódio, entra no ponto certo, como na TV ao vivo. Mudar de canal e voltar sempre mostra o que está no ar naquele momento.
+- **`do_inicio`**: ao ligar o canal, sempre começa pela abertura do primeiro bloco (o primeiro item da grade), como uma maratona, e segue em ordem sem olhar o relógio. Os espaços entre blocos são pulados. Quando o último item do dia acaba, a maratona continua com o próximo dia de exibição da grade (assim os episódios avançam, em vez de repetir o mesmo dia): depois da sexta-feira vem a segunda. Se o dia em que você ligou é folga, começa pelo último dia de exibição.
+  - **Mudar de canal e voltar:** a maratona continua de onde estaria, como se tivesse passado o tempo todo. O início de cada maratona fica guardado só enquanto a página estiver aberta: ao recarregar, ou ao trocar `horario` e voltar, ela recomeça pela abertura.
 
 ### `vinhetas` e `comerciais`
 

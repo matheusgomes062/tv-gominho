@@ -10,7 +10,7 @@
 - [x] Pendrive
 - [x] Nome, licença e pilha técnica
 
-### Fase 1: Versão local no navegador (atual, primeira versão pronta)
+### Fase 1: Versão local no navegador ✅
 Sem servidor e sem instalação: uma página que lê a pasta `biblioteca` direto do computador. Nada é enviado para a internet.
 
 - Botão "Escolher biblioteca" (File System Access API, só Chrome/Edge no computador)
@@ -23,10 +23,10 @@ Sem servidor e sem instalação: uma página que lê a pasta `biblioteca` direto
 
 **Pronto quando:** uma biblioteca de exemplo com 2 programas e uma grade toca no Chrome, nos dois modos.
 
-### Fase 2: Experiência de TV
-- Efeito CRT (WebGL), chuvisco na troca de canal, proporção 4:3
+### Fase 2: Experiência de TV (pronta)
+- Efeito CRT (WebGL), chuvisco na troca de canal, proporção 4:3 ✅ (tela curva, linhas, máscara, brilho; chuvisco desenhado dentro do tubo; reserva em CSS sem WebGL)
 - Menu de configurações ✅ (base pronta: camadas padrão/arquivo/menu, tela navegável pelo controle, modo e canal inicial, canais por programa, chuvisco, proporção, vinhetas, comerciais, relógio; faltam `marca_dagua` e `idioma`)
-- Comerciais, tela de "fora do ar", horários `real` e `do_inicio`
+- Comerciais ✅, tela de "fora do ar" ✅, horários `real` e `do_inicio` ✅ (tela de teste de cores com a hora da volta e volta automática, sobra de meia-noite; maratona que segue pelos próximos dias da grade e retoma ao voltar ao canal)
 
 ### Fase 3: Ferramentas e pendrive
 - Ferramenta `converter` (ffmpeg)
