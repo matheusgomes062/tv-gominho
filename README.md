@@ -57,10 +57,13 @@ No navegador, clique em **Escolher biblioteca** e selecione a sua pasta `bibliot
 | Tecla | Na TV | Na biblioteca |
 |---|---|---|
 | ↑ ↓ | Troca de canal (grades e programas) | Navega |
-| ← → | | Navega (no player: volta/avança 10 s) |
+| ← → | Abre os ajustes rápidos | Navega (no player: volta/avança 10 s) |
+| S | Abre os ajustes rápidos | No player: abre os ajustes rápidos |
 | Enter / OK | Mostra o que está passando | Abre |
-| Esc / Backspace | Abre o menu | Volta |
+| Esc / Backspace | Abre o menu (e, com um painel aberto, fecha um nível) | Volta |
 | 1–9 | Vai direto para o canal | |
+
+O menu, os ajustes rápidos e as configurações são painéis **por cima da imagem**: a TV continua passando enquanto você mexe, e o efeito de cada ajuste aparece na hora. Veja [docs/configuracoes.md](docs/configuracoes.md#painéis-sobre-a-imagem).
 
 ## Licença
 

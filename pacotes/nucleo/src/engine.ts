@@ -15,6 +15,7 @@ import {
 } from './dates';
 import { findShow, resolveInterstitials } from './library';
 import { createRng, hashString, pick, shuffled, type Rng } from './random';
+import type { AdBreakSettings } from './settings';
 import type { Episode, Library, Schedule, Show } from './types';
 
 export interface PlanOptions {
@@ -42,6 +43,8 @@ export interface DayPlan {
   blocks: PlannedBlock[];
   /** Files that may fill short gaps between blocks. */
   fillers: string[];
+  /** The commercials that commercial breaks (`buildTimeline`'s `adBreaks`) draw from: empty when commercials are off. */
+  commercials: string[];
   seed: number;
 }
 
@@ -111,10 +114,11 @@ export function planDay(schedule: Schedule, library: Library, date: string, opti
     return { start: block.start, items };
   });
 
+  const commercialPaths = useCommercials ? resolveInterstitials(library, 'comerciais').map((item) => item.path) : [];
   const fillers = [
-    ...(useInterstitials ? resolveInterstitials(library, 'intervalos') : []),
-    ...(useCommercials ? resolveInterstitials(library, 'comerciais') : []),
-  ].map((item) => item.path);
+    ...(useInterstitials ? resolveInterstitials(library, 'intervalos').map((item) => item.path) : []),
+    ...commercialPaths,
+  ];
 
   return {
     scheduleId: schedule.id,
@@ -122,13 +126,14 @@ export function planDay(schedule: Schedule, library: Library, date: string, opti
     date: dayNumberToIso(airingDay),
     blocks,
     fillers,
+    commercials: commercialPaths,
     seed,
   };
 }
 
 /** Every file whose duration `buildTimeline` needs. */
 export function requiredPaths(plan: DayPlan): string[] {
-  const paths = new Set<string>(plan.fillers);
+  const paths = new Set<string>([...plan.fillers, ...plan.commercials]);
   for (const block of plan.blocks) for (const item of block.items) paths.add(item.path);
   return [...paths];
 }
@@ -143,6 +148,16 @@ export interface TimelineEntry {
   /** Missing only for 'idle' (off-air static). */
   path?: string;
   item?: PlannedItem;
+  /**
+   * Seconds into `path` where this entry starts (default 0). Only episodes cut
+   * by a commercial break have it: the part after the break starts mid-file.
+   * `duration` is the length of this part alone. See `filePosition`.
+   */
+  fileOffset?: number;
+  /** Set when the episode is cut by commercial breaks: this entry is part `index` of `count` (1-based). */
+  part?: { index: number; count: number };
+  /** True for the commercials of a commercial break (as opposed to items the schedule asked for, or gap fillers). */
+  inBreak?: boolean;
 }
 
 export interface Timeline {
@@ -167,6 +182,39 @@ export interface TimelineOptions {
    * them. Used by `horario: real`. Default false.
    */
   keepLongGaps?: boolean;
+  /**
+   * Commercial breaks: inside episodes and after them (docs/grade.md). Needs
+   * `plan.commercials` (the `commercials` option of `planDay`). Absent: episodes
+   * play whole, with no automatic breaks.
+   */
+  adBreaks?: AdBreakSettings;
+}
+
+/** Shortest stretch of episode between the start (or end) and an automatic break, in seconds. */
+export const MIN_ACT_SECONDS = 120;
+
+/**
+ * Where the commercial breaks cut an episode of `duration` seconds, as
+ * seconds from its start. `every` is the setting in minutes (0 = no breaks).
+ *   - `override` (the episode's own `intervalos`): exactly those points, dropping the ones outside the episode.
+ *   - otherwise n = floor(duration / every) breaks, but none when the episode is shorter than
+ *     every + 2 minutes, spread evenly (acts of duration / (n + 1)), and never so many that an
+ *     act gets shorter than 2 minutes: nothing within 2 minutes of the start or the end.
+ */
+export function breakPoints(duration: number, every: number, override?: readonly number[]): number[] {
+  if (!(every > 0) || !(duration > 0)) return [];
+  if (override && override.length > 0) {
+    return [...new Set(override)].filter((point) => point >= 1 && point <= duration - 1).sort((a, b) => a - b);
+  }
+  const act = every * 60;
+  if (duration < act + MIN_ACT_SECONDS) return [];
+  const count = Math.min(Math.floor(duration / act), Math.floor(duration / MIN_ACT_SECONDS) - 1);
+  return Array.from({ length: Math.max(0, count) }, (_, k) => Math.round((duration * (k + 1) * 1000) / (count + 1)) / 1000);
+}
+
+/** The file and the time in it for `offset` seconds into `entry` (an episode part starts mid-file). */
+export function filePosition(entry: TimelineEntry, offset: number): { path: string | undefined; time: number } {
+  return { path: entry.path, time: (entry.fileOffset ?? 0) + offset };
 }
 
 /** Lays out a day plan in time. `durationOf` returns seconds, or undefined if unknown. */
@@ -189,6 +237,17 @@ export function buildTimeline(
     .filter((f): f is { path: string; duration: number } => f.duration !== undefined && Number.isFinite(f.duration) && f.duration > 0);
   const rng = createRng(plan.seed ^ 0x9e3779b9);
 
+  // Commercial breaks have their own random stream, so gap filling does not depend on them.
+  const adBreaks = options.adBreaks;
+  const ads = adBreaks
+    ? plan.commercials
+        .map((path) => ({ path, duration: durationOf(path) }))
+        .filter((ad): ad is { path: string; duration: number } => ad.duration !== undefined && Number.isFinite(ad.duration) && ad.duration > 0)
+    : [];
+  const breaksOn = adBreaks !== undefined && ads.length > 0;
+  const breakRng = createRng(plan.seed ^ 0x7f4a7c15);
+  let lastBreak: string[] = [];
+
   const firstStart = plan.blocks[0]?.start ?? 0;
   let t = firstStart;
 
@@ -200,15 +259,62 @@ export function buildTimeline(
       if (gap > 0 && gap <= maxGapFill) t = fillGap(entries, t, gap, fillers, rng);
       else if (gap > maxGapFill && options.keepLongGaps) t = block.start;
     }
-    for (const item of block.items) {
+    /** A commercial break: `adBreaks.ads` commercials, not repeating the previous break's if there are others. */
+    const addBreak = () => {
+      const chosen = pickBreakAds(ads, adBreaks!.ads, lastBreak, breakRng);
+      lastBreak = chosen.map((ad) => ad.path);
+      for (const ad of chosen) {
+        const planned: PlannedItem = { kind: 'interstitial', path: ad.path, category: 'comerciais' };
+        entries.push({ kind: 'interstitial', start: t, duration: ad.duration, path: ad.path, item: planned, inBreak: true });
+        t += ad.duration;
+      }
+    };
+
+    block.items.forEach((item, k) => {
       const duration = known(item.path);
-      if (duration === undefined) continue;
-      entries.push({ kind: item.kind, start: t, duration, path: item.path, item });
-      t += duration;
-    }
+      if (duration === undefined) return;
+      if (!breaksOn || item.kind !== 'episode') {
+        entries.push({ kind: item.kind, start: t, duration, path: item.path, item });
+        t += duration;
+        return;
+      }
+
+      const cuts = breakPoints(duration, adBreaks!.every, item.episode.breaks);
+      const bounds = [0, ...cuts, duration];
+      for (let p = 0; p < bounds.length - 1; p++) {
+        const length = bounds[p + 1]! - bounds[p]!;
+        const entry: TimelineEntry = { kind: 'episode', start: t, duration: length, path: item.path, item };
+        if (cuts.length > 0) {
+          entry.fileOffset = bounds[p];
+          entry.part = { index: p + 1, count: bounds.length - 1 };
+        }
+        entries.push(entry);
+        t += length;
+        if (p < cuts.length) addBreak();
+      }
+      // After the episode, unless the schedule already puts commercials right there.
+      const next = block.items[k + 1] ?? plan.blocks[i + 1]?.items[0];
+      const scheduled = next?.kind === 'interstitial' && next.category === 'comerciais';
+      if (adBreaks!.afterEpisode && !scheduled) addBreak();
+    });
   });
 
   return { date: plan.date, entries, start: firstStart, end: t, skipped: [...skipped] };
+}
+
+/** `count` commercials for one break: the ones not in `previous` first, no ad twice in a row (unless there is only one). */
+function pickBreakAds(
+  ads: readonly { path: string; duration: number }[],
+  count: number,
+  previous: readonly string[],
+  rng: Rng,
+): { path: string; duration: number }[] {
+  const order = shuffled(rng, ads);
+  const fresh = order.filter((ad) => !previous.includes(ad.path));
+  const cycle = [...fresh, ...order.filter((ad) => previous.includes(ad.path))];
+  // Not the same commercial as the last one of the previous break.
+  if (cycle.length > 1 && cycle[0]!.path === previous.at(-1)) cycle.push(cycle.shift()!);
+  return Array.from({ length: count }, (_, i) => cycle[i % cycle.length]!);
 }
 
 function fillGap(

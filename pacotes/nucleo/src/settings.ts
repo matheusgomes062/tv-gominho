@@ -5,6 +5,7 @@
 
 import { parse } from 'yaml';
 import { fold } from './paths';
+import { applyTheme } from './themes';
 import type { LibraryWarning, Schedule } from './types';
 
 /** 'continuous': the day's schedule loops 24h. 'real': follows the wall clock. 'fromStart': always begins at the first block. */
@@ -13,6 +14,13 @@ export type CrtIntensity = 'soft' | 'medium' | 'strong';
 /** '4:3': pillarboxed 4:3 frame. 'stretch': fill the screen. 'original': the video's own shape, contained. */
 export type AspectMode = '4:3' | 'stretch' | 'original';
 export type StartMode = 'tv' | 'library';
+/**
+ * 'classic' (TV antiga), 'vhs' (Fita VHS) and 'modern' (TV moderna) are presets (see themes.ts);
+ * 'custom' (Personalizado) means "the settings were changed by hand after picking a theme".
+ */
+export type Theme = 'classic' | 'vhs' | 'modern' | 'custom';
+/** The look of the TV's own on-screen display (channel number, info bar, clock). */
+export type OsdSkin = 'classic' | 'vhs' | 'modern';
 
 export interface CrtSettings {
   enabled: boolean;
@@ -21,6 +29,18 @@ export interface CrtSettings {
   curvature: number;
   scanlines: boolean;
 }
+
+/** Commercial breaks (docs/configuracoes.md, `intervalos`). Only play when `commercials` is on. */
+export interface AdBreakSettings {
+  /** Minutes of episode between breaks; 0 = no breaks in the middle of episodes. */
+  every: number;
+  /** Commercials per break. */
+  ads: number;
+  /** A break after every episode. */
+  afterEpisode: boolean;
+}
+
+export const AD_BREAK_LIMITS = { every: { min: 0, max: 30 }, ads: { min: 1, max: 10 } } as const;
 
 export interface Settings {
   startMode: StartMode;
@@ -37,12 +57,23 @@ export interface Settings {
   interstitials: boolean;
   /** Play commercials (vinhetas/comerciais/), including the ones that fill gaps. */
   commercials: boolean;
+  /** When the commercial breaks come (needs `commercials`). */
+  adBreaks: AdBreakSettings;
   /** Small HH:MM clock on the TV screen. */
   clock: boolean;
+  /** The theme chosen (docs/configuracoes.md, `tema`). The preset's values are ordinary settings; this is the label. */
+  theme: Theme;
+  /** The OSD skin. A theme sets it; with 'custom' it stays whatever it was. Not a yaml option on its own. */
+  osdSkin: OsdSkin;
   // TODO(phase 2): `marca_dagua` (watermark image) and `idioma`.
 }
 
-export type PartialSettings = Partial<Omit<Settings, 'crt'>> & { crt?: Partial<CrtSettings> };
+export type PartialSettings = Partial<Omit<Settings, 'crt' | 'adBreaks'>> & {
+  crt?: Partial<CrtSettings>;
+  adBreaks?: Partial<AdBreakSettings>;
+};
+
+export const DEFAULT_AD_BREAKS: AdBreakSettings = { every: 8, ads: 3, afterEpisode: true };
 
 /** Curvature percent that matches the original fixed 'medium' look. */
 export const DEFAULT_CURVATURE = 50;
@@ -57,14 +88,22 @@ export const DEFAULT_SETTINGS: Settings = {
   aspect: '4:3',
   interstitials: true,
   commercials: true,
+  adBreaks: DEFAULT_AD_BREAKS,
   clock: false,
+  theme: 'classic',
+  osdSkin: 'classic',
 };
 
 /** Layers `partial` on top of `base`; fields missing from `partial` keep the base value. */
 export function mergeSettings(base: Settings, partial: PartialSettings | undefined): Settings {
   if (!partial) return base;
-  const { crt, ...rest } = partial;
-  const merged: Settings = { ...base, ...definedOnly(rest), crt: { ...base.crt, ...definedOnly(crt) } };
+  const { crt, adBreaks, ...rest } = partial;
+  const merged: Settings = {
+    ...base,
+    ...definedOnly(rest),
+    crt: { ...base.crt, ...definedOnly(crt) },
+    adBreaks: { ...base.adBreaks, ...definedOnly(adBreaks) },
+  };
   return merged;
 }
 
@@ -76,6 +115,8 @@ const ALLOWED = {
   startMode: ['tv', 'library'],
   schedule: ['continuous', 'real', 'fromStart'],
   aspect: ['4:3', 'stretch', 'original'],
+  theme: ['classic', 'vhs', 'modern', 'custom'],
+  osdSkin: ['classic', 'vhs', 'modern'],
   intensity: ['soft', 'medium', 'strong'],
 } as const;
 
@@ -99,6 +140,8 @@ export function sanitizeSettings(value: unknown): PartialSettings {
   result.interstitials = flag(value, 'interstitials');
   result.commercials = flag(value, 'commercials');
   result.clock = flag(value, 'clock');
+  result.theme = option(value, 'theme', ALLOWED.theme);
+  result.osdSkin = option(value, 'osdSkin', ALLOWED.osdSkin);
   if (value.startChannel === null || typeof value.startChannel === 'string') result.startChannel = value.startChannel;
   if (isRecord(value.crt)) {
     result.crt = definedOnly({
@@ -108,8 +151,22 @@ export function sanitizeSettings(value: unknown): PartialSettings {
       scanlines: flag(value.crt, 'scanlines'),
     });
   }
+  if (isRecord(value.adBreaks)) {
+    result.adBreaks = definedOnly({
+      every: clampedNumber(value.adBreaks.every, AD_BREAK_LIMITS.every),
+      ads: clampedNumber(value.adBreaks.ads, AD_BREAK_LIMITS.ads),
+      afterEpisode: flag(value.adBreaks, 'afterEpisode'),
+    });
+  }
   return definedOnly(result);
 }
+
+function clampedNumber(value: unknown, limits: { min: number; max: number }): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+  return Math.round(Math.min(limits.max, Math.max(limits.min, value)));
+}
+
+const THEME_NAMES: Record<string, Theme> = { tv_antiga: 'classic', vhs: 'vhs', tv_moderna: 'modern', personalizado: 'custom' };
 
 const UNSUPPORTED_YET = new Set(['marca_dagua', 'idioma']);
 
@@ -135,7 +192,8 @@ export function parseSettings(path: string, text: string, warnings: LibraryWarni
   }
 
   const result: PartialSettings = {};
-  const set = <K extends keyof Omit<Settings, 'crt'>>(key: K, value: Settings[K] | undefined) => {
+  let themeFromFile: Theme | undefined;
+  const set = <K extends keyof Omit<Settings, 'crt' | 'adBreaks'>>(key: K, value: Settings[K] | undefined) => {
     if (value !== undefined) result[key] = value;
   };
 
@@ -166,6 +224,16 @@ export function parseSettings(path: string, text: string, warnings: LibraryWarni
       case 'comerciais':
         set('commercials', bool(key, value, warn));
         break;
+      case 'intervalos': {
+        const adBreaks = parseAdBreaks(value, warn);
+        if (Object.keys(adBreaks).length > 0) result.adBreaks = adBreaks;
+        break;
+      }
+      case 'tema': {
+        const theme = choice(key, value, THEME_NAMES, warn);
+        if (theme !== undefined) themeFromFile = theme;
+        break;
+      }
       case 'relogio_na_tela':
         set('clock', bool(key, value, warn));
         break;
@@ -178,6 +246,52 @@ export function parseSettings(path: string, text: string, warnings: LibraryWarni
         if (UNSUPPORTED_YET.has(key)) warn(`A opção "${key}" ainda não é suportada nesta versão e foi ignorada.`);
         else warn(`Opção desconhecida: "${key}". Ela foi ignorada.`);
     }
+  }
+  if (themeFromFile === undefined) return result;
+  // `tema` expands to its preset; anything else the file sets explicitly wins over the preset, whatever the order.
+  const preset = applyTheme(themeFromFile);
+  const crt = { ...preset.crt, ...result.crt };
+  return { ...preset, ...result, ...(Object.keys(crt).length > 0 ? { crt } : {}), theme: themeFromFile };
+}
+
+function parseAdBreaks(value: unknown, warn: (message: string) => void): Partial<AdBreakSettings> {
+  const adBreaks: Partial<AdBreakSettings> = {};
+  if (value === null || value === undefined) return adBreaks;
+  if (!isRecord(value)) {
+    warn('"intervalos" deve ter opções por baixo, por exemplo "intervalos:" e, indentado, "a_cada: 8".');
+    return adBreaks;
+  }
+  for (const [key, entry] of Object.entries(value)) {
+    const label = `intervalos.${key}`;
+    if (key === 'a_cada') adBreaks.every = count(label, entry, AD_BREAK_LIMITS.every, 'minutos (0 = sem intervalo no meio do episódio)', warn);
+    else if (key === 'comerciais') adBreaks.ads = count(label, entry, AD_BREAK_LIMITS.ads, 'comerciais por intervalo', warn);
+    else if (key === 'apos_episodio') adBreaks.afterEpisode = bool(label, entry, warn);
+    else warn(`Opção desconhecida: "${label}". Ela foi ignorada.`);
+  }
+  return definedOnly(adBreaks);
+}
+
+/** A whole number within `limits` (a number, or text like "8" / "8 min"); outside the limits it is clamped, with a warning. */
+function count(
+  key: string,
+  value: unknown,
+  limits: { min: number; max: number },
+  unit: string,
+  warn: (message: string) => void,
+): number | undefined {
+  let amount: number | undefined;
+  if (typeof value === 'number' && Number.isFinite(value)) amount = value;
+  else if (typeof value === 'string') {
+    const match = /^(\d+(?:[.,]\d+)?)\s*(?:min\w*)?$/.exec(fold(value.trim()));
+    if (match) amount = Number(match[1]!.replace(',', '.'));
+  }
+  if (amount === undefined) {
+    warn(`"${key}" deve ser um número de ${limits.min} a ${limits.max} (${unit}), recebi ${show(value)}. Usando o padrão.`);
+    return undefined;
+  }
+  const result = Math.round(Math.min(limits.max, Math.max(limits.min, amount)));
+  if (amount < limits.min || amount > limits.max) {
+    warn(`"${key}" deve ficar entre ${limits.min} e ${limits.max} (recebi ${show(value)}). Usei ${result}.`);
   }
   return result;
 }

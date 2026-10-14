@@ -1,6 +1,7 @@
 import {
   mergeSettings,
   sanitizeSettings,
+  touchesTheme,
   type AspectMode,
   type Library,
   type PartialSettings,
@@ -23,7 +24,10 @@ export interface SettingsApi {
   fromLibrary: PartialSettings;
   /** Only what the user changed in the menu. */
   overrides: PartialSettings;
-  /** Saves the user's choice for the given fields (crt can be partial). */
+  /**
+   * Saves the user's choice for the given fields (crt and adBreaks can be partial). Changing something a
+   * theme preset covers (CRT, aspect, snow, skin) without naming a theme switches the theme to 'custom'.
+   */
   update(partial: PartialSettings): void;
   /** Forgets the user's choices: back to the library's defaults. */
   reset(): void;
@@ -64,21 +68,27 @@ function saveOverrides(libraryName: string, overrides: PartialSettings) {
 function layer(base: PartialSettings, top: PartialSettings): PartialSettings {
   const result: PartialSettings = { ...base, ...top };
   if (base.crt || top.crt) result.crt = { ...base.crt, ...top.crt };
+  if (base.adBreaks || top.adBreaks) result.adBreaks = { ...base.adBreaks, ...top.adBreaks };
   return result;
 }
 
 /** Drops the choices that equal what the library already gives, so "changed" really means changed. */
 function prune(overrides: PartialSettings, libraryDefaults: Settings): PartialSettings {
-  const { crt, ...rest } = overrides;
+  const { crt, adBreaks, ...rest } = overrides;
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(rest)) {
-    if (value !== undefined && value !== libraryDefaults[key as keyof Omit<Settings, 'crt'>]) result[key] = value;
+    if (value !== undefined && value !== libraryDefaults[key as keyof Omit<Settings, 'crt' | 'adBreaks'>]) result[key] = value;
   }
   const crtResult: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(crt ?? {})) {
     if (value !== undefined && value !== libraryDefaults.crt[key as keyof Settings['crt']]) crtResult[key] = value;
   }
   if (Object.keys(crtResult).length > 0) result.crt = crtResult;
+  const adResult: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(adBreaks ?? {})) {
+    if (value !== undefined && value !== libraryDefaults.adBreaks[key as keyof Settings['adBreaks']]) adResult[key] = value;
+  }
+  if (Object.keys(adResult).length > 0) result.adBreaks = adResult;
   return result as PartialSettings;
 }
 
@@ -97,21 +107,38 @@ export function SettingsProvider({
   useEffect(() => saveOverrides(libraryName, overrides), [libraryName, overrides]);
 
   const update = useCallback(
-    (partial: PartialSettings) => setOverrides((current) => prune(layer(current, partial), libraryDefaults)),
+    (partial: PartialSettings) =>
+      setOverrides((current) => {
+        let choice = partial;
+        if (partial.theme === undefined && touchesTheme(partial) && mergeSettings(libraryDefaults, current).theme !== 'custom') {
+          choice = { ...partial, theme: 'custom' };
+        }
+        return prune(layer(current, choice), libraryDefaults);
+      }),
     [libraryDefaults],
   );
   const reset = useCallback(() => setOverrides({}), []);
 
+  const settings = useMemo(() => mergeSettings(libraryDefaults, overrides), [libraryDefaults, overrides]);
+
+  // The theme's skin also tints the overlays and the library (see :root[data-skin] in styles.css).
+  useEffect(() => {
+    document.documentElement.dataset.skin = settings.osdSkin;
+    return () => {
+      delete document.documentElement.dataset.skin;
+    };
+  }, [settings.osdSkin]);
+
   const api = useMemo<SettingsApi>(
     () => ({
-      settings: mergeSettings(libraryDefaults, overrides),
+      settings,
       libraryDefaults,
       fromLibrary: library.settingsFile,
       overrides,
       update,
       reset,
     }),
-    [libraryDefaults, library.settingsFile, overrides, update, reset],
+    [settings, libraryDefaults, library.settingsFile, overrides, update, reset],
   );
   return <SettingsContext.Provider value={api}>{children}</SettingsContext.Provider>;
 }

@@ -4,6 +4,8 @@ export { parseSchedule } from './schedule';
 export {
   DEFAULT_SETTINGS,
   DEFAULT_CURVATURE,
+  DEFAULT_AD_BREAKS,
+  AD_BREAK_LIMITS,
   mergeSettings,
   parseSettings,
   sanitizeSettings,
@@ -11,16 +13,23 @@ export {
   type Settings,
   type PartialSettings,
   type CrtSettings,
+  type AdBreakSettings,
   type CrtIntensity,
   type ScheduleMode,
   type AspectMode,
   type StartMode,
+  type Theme,
+  type OsdSkin,
 } from './settings';
+export { THEMES, OSD_SKINS, THEME_PRESETS, applyTheme, touchesTheme, type PresetTheme } from './themes';
 export {
   planDay,
   requiredPaths,
   buildTimeline,
   locate,
+  breakPoints,
+  filePosition,
+  MIN_ACT_SECONDS,
   type DayPlan,
   type PlannedItem,
   type PlannedBlock,

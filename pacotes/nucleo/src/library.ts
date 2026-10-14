@@ -176,6 +176,7 @@ async function buildShow(files: ShowFiles, source: LibrarySource, warnings: Libr
       title,
       description: typeof meta.descricao === 'string' ? meta.descricao : undefined,
       season,
+      breaks: parseBreaks(meta.intervalos, path, files.episodiosYaml, warnings),
     };
   });
   episodes.sort(compareEpisodes);
@@ -195,6 +196,39 @@ async function buildShow(files: ShowFiles, source: LibrarySource, warnings: Libr
     logo: files.logo,
     episodes,
   };
+}
+
+/**
+ * `intervalos: ["7:32", "14:10"]` in episodios.yaml: cut points as "mm:ss",
+ * "h:mm:ss" or plain seconds. Bad points are dropped with a warning.
+ */
+function parseBreaks(
+  value: unknown,
+  episodePath: string,
+  yamlPath: string | undefined,
+  warnings: LibraryWarning[],
+): number[] | undefined {
+  if (value === undefined || value === null) return undefined;
+  const warn = (message: string) => warnings.push({ path: yamlPath, message: `${basename(episodePath)}: ${message}` });
+  const list = Array.isArray(value) ? value : [value];
+  const points: number[] = [];
+  for (const entry of list) {
+    const seconds = parseClock(entry);
+    if (seconds === undefined || seconds <= 0) {
+      warn(`"intervalos" deve ter tempos como "7:32" (minutos:segundos) ou segundos, recebi ${JSON.stringify(entry)}. Esse ponto foi ignorado.`);
+    } else points.push(seconds);
+  }
+  const sorted = [...new Set(points)].sort((a, b) => a - b);
+  return sorted.length > 0 ? sorted : undefined;
+}
+
+/** "7:32", "1:07:32", "452" or the number 452 -> seconds. */
+function parseClock(value: unknown): number | undefined {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+  if (typeof value !== 'string') return undefined;
+  const parts = value.trim().split(':');
+  if (parts.length > 3 || parts.some((part) => !/^\d+(?:[.,]\d+)?$/.test(part.trim()))) return undefined;
+  return parts.reduce((total, part) => total * 60 + Number(part.trim().replace(',', '.')), 0);
 }
 
 function compareEpisodes(a: Episode, b: Episode): number {

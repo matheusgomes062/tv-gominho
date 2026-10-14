@@ -18,6 +18,12 @@ export interface Episode {
   description?: string;
   /** Season folder (e.g. "temporada-01"), or null when there are no seasons. */
   season: string | null;
+  /**
+   * Exact commercial-break cut points inside the episode, in seconds from its
+   * start, ascending (`intervalos` in episodios.yaml). Absent: the engine places
+   * the breaks itself.
+   */
+  breaks?: number[];
 }
 
 export interface Show {

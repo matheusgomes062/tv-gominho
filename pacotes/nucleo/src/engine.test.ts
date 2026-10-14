@@ -207,6 +207,6 @@ describe('createAutoSchedule', () => {
     const auto = createAutoSchedule(lib)!;
     const plan = planDay(auto, lib, '2026-10-13');
     const kinds = plan.blocks[0]!.items.map((item) => (item.kind === 'episode' ? item.show.id : item.category));
-    expect(kinds).toEqual(['aberturas', 'bob', 'intervalos', 'dbz']);
+    expect(kinds).toEqual(['aberturas', 'bob', 'dbz']);
   });
 });

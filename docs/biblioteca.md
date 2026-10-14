@@ -25,7 +25,7 @@ biblioteca/
   vinhetas/
     aberturas/               # abertura do bloco
     encerramentos/           # encerramento do bloco
-    intervalos/              # "voltamos já", passagens entre programas
+    intervalos/              # passagens entre programas escritas na grade (os comerciais entre episódios são automáticos)
     comerciais/              # comerciais antigos (opcional)
     chamadas/                # chamadas de programação (opcional)
   grades/
@@ -67,6 +67,18 @@ Só `titulo` é obrigatório.
 ```
 
 A chave é o número do episódio do nome do arquivo.
+
+### Pontos dos intervalos comerciais (`intervalos`)
+
+Por padrão, o app divide cada episódio em atos iguais e coloca um intervalo comercial entre eles (veja [grade.md](grade.md)). Se o episódio tem pontos melhores para cortar (por exemplo, os fades para preto que a emissora usava para os comerciais), diga os pontos exatos:
+
+```yaml
+"001":
+  titulo: A Volta de Goku
+  intervalos: ["7:32", "14:10"]   # minutos:segundos (ou h:mm:ss, ou só segundos)
+```
+
+O episódio passa até 7:32, vêm os comerciais, e ele continua de 7:32 até 14:10, e assim por diante. Esses pontos valem no lugar da divisão automática; só são ignorados se os intervalos no meio do episódio estiverem desligados (`intervalos.a_cada: 0`) ou os comerciais estiverem desligados. Pontos fora da duração do episódio são ignorados, e tempos que não fazem sentido geram um aviso na tela de Avisos.
 
 ## Formatos
 

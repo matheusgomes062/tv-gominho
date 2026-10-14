@@ -22,6 +22,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Clock } from '../components/Clock';
 import { OffAir } from '../components/OffAir';
 import { Crt } from '../components/Crt';
+import { ChannelOsd } from '../components/Osd';
 import { Static } from '../components/Static';
 import { useFlash } from '../components/useFlash';
 import type { Durations } from '../media';
@@ -36,7 +37,10 @@ interface Props {
   channels: Schedule[];
   channel: number;
   onChannel(index: number): void;
+  /** A layer (menu, quick settings, settings) is open over the picture: it keeps playing, but ignores the keys. */
+  overlayOpen: boolean;
   onMenu(): void;
+  onQuick(): void;
 }
 
 type Status =
@@ -55,6 +59,8 @@ const OSD_MS = 4000;
 const CLOCK_CHECK_MS = 10_000;
 /** A real-clock video this far from the wall clock is out of sync: tune again. */
 const MAX_DRIFT_SECONDS = 5;
+/** An episode part ends this many seconds before the cut point, so the first frame after it never shows. */
+const PART_END_MARGIN = 0.04;
 
 /**
  * Marathons (`horario: do_inicio`) of this session, per channel: when each one
@@ -76,15 +82,19 @@ function resumeTime(resume: Resume): number {
   return new Date(year, month - 1, day, 0, 0, resume.seconds).getTime();
 }
 
-export function TvMode({ source, library, durations, channels, channel, onChannel, onMenu }: Props) {
+export function TvMode({ source, library, durations, channels, channel, onChannel, overlayOpen, onMenu, onQuick }: Props) {
   const schedule = channels[channel];
   const { settings } = useSettings();
   // Settings that change what plays: tune() runs again when they do.
   const { interstitials, commercials, schedule: scheduleMode } = settings;
+  const { every: breakEvery, ads: breakAds, afterEpisode: breakAfterEpisode } = settings.adBreaks;
   const video = useRef<HTMLVideoElement>(null);
   const timeline = useRef<Timeline | null>(null);
   const index = useRef(0);
   const idleTimer = useRef<number | undefined>(undefined);
+  // Episodes cut by commercial breaks: the entry whose file is loaded in the <video>, and the one we already advanced from.
+  const loadedIndex = useRef(-1);
+  const advancedFrom = useRef(-1);
   const generation = useRef(0);
   // `horario: real`: the timer that returns from "fora do ar", when it fires, and the clock shift of the timeline on air.
   const resumeTimer = useRef<number | undefined>(undefined);
@@ -154,13 +164,17 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
         }
       }
       index.current = i;
+      advancedFrom.current = -1;
+      loadedIndex.current = -1;
       const item = current.entries[i]!;
       setEntry(item);
       // The day loops in continuous mode, so after the last episode comes the first. Real and
       // do_inicio have nothing to announce past the end of the day's timeline.
       const isEpisode = (e: TimelineEntry) => e.kind === 'episode';
+      // The parts of the episode on air are not "the next one".
+      const isOther = (e: TimelineEntry) => isEpisode(e) && e.item !== item.item;
       setNextEntry(
-        current.entries.slice(i + 1).find(isEpisode) ?? (modeRef.current === 'continuous' ? current.entries.find(isEpisode) : undefined),
+        current.entries.slice(i + 1).find(isOther) ?? (modeRef.current === 'continuous' ? current.entries.find(isOther) : undefined),
       );
 
       if (item.kind === 'idle' || !item.path) {
@@ -174,7 +188,9 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
       const url = await source.url(item.path);
       if (token !== generation.current) return;
       element.src = url;
-      element.currentTime = offset;
+      // An episode part that comes after a commercial break starts in the middle of its file.
+      element.currentTime = (item.fileOffset ?? 0) + offset;
+      loadedIndex.current = i;
       // The <video> "playing" event switches the status; here we only catch autoplay blocks.
       element.play().catch((error: DOMException) => {
         if (token === generation.current && error.name === 'NotAllowedError') setStatus({ name: 'blocked' });
@@ -183,6 +199,57 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
     [source, goOffAir],
   );
 
+  /** Moves on from entry `from` (once, whatever fires first: the end of the part or of the file). */
+  const advance = useCallback(
+    (from: number) => {
+      if (advancedFrom.current === from) return;
+      advancedFrom.current = from;
+      void play(from + 1, 0, generation.current);
+    },
+    [play],
+  );
+
+  /** An episode part ends before its file does: leave for the commercials as soon as the cut point is reached. */
+  const checkPartEnd = useCallback(() => {
+    const element = video.current;
+    const entry = timeline.current?.entries[index.current];
+    if (!element || !entry?.part || entry.part.index >= entry.part.count) return;
+    if (loadedIndex.current !== index.current) return;
+    if (element.currentTime >= (entry.fileOffset ?? 0) + entry.duration - PART_END_MARGIN) advance(index.current);
+  }, [advance]);
+
+  // Checked on every video frame where the browser supports it (the cut lands on the right frame), and on timeupdate otherwise.
+  useEffect(() => {
+    const element = video.current;
+    if (!element || !('requestVideoFrameCallback' in element)) return;
+    let handle = 0;
+    let stopped = false;
+    const watch = () => {
+      handle = element.requestVideoFrameCallback(() => {
+        if (stopped) return;
+        checkPartEnd();
+        watch();
+      });
+    };
+    watch();
+    return () => {
+      stopped = true;
+      element.cancelVideoFrameCallback(handle);
+    };
+  }, [checkPartEnd]);
+
+  /** Where to go when the file of entry `i` cannot be played: past all the parts of the same episode. */
+  const afterBrokenFile = useCallback((i: number) => {
+    const entries = timeline.current?.entries ?? [];
+    const broken = entries[i];
+    if (!broken?.part) return i + 1;
+    let last = i;
+    entries.forEach((e, j) => {
+      if (j > i && e.item === broken.item && e.part) last = j;
+    });
+    return last + 1;
+  }, []);
+
   /** Plans and lays out one day of the channel (durations are read as needed). */
   const loadTimeline = useCallback(
     async (date: string, token: number, mode: ScheduleMode): Promise<Timeline> => {
@@ -190,9 +257,11 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
       await durations.load(requiredPaths(plan), (done, total) => {
         if (token === generation.current) setStatus({ name: 'tuning', done, total });
       });
-      return buildTimeline(plan, durations.get, timelineOptions(mode));
+      // Commercial breaks need `commercials` (the plan has no commercials otherwise).
+      const adBreaks = { every: breakEvery, ads: breakAds, afterEpisode: breakAfterEpisode };
+      return buildTimeline(plan, durations.get, { ...timelineOptions(mode), adBreaks });
     },
-    [schedule, library, durations, interstitials, commercials],
+    [schedule, library, durations, interstitials, commercials, breakEvery, breakAds, breakAfterEpisode],
   );
 
   /** Builds the channel's timeline and jumps to what is on air now, according to `horario`. */
@@ -332,7 +401,7 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
       const playing = day?.entries[index.current];
       if (!day || !playing || (current.name !== 'playing' && current.name !== 'idle')) return;
       const position = secondsSinceMidnight(new Date()) + dayShift.current - playing.start;
-      const actual = current.name === 'playing' ? (video.current?.currentTime ?? position) : position;
+      const actual = current.name === 'playing' ? (video.current?.currentTime ?? position) - (playing.fileOffset ?? 0) : position;
       if (position >= playing.duration + 1 || Math.abs(position - actual) > MAX_DRIFT_SECONDS) void tuneRef.current(token);
     };
     const timer = window.setInterval(check, CLOCK_CHECK_MS);
@@ -355,6 +424,8 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
+      // An overlay owns the keys while it is open (and anything it handled is already marked).
+      if (overlayOpen || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
       const key = event.key;
       if (key === 'ArrowUp' || key === 'PageUp' || key === 'ChannelUp') changeChannel(1);
       else if (key === 'ArrowDown' || key === 'PageDown' || key === 'ChannelDown') changeChannel(-1);
@@ -362,13 +433,14 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
       else if (key === 'Enter' || key === 'i' || key === 'Info') {
         if (status.name === 'blocked') void video.current?.play();
         else showInfo();
-      } else if (BACK_KEYS.has(key) || key === 'm' || key === 'ContextMenu') onMenu();
+      } else if (key === 's' || key === 'S' || key === 'Settings' || key === 'ArrowLeft' || key === 'ArrowRight') onQuick();
+      else if (BACK_KEYS.has(key) || key === 'm' || key === 'ContextMenu') onMenu();
       else return;
       event.preventDefault();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [changeChannel, channels.length, onChannel, onMenu, status.name, showInfo]);
+  }, [changeChannel, channels.length, onChannel, overlayOpen, onMenu, onQuick, status.name, showInfo]);
 
   // Off-air/unplayable gaps always show static; `chuvisco_troca_canal` only decides about tuning.
   const showStatic = (status.name === 'tuning' && settings.channelChangeStatic) || status.name === 'idle';
@@ -377,7 +449,7 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
 
   return (
     <main
-      className={`tv ${aspectClass(settings.aspect)} ${pointer ? 'show-pointer' : ''}`}
+      className={`tv ${aspectClass(settings.aspect)} skin-${settings.osdSkin} ${pointer ? 'show-pointer' : ''}`}
       onMouseMove={showPointer}
       onDoubleClick={() => void document.documentElement.requestFullscreen?.().catch(() => undefined)}
     >
@@ -388,13 +460,15 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
           className={`tv-video ${crtActive ? 'crt-hidden' : ''}`}
           playsInline
           onPlaying={() => setStatus({ name: 'playing' })}
-          onEnded={() => play(index.current + 1, 0, generation.current)}
+          onTimeUpdate={checkPartEnd}
+          onEnded={() => advance(index.current)}
           onError={() => {
-            // Unplayable file: skip it after a moment of static.
+            // Unplayable file: skip it (all the parts of the episode) after a moment of static.
             if (!video.current?.getAttribute('src')) return;
             setStatus({ name: 'idle' });
             const token = generation.current;
-            idleTimer.current = window.setTimeout(() => play(index.current + 1, 0, token), 1500);
+            const next = afterBrokenFile(index.current);
+            idleTimer.current = window.setTimeout(() => play(next, 0, token), 1500);
           }}
         />
         {!crtActive && showStatic && <Static className="tv-static" />}
@@ -420,10 +494,7 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
         )}
 
         {(osd || status.name === 'tuning') && schedule && (
-          <div className="osd-channel">
-            <span className="osd-number">CH {String(channel + 1).padStart(2, '0')}</span>
-            <span className="osd-name">{schedule.name}</span>
-          </div>
+          <ChannelOsd skin={settings.osdSkin} number={channel + 1} name={schedule.name} video={video} />
         )}
 
         {settings.clock && <Clock />}
@@ -433,7 +504,10 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
             {item?.kind === 'episode' ? (
               <>
                 <strong>{item.show.title}</strong>
-                <span>{item.episode.title}</span>
+                <span>
+                  {item.episode.title}
+                  {entry.part && ` (parte ${entry.part.index} de ${entry.part.count})`}
+                </span>
               </>
             ) : (
               <strong>Intervalo</strong>
@@ -460,9 +534,14 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
         </div>
       )}
 
-      <button className="tv-menu-button button" onClick={onMenu} tabIndex={-1}>
-        ☰ Menu
-      </button>
+      <div className="tv-corner-buttons">
+        <button className="button" onClick={onMenu} tabIndex={-1}>
+          ☰ Menu
+        </button>
+        <button className="button" onClick={onQuick} tabIndex={-1}>
+          Ajustes
+        </button>
+      </div>
     </main>
   );
 }

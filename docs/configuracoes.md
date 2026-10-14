@@ -8,11 +8,45 @@ Cada configuração vale na seguinte ordem, da mais fraca para a mais forte:
 
 1. **Padrão** do aplicativo (a coluna "Padrão" abaixo).
 2. **`biblioteca/configuracoes.yaml`**, se existir: só o que estiver escrito ali muda em relação ao padrão.
-3. **Escolhas feitas no menu** (Menu → Configurações): ficam salvas no navegador, uma lista separada para cada biblioteca. O botão "Restaurar padrões" apaga essas escolhas e volta ao que a biblioteca define.
+3. **Escolhas feitas no app** (ajustes rápidos ou Menu → Configurações): ficam salvas no navegador, uma lista separada para cada biblioteca. O botão "Restaurar padrões" apaga essas escolhas e volta ao que a biblioteca define.
 
-No menu, cada opção mostra se o valor veio da biblioteca ou se foi alterado por você. Valores inválidos no arquivo geram um aviso (Menu → Avisos) e a opção volta ao padrão.
+No painel de configurações, cada opção mostra se o valor veio da biblioteca ou se foi alterado por você. Valores inválidos no arquivo geram um aviso (Menu → Avisos) e a opção volta ao padrão.
 
 No pendrive comum, as mesmas configurações são escolhidas na hora de gerar o pendrive (veja [pendrive.md](pendrive.md)).
+
+## Painéis sobre a imagem
+
+Menu, ajustes rápidos e configurações são painéis translúcidos **por cima da TV**, que continua passando (com som) por baixo. Tudo o que você muda vale na hora, então dá para ver o efeito do CRT, da curvatura ou da proporção enquanto ajusta. Os painéis são controlados só com as setas, OK e Voltar.
+
+| Tecla | O que faz |
+|---|---|
+| Esc / Backspace / Voltar (na TV) | Abre o **menu**: canais, Biblioteca, Ajustes rápidos, Configurações, Avisos, Trocar pasta |
+| `S`, `←` ou `→` (na TV; `S` também no player) | Abre os **ajustes rápidos** |
+| Esc / Voltar (num painel) | Fecha um nível: lista de valores, depois o painel, depois o painel de baixo (por exemplo, configurações → menu → TV) |
+
+Enquanto um painel está aberto, ↑ ↓ ← → e Enter só mexem nele: o canal não muda e o foco não sai do painel. Clicar fora do painel também o fecha.
+
+**Ajustes rápidos** (barra na parte de baixo da tela, como nas TVs Samsung): uma fileira de blocos, cada um com o nome e o valor atual da opção: Tema, Efeito CRT, Curvatura, Proporção, Horário, Comerciais e Relógio, e no fim "Todas as configurações". ← → escolhem o bloco; ↑ ↓ mudam o valor (na curvatura, ↑ aumenta de 10 em 10); OK liga/desliga, ou mostra a lista de valores quando há vários.
+
+**Configurações** (painel à esquerda): categorias Tema, Imagem, Programação, Canais, Intervalos comerciais e Sobre e restaurar. ↑ ↓ escolhem a categoria; → ou OK entram nas opções, onde ← → mudam o valor (interruptores: ← desliga, → liga; barras: ← → mexem um passo, ou arraste com o mouse) e Voltar retorna às categorias. "Restaurar padrões" fica em Sobre e restaurar.
+
+## Temas (`tema`)
+
+Um tema é um **conjunto de ajustes prontos** mais o **estilo dos textos na tela** (número do canal, barra de informações, relógio e tela de "fora do ar"):
+
+| `tema` | Nome no app | CRT | Curvatura | Proporção | Chuvisco | Textos na tela |
+|---|---|---|---|---|---|---|
+| `tv_antiga` (padrão) | TV antiga | ligado, média, linhas | 50 | 4:3 | sim | verdes, de TV antiga |
+| `vhs` | Fita VHS | ligado, forte, linhas | 15 | 4:3 | sim | brancos e quadrados, com "PLAY ▶", contador e uma leve tremida |
+| `tv_moderna` | TV moderna | desligado | 0 | original | não (tela preta) | limpos, em cápsulas arredondadas |
+| `personalizado` | Personalizado | os que você escolheu | | | | os do último tema |
+
+Como o tema se combina com as outras opções:
+
+- Escolher um tema no app grava os valores dele como **escolhas suas** (CRT, curvatura, proporção, chuvisco) e troca o estilo dos textos. O restante (relógio, horário, comerciais…) não muda.
+- Depois disso, mudar qualquer ajuste que o tema define (CRT, intensidade, curvatura, linhas, proporção, chuvisco ou o estilo dos textos) troca o tema para **Personalizado**, que continua com o estilo de textos do último tema. Escolher um tema de novo reaplica o conjunto inteiro.
+- No `configuracoes.yaml`, `tema: vhs` vale como os ajustes do tema como padrão da biblioteca. O que o arquivo disser explicitamente (por exemplo, `proporcao: 4:3` junto de `tema: tv_moderna`) vale mais que o tema, em qualquer ordem. `tema: personalizado` não aplica nada.
+- O estilo dos textos também dá o tom de cor dos painéis (amarelo na TV antiga, azul na Fita VHS e na TV moderna).
 
 ## Lista
 
@@ -30,7 +64,11 @@ No pendrive comum, as mesmas configurações são escolhidas na hora de gerar o 
 | `proporcao` | `4:3`, `esticar`, `original` | `4:3` |
 | `vinhetas` | sim/não | sim |
 | `comerciais` | sim/não | sim |
+| `intervalos.a_cada` | minutos de 0 a 30 (0 = sem intervalo no meio do episódio) | `8` |
+| `intervalos.comerciais` | número de 1 a 10 | `3` |
+| `intervalos.apos_episodio` | sim/não | sim |
 | `relogio_na_tela` | sim/não | não |
+| `tema` | `tv_antiga`, `vhs`, `tv_moderna`, `personalizado` | `tv_antiga` |
 | `marca_dagua` | caminho de uma imagem do usuário | nenhuma |
 | `idioma` | `pt-BR`, `en` | `pt-BR` |
 
@@ -40,7 +78,7 @@ O canal que abre na primeira vez, indicado pelo nome da grade (ou pelo nome do a
 
 ### `canais_por_programa`
 
-Cria um canal extra para cada programa da biblioteca, que passa só os episódios dele, um atrás do outro, com vinhetas de `intervalos` entre eles. Ficam depois dos canais das grades.
+Cria um canal extra para cada programa da biblioteca, que passa só os episódios dele, um atrás do outro, com os intervalos comerciais (veja `intervalos`) entre eles. Ficam depois dos canais das grades.
 
 ### `horario`
 
@@ -61,6 +99,23 @@ Quanto a tela do tubo é abaulada, em porcentagem: `0` é uma tela perfeitamente
 
 Valem de forma independente. `vinhetas: não` tira as vinhetas das grades e as de `intervalos` que preenchem os espaços entre blocos; `comerciais: não` tira os comerciais (itens `comerciais` da grade e os de `vinhetas/comerciais/`, inclusive no preenchimento). Os episódios e os horários dos blocos não mudam.
 
+### `intervalos`
+
+Os intervalos comerciais, como na TV de verdade (como eles são colocados está em [grade.md](grade.md)):
+
+```yaml
+intervalos:
+  a_cada: 8            # minutos de episódio entre intervalos; 0 = sem intervalo no meio do episódio
+  comerciais: 3        # quantos comerciais por intervalo (1 a 10)
+  apos_episodio: sim   # um intervalo depois de cada episódio
+```
+
+- **`a_cada`**: de 0 a 30 minutos. Um episódio de 22 minutos com `a_cada: 8` é cortado em três atos de 7 min 20 s, com um intervalo entre cada um. Episódios curtos (menos que `a_cada` + 2 minutos) não são cortados. Com `0`, os episódios passam inteiros e só há o intervalo do fim. Um episódio pode ter seus próprios pontos de corte em `episodios.yaml` (veja [biblioteca.md](biblioteca.md)).
+- **`comerciais`**: de 1 a 10 comerciais em cada intervalo. Cada comercial dura uns 30 segundos nos anúncios de época, então 3 comerciais são cerca de um minuto e meio.
+- **`apos_episodio`**: um intervalo no fim de cada episódio. Se a grade já tem um `comerciais: N` logo depois do episódio, não há intervalo extra.
+- Os três só valem com `comerciais: sim` e com comerciais em `vinhetas/comerciais/`. Valores fora dos limites geram um aviso e viram o limite mais próximo; os que faltam ficam no padrão.
+- No app (Configurações → Intervalos comerciais), as mesmas opções são barras e um interruptor, apagados enquanto os comerciais estiverem desligados.
+
 ### Ainda não implementadas
 
 `marca_dagua` e `idioma` ficam para mais adiante. Se aparecerem no arquivo, geram um aviso e são ignoradas.
@@ -73,6 +128,8 @@ crt:
   intensidade: suave
   curvatura: 30
 comerciais: false
+intervalos:
+  a_cada: 10
 ```
 
 Só é preciso escrever o que muda em relação ao padrão.

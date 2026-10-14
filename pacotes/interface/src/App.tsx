@@ -3,8 +3,9 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { Durations } from './media';
 import { LibraryMode } from './screens/LibraryMode';
 import { Menu } from './screens/Menu';
+import { QuickSettings } from './overlays/QuickSettings';
+import { SettingsPanel } from './overlays/SettingsPanel';
 import { Player } from './screens/Player';
-import { SettingsScreen } from './screens/Settings';
 import { ShowPage } from './screens/ShowPage';
 import { TvMode } from './screens/TvMode';
 import { Warnings } from './screens/Warnings';
@@ -22,12 +23,13 @@ interface Session {
 
 type View =
   | { name: 'tv' }
-  | { name: 'menu' }
-  | { name: 'settings' }
   | { name: 'warnings' }
   | { name: 'library'; focusShow?: string }
   | { name: 'show'; showId: string; focusEpisode?: number }
   | { name: 'player'; showId: string; index: number };
+
+/** Layers over the live picture (TV or Player), newest last: Back closes the last one. */
+type Overlay = 'menu' | 'quick' | 'settings';
 
 const CHANNEL_KEY = 'tv-chuvisco.canal';
 
@@ -95,30 +97,29 @@ function Main({ session, onChangeFolder }: { session: Session; onChangeFolder():
 
   const safeChannel = channel < channels.length ? channel : 0;
 
-  const toTv = useCallback(() => setView({ name: 'tv' }), []);
-  const toMenu = useCallback(() => setView({ name: 'menu' }), []);
-  const toLibrary = useCallback((focusShow?: string) => setView({ name: 'library', focusShow }), []);
+  // The overlays keep the picture playing underneath; full screens (library, warnings…) replace it and close them.
+  const [overlays, setOverlays] = useState<Overlay[]>([]);
+  const openOverlay = useCallback((name: Overlay, keep = false) => setOverlays((stack) => [...(keep ? stack : []), name]), []);
+  const closeOverlay = useCallback(() => setOverlays((stack) => stack.slice(0, -1)), []);
+  const closeOverlays = useCallback(() => setOverlays([]), []);
+  const goTo = useCallback((next: View, then: Overlay[] = []) => {
+    setView(next);
+    setOverlays(then);
+  }, []);
+  const onPicture = view.name === 'tv' || view.name === 'player';
+  const overlay = onPicture ? overlays.at(-1) : undefined;
+
+  const toTv = useCallback(() => goTo({ name: 'tv' }), [goTo]);
+  const toLibrary = useCallback((focusShow?: string) => goTo({ name: 'library', focusShow }), [goTo]);
 
   const show = useMemo(() => {
     if (!('showId' in view)) return undefined;
     return library.shows.find((s) => s.id === view.showId);
   }, [library, view]);
 
-  switch (view.name) {
-    case 'tv':
-      return (
-        <TvMode
-          source={source}
-          library={library}
-          durations={durations}
-          channels={channels}
-          channel={safeChannel}
-          onChannel={setChannel}
-          onMenu={toMenu}
-        />
-      );
-    case 'menu':
-      return (
+  const layers = overlay && (
+    <>
+      {overlay === 'menu' && (
         <Menu
           channels={channels}
           channel={safeChannel}
@@ -126,18 +127,41 @@ function Main({ session, onChangeFolder }: { session: Session; onChangeFolder():
           libraryName={source.name}
           onWatch={(index) => {
             setChannel(index);
-            toTv();
+            closeOverlays();
           }}
           onLibrary={() => toLibrary()}
-          onWarnings={() => setView({ name: 'warnings' })}
-          onSettings={() => setView({ name: 'settings' })}
+          onWarnings={() => goTo({ name: 'warnings' })}
+          onQuick={() => openOverlay('quick', true)}
+          onSettings={() => openOverlay('settings', true)}
           onChangeFolder={onChangeFolder}
+          onBack={closeOverlay}
         />
+      )}
+      {overlay === 'quick' && <QuickSettings channels={channels} onAll={() => openOverlay('settings', true)} onBack={closeOverlay} />}
+      {overlay === 'settings' && <SettingsPanel channels={channels} libraryName={source.name} onBack={closeOverlay} />}
+    </>
+  );
+
+  switch (view.name) {
+    case 'tv':
+      return (
+        <>
+        <TvMode
+          source={source}
+          library={library}
+          durations={durations}
+          channels={channels}
+          channel={safeChannel}
+          onChannel={setChannel}
+          overlayOpen={overlay !== undefined}
+          onMenu={() => openOverlay('menu')}
+          onQuick={() => openOverlay('quick')}
+        />
+        {layers}
+        </>
       );
-    case 'settings':
-      return <SettingsScreen channels={channels} onBack={toMenu} />;
     case 'warnings':
-      return <Warnings warnings={library.warnings} onBack={toMenu} />;
+      return <Warnings warnings={library.warnings} onBack={() => goTo({ name: 'tv' }, ['menu'])} />;
     case 'library':
       return (
         <LibraryMode
@@ -162,13 +186,18 @@ function Main({ session, onChangeFolder }: { session: Session; onChangeFolder():
     case 'player':
       if (!show) return null;
       return (
-        <Player
-          source={source}
-          show={show}
-          index={view.index}
-          onIndex={(index) => setView({ name: 'player', showId: show.id, index })}
-          onBack={() => setView({ name: 'show', showId: show.id, focusEpisode: view.index })}
-        />
+        <>
+          <Player
+            source={source}
+            show={show}
+            index={view.index}
+            onIndex={(index) => setView({ name: 'player', showId: show.id, index })}
+            onBack={() => setView({ name: 'show', showId: show.id, focusEpisode: view.index })}
+            overlayOpen={overlay !== undefined}
+            onQuick={() => openOverlay('quick')}
+          />
+          {layers}
+        </>
       );
   }
 }

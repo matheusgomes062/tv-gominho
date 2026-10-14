@@ -11,11 +11,14 @@ interface Props {
   show: Show;
   index: number;
   onIndex(index: number): void;
+  /** A layer (quick settings…) is open over the picture: the player stays put and ignores the keys. */
+  overlayOpen: boolean;
+  onQuick(): void;
   onBack(): void;
 }
 
 /** On-demand player for Library mode: plays the episode, then the next one. */
-export function Player({ source, show, index, onIndex, onBack }: Props) {
+export function Player({ source, show, index, onIndex, overlayOpen, onQuick, onBack }: Props) {
   const video = useRef<HTMLVideoElement>(null);
   const { settings } = useSettings();
   const [error, setError] = useState(false);
@@ -44,8 +47,9 @@ export function Player({ source, show, index, onIndex, onBack }: Props) {
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       const element = video.current;
-      if (!element) return;
+      if (!element || overlayOpen || event.defaultPrevented) return;
       if (BACK_KEYS.has(event.key)) onBack();
+      else if (event.key === 's' || event.key === 'S' || event.key === 'ContextMenu') onQuick();
       else if (event.key === 'Enter' || event.key === ' ' || event.key === 'MediaPlayPause') {
         if (element.paused) void element.play();
         else element.pause();
@@ -59,7 +63,7 @@ export function Player({ source, show, index, onIndex, onBack }: Props) {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [index, show.episodes.length, onBack, onIndex, showTitle]);
+  }, [index, show.episodes.length, overlayOpen, onBack, onQuick, onIndex, showTitle]);
 
   return (
     <main className={`player ${aspectClass(settings.aspect)}`} onMouseMove={showTitle}>
@@ -100,7 +104,7 @@ export function Player({ source, show, index, onIndex, onBack }: Props) {
           <span>
             {paused ? '❚❚' : '▶'} {formatTime(clock.time)} / {formatTime(clock.duration)}
           </span>
-          <span className="player-hint">OK: pausar · ← → : 10 s · ↑ ↓ : episódio · Voltar: sair</span>
+          <span className="player-hint">OK: pausar · ← → : 10 s · ↑ ↓ : episódio · S: ajustes · Voltar: sair</span>
         </div>
       )}
       {(title || error) && (

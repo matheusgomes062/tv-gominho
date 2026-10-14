@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { scanLibrary } from './library';
-import { DEFAULT_CURVATURE, DEFAULT_SETTINGS, findChannelIndex, mergeSettings, parseSettings, sanitizeSettings } from './settings';
+import { DEFAULT_AD_BREAKS, DEFAULT_CURVATURE, DEFAULT_SETTINGS, findChannelIndex, mergeSettings, parseSettings, sanitizeSettings } from './settings';
 import { memorySource } from './test-helpers';
 import type { LibraryWarning, Schedule } from './types';
 
@@ -108,6 +108,61 @@ relogio_na_tela: sim
     expect(bad.warnings[0]!.message).toContain('"crt.curvatura" deve ser um número de 0 a 100');
   });
 
+  it('reads the commercial breaks block (intervalos)', () => {
+    const { settings, warnings } = parse(`intervalos:
+  a_cada: 12
+  comerciais: 4
+  apos_episodio: não
+`);
+    expect(warnings).toEqual([]);
+    expect(settings).toEqual({ adBreaks: { every: 12, ads: 4, afterEpisode: false } });
+    expect(mergeSettings(DEFAULT_SETTINGS, settings).adBreaks).toEqual({ every: 12, ads: 4, afterEpisode: false });
+    expect(DEFAULT_SETTINGS.adBreaks).toEqual({ every: 8, ads: 3, afterEpisode: true });
+  });
+
+  it('merges a partial intervalos block over the default one', () => {
+    const { settings } = parse(`intervalos:
+  a_cada: 0
+`);
+    expect(settings).toEqual({ adBreaks: { every: 0 } });
+    expect(mergeSettings(DEFAULT_SETTINGS, settings).adBreaks).toEqual({ ...DEFAULT_AD_BREAKS, every: 0 });
+  });
+
+  it('clamps intervalos numbers with a warning and ignores bad ones', () => {
+    const high = parse(`intervalos:
+  a_cada: 90
+  comerciais: 50
+`);
+    expect(high.settings).toEqual({ adBreaks: { every: 30, ads: 10 } });
+    expect(high.warnings.map((w) => w.message)).toEqual([
+      expect.stringContaining('"intervalos.a_cada" deve ficar entre 0 e 30'),
+      expect.stringContaining('"intervalos.comerciais" deve ficar entre 1 e 10'),
+    ]);
+    const low = parse(`intervalos:
+  a_cada: -3
+  comerciais: 0
+`);
+    expect(low.settings).toEqual({ adBreaks: { every: 0, ads: 1 } });
+    expect(low.warnings).toHaveLength(2);
+    const bad = parse(`intervalos:
+  a_cada: muito
+  comerciais: [1]
+  apos_episodio: talvez
+  foo: 1
+`);
+    expect(bad.settings).toEqual({});
+    expect(bad.warnings.map((w) => w.message)).toEqual([
+      expect.stringContaining('"intervalos.a_cada" deve ser um número de 0 a 30'),
+      expect.stringContaining('"intervalos.comerciais" deve ser um número de 1 a 10'),
+      expect.stringContaining('"intervalos.apos_episodio" deve ser sim ou não'),
+      expect.stringContaining('Opção desconhecida: "intervalos.foo"'),
+    ]);
+    expect(parse('intervalos: 5').warnings[0]!.message).toContain('"intervalos" deve ter opções por baixo');
+    expect(parse(`intervalos:
+  a_cada: "8 min"
+`).settings).toEqual({ adBreaks: { every: 8 } });
+  });
+
   it('warns about bad values and unknown options, keeping the default', () => {
     const { settings, warnings } = parse(`
 horario: sempre
@@ -166,6 +221,14 @@ describe('sanitizeSettings', () => {
     expect(curvature(400)).toEqual({ crt: { curvature: 100 } });
     expect(curvature(-1)).toEqual({ crt: { curvature: 0 } });
     expect(curvature('50')).toEqual({ crt: {} });
+  });
+
+  it('sanitizes the stored commercial-break choices', () => {
+    expect(sanitizeSettings({ adBreaks: { every: 2, ads: 99, afterEpisode: false, extra: 1 } })).toEqual({
+      adBreaks: { every: 2, ads: 10, afterEpisode: false },
+    });
+    expect(sanitizeSettings({ adBreaks: { every: 'x', ads: -4 } })).toEqual({ adBreaks: { ads: 1 } });
+    expect(sanitizeSettings({ adBreaks: 3 })).toEqual({});
   });
 
   it('keeps valid fields and drops the rest', () => {

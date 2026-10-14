@@ -6,8 +6,9 @@ export const AUTO_SCHEDULE_ID = '__automatico';
 
 /**
  * A channel built from whatever is in the library, used when there is no
- * schedule file yet: opening, then one episode of each show with bumpers in
- * between, then the closing.
+ * schedule file yet: opening, then one episode of each show, then the closing.
+ * What goes between the episodes is up to the commercial breaks (`intervalos`
+ * in configuracoes.yaml): no "a seguir" bumpers.
  */
 export function createAutoSchedule(library: Library): Schedule | null {
   if (library.shows.length === 0) return null;
@@ -15,8 +16,7 @@ export function createAutoSchedule(library: Library): Schedule | null {
 
   const items: ScheduleItem[] = [];
   if (has('aberturas')) items.push({ type: 'interstitial', ref: 'aberturas' });
-  library.shows.forEach((show, i) => {
-    if (i > 0 && has('intervalos')) items.push({ type: 'interstitial', ref: 'intervalos' });
+  library.shows.forEach((show) => {
     items.push({ type: 'show', show: show.id, count: 1 });
   });
   if (has('encerramentos')) items.push({ type: 'interstitial', ref: 'encerramentos' });
@@ -42,20 +42,18 @@ const MAX_EPISODES_PER_DAY = 40;
 
 /**
  * One channel per show that has playable episodes: the show's episodes back
- * to back (with an interval bumper between them, when the library has any).
+ * to back (the commercial breaks go between them, no bumpers).
  * In continuous mode the day's loop repeats, so the loop holds every episode;
  * only very long series are split across days.
  * Shows are in library order; the id is stable (`__programa:<folder>`).
  */
 export function createShowChannels(library: Library): Schedule[] {
-  const hasIntervals = resolveInterstitials(library, 'intervalos').length > 0;
   return library.shows
     .filter((show) => show.episodes.length > 0)
     .map((show) => {
       const count = Math.min(show.episodes.length, MAX_EPISODES_PER_DAY);
       const items: ScheduleItem[] = [];
       for (let i = 0; i < count; i++) {
-        if (i > 0 && hasIntervals) items.push({ type: 'interstitial', ref: 'intervalos' });
         items.push({ type: 'show', show: show.id, count: 1 });
       }
       return {

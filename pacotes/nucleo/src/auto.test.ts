@@ -49,10 +49,10 @@ describe('createShowChannels', () => {
     expect(day2[0]).toBe((day1[0]! + 40) % 50);
   });
 
-  it('puts interval bumpers between episodes when available', async () => {
+  it('does not put "a seguir" bumpers between episodes: the commercial breaks do that', async () => {
     const library = await scanLibrary(memorySource({ ...FILES, 'vinhetas/intervalos/i1.mp4': '' }));
     const dbz = createShowChannels(library).find((c) => c.id === '__programa:dbz')!;
     const kinds = planDay(dbz, library, '2024-05-01').blocks[0]!.items.map((i) => i.kind);
-    expect(kinds).toEqual(['episode', 'interstitial', 'episode', 'interstitial', 'episode']);
+    expect(kinds).toEqual(['episode', 'episode', 'episode']);
   });
 });

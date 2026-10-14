@@ -51,6 +51,17 @@ blocos:
 6. **Itens que faltam:** se um programa ou uma vinheta não existe na biblioteca, o item é pulado e um aviso aparece nas configurações. A grade nunca trava.
 7. **Blocos que passam da meia-noite** (só importa em `horario: real`): um bloco nunca é cortado à meia-noite. Se a programação de um dia ainda está passando depois das 00:00 (por exemplo, um bloco que começa às 23:00 e termina à 01:00), ela continua até acabar, mesmo que o dia novo seja folga, e só então vale a grade do dia novo. Essa sobra é considerada até 6 horas depois da meia-noite.
 
+## Intervalos comerciais
+
+Como na TV de verdade, os episódios não passam direto: o motor insere **intervalos comerciais** de `vinhetas/comerciais/`, sem que você precise escrever nada na grade. (Não existem mais as vinhetas de "a seguir" entre os episódios: quem separa os programas são os comerciais.) Tudo é ajustável com o bloco `intervalos` da [configuração](configuracoes.md) e só acontece com `comerciais` ligado (e com comerciais na biblioteca): com `comerciais: não`, os episódios passam inteiros.
+
+- **No meio do episódio:** a cada `a_cada` minutos (padrão 8) de episódio há um intervalo, como nos "atos" dos desenhos (a Nickelodeon, por exemplo, dividia o programa de meia hora em dois atos de uns 11 minutos). Um episódio de duração D tem `n = piso(D / (a_cada × 60))` intervalos, **distribuídos igualmente** (n + 1 atos do mesmo tamanho). Nenhum intervalo cai a menos de 2 minutos do começo ou do fim do episódio, nem a menos de 2 minutos de outro intervalo; episódios menores que `a_cada` + 2 minutos não são cortados. `a_cada: 0` desliga os intervalos no meio. Exemplo, com os padrões: um episódio de 22 minutos tem dois intervalos, aos 7:20 e aos 14:40.
+- **Pontos exatos:** um episódio pode dizer onde quer ser cortado (por exemplo, nos fades para preto do próprio vídeo) com `intervalos` no `episodios.yaml` (veja [biblioteca.md](biblioteca.md)). Esses pontos valem no lugar da divisão igual (mas não com `a_cada: 0`).
+- **Depois do episódio:** quando `apos_episodio` está ligado (padrão), todo episódio termina com um intervalo de `comerciais` comerciais (padrão 3), antes do que vier a seguir. Se o item seguinte da grade já é um `comerciais: N` (ou uma `vinheta` da categoria `comerciais`), o motor não duplica: vale o que a grade escreveu.
+- **Quais comerciais:** são sorteados com a mesma semente do dia dos outros sorteios (reproduzível entre aparelhos), sem repetir um comercial dentro do mesmo intervalo e passando primeiro pelos que não passaram no intervalo anterior.
+- **O tempo conta:** os intervalos entram na linha do tempo, então um bloco com intervalos dura mais que a soma dos episódios (e o preenchimento de espaços entre blocos, a regra 1, usa só o que sobrar). O episódio continua a partir do ponto em que parou, no mesmo arquivo.
+- **Vinhetas escritas na grade** (`vinheta: intervalos`, `encerramentos`...) continuam passando onde você escreveu: a grade é sua. O "Canal Automático" e os canais por programa não colocam mais vinhetas de intervalo entre os episódios; quem faz isso são os comerciais.
+
 ## Grades da comunidade
 
 As grades históricas ficam em [`grades/`](../grades/) neste repositório, uma por arquivo (`globinho-2003.yaml`). Contribuições devem citar a fonte (guia de TV, jornal da época, gravação) na `descricao`.
