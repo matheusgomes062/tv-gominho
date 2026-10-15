@@ -36,7 +36,7 @@ biblioteca/
 ## Regras
 
 - **Nome da pasta do programa** é o identificador usado na grade: letras minúsculas, sem acentos, com hífens (`bob-esponja`).
-- **Ordem dos episódios:** pelo número no início do nome do arquivo (`001`, `002`, ...). Sem número, a ordem é alfabética natural (`2` vem antes de `10`).
+- **Ordem dos episódios:** pelo número no início do nome do arquivo (`001`, `002`, ...). Também valem nomes comuns de arquivos baixados, como `1x01 - Título`, `S01E01 - Título`, `Programa - S02E05` e `DBZ_Episodio 001_www.site.com` (marcas de sites não viram título; nesse caso o título fica "Episódio 1"). Sem número, a ordem é alfabética natural (`2` vem antes de `10`).
 - **Onde ficam os episódios:** o recomendado é a pasta `episodios/`, mas qualquer vídeo dentro da pasta do programa conta como episódio.
 - **Temporadas** são opcionais. Se existirem, as pastas `temporada-NN` são lidas em ordem e os episódios ficam numa sequência só.
 - **Título do episódio:** vem de `episodios.yaml`. Se não houver, usa o nome do arquivo sem o número (`A Volta de Goku`).

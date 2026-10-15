@@ -52,15 +52,31 @@ export interface ParsedEpisodeName {
 /** "001 - A Volta de Goku.mp4" -> { number: 1, numberText: "001", title: "A Volta de Goku" } */
 export function parseEpisodeName(fileName: string): ParsedEpisodeName {
   const name = stripExtension(fileName).trim();
+  const found = (numberText: string, title: string | undefined): ParsedEpisodeName => ({
+    number: parseInt(numberText, 10),
+    numberText,
+    title: cleanTitle(title),
+  });
+  // "1x01 - Título" or "S01E01 - Título": the season comes from the folder, the number is the episode.
+  const seasonFirst = /^(?:\d+x|s\d+\s*e)(\d+)(?:\s*[-–—_.]\s*|\s+|$)(.*)$/i.exec(name);
+  if (seasonFirst) return found(seasonFirst[1]!, seasonFirst[2]);
   const withTitle = /^(\d+)(?:\s*[-–—_.]\s*|\s+)(.*\S)\s*$/.exec(name);
-  if (withTitle) {
-    return { number: parseInt(withTitle[1]!, 10), numberText: withTitle[1]!, title: withTitle[2]! };
-  }
+  if (withTitle) return found(withTitle[1]!, withTitle[2]);
   const onlyNumber = /^(\d+)$/.exec(name);
-  if (onlyNumber) {
-    return { number: parseInt(onlyNumber[1]!, 10), numberText: onlyNumber[1]!, title: null };
-  }
+  if (onlyNumber) return found(onlyNumber[1]!, undefined);
+  // Downloaded files: "DBZ_Episodio 001_WwW.Site.Biz", "Show - S02E05 - Título", "Show 1x05".
+  const inside = /(?:^|[\s._-])(?:s\d+\s*e|\d+x|epis[oó]dio|ep|cap[ií]tulo)[\s._-]*(\d+)(?=$|[\s._-])(.*)$/i.exec(name);
+  if (inside) return found(inside[1]!, inside[2]);
   return { number: null, numberText: null, title: name };
+}
+
+/** Site tags left by downloads ("WwW.TheRebels.Biz.By.Coelho") are not titles. */
+const SITE_TAG = /\bwww\.|https?:|\.(?:com|net|org|biz|info)\b/i;
+
+function cleanTitle(text: string | undefined): string | null {
+  const title = (text ?? '').replace(/^[\s._–—-]+|[\s._–—-]+$/g, '');
+  if (!title || SITE_TAG.test(title)) return null;
+  return /\s/.test(title) ? title : title.replace(/_/g, ' ');
 }
 
 /** "dragon-ball-z" -> "Dragon Ball Z" */

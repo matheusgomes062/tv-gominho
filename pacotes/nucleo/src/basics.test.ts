@@ -10,6 +10,14 @@ describe('parseEpisodeName', () => {
     ['7 Episódio Sete.mp4', 7, '7', 'Episódio Sete'],
     ['003.mp4', 3, '003', null],
     ['Especial de Natal.mp4', null, null, 'Especial de Natal'],
+    ['1x01 - Uma Queda por Musicos.mp4', 1, '01', 'Uma Queda por Musicos'],
+    ['S02E05 - O Retorno.mp4', 5, '05', 'O Retorno'],
+    ['s1e3.mp4', 3, '3', null],
+    ['DBZ_Episodio 001_WwW.TheRebels.Biz.By.Coelho.mp4', 1, '001', null],
+    ['Três Espiãs - S01E12 - A Missão.mp4', 12, '12', 'A Missão'],
+    ['Pokemon Ep 07.mp4', 7, '07', null],
+    ['Show_ep_04_O_Torneio.mp4', 4, '04', 'O Torneio'],
+    ['10 - Visite WWW.BLUDV.COM.mp4', 10, '10', null],
   ])('%s', (file, number, numberText, title) => {
     expect(parseEpisodeName(file)).toEqual({ number, numberText, title });
   });
