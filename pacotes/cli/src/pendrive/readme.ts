@@ -27,7 +27,7 @@ export interface ReadmeInput {
   crt: CrtLook | null;
   interstitials: boolean;
   commercials: boolean;
-  adBreaks: { every: number; ads: number; afterEpisode: boolean };
+  adBreaks: { every: number; ads: number; afterEpisode: boolean; bumpers: boolean };
   aspect: Aspect;
   fps: number;
   /** `--copiar-biblioteca` was used. */
@@ -57,9 +57,10 @@ export function settingsSummary(input: Omit<ReadmeInput, 'generatedAt' | 'schedu
   }
   lines.push(`Vinhetas: ${yesNo(input.interstitials)}`);
   if (input.commercials) {
-    const { every, ads, afterEpisode } = input.adBreaks;
+    const { every, ads, afterEpisode, bumpers } = input.adBreaks;
     const middle = every > 0 ? `a cada ${every} minutos de episódio` : 'sem cortes no meio dos episódios';
     lines.push(`Comerciais: sim (${ads} por intervalo, ${middle}, intervalo ao fim do episódio: ${yesNo(afterEpisode)})`);
+    lines.push(`Vinhetas de intervalo (entrando e voltando dos comerciais): ${yesNo(bumpers && input.interstitials)}`);
   } else {
     lines.push('Comerciais: não');
   }

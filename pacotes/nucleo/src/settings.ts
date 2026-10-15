@@ -38,6 +38,8 @@ export interface AdBreakSettings {
   ads: number;
   /** A break after every episode. */
   afterEpisode: boolean;
+  /** Bumpers going into and coming back from each break (vinhetas/intervalos/). Also need `interstitials`. */
+  bumpers: boolean;
 }
 
 export const AD_BREAK_LIMITS = { every: { min: 0, max: 30 }, ads: { min: 1, max: 10 } } as const;
@@ -73,7 +75,7 @@ export type PartialSettings = Partial<Omit<Settings, 'crt' | 'adBreaks'>> & {
   adBreaks?: Partial<AdBreakSettings>;
 };
 
-export const DEFAULT_AD_BREAKS: AdBreakSettings = { every: 8, ads: 3, afterEpisode: true };
+export const DEFAULT_AD_BREAKS: AdBreakSettings = { every: 8, ads: 3, afterEpisode: true, bumpers: true };
 
 /** Curvature percent that matches the original fixed 'medium' look. */
 export const DEFAULT_CURVATURE = 50;
@@ -156,6 +158,7 @@ export function sanitizeSettings(value: unknown): PartialSettings {
       every: clampedNumber(value.adBreaks.every, AD_BREAK_LIMITS.every),
       ads: clampedNumber(value.adBreaks.ads, AD_BREAK_LIMITS.ads),
       afterEpisode: flag(value.adBreaks, 'afterEpisode'),
+      bumpers: flag(value.adBreaks, 'bumpers'),
     });
   }
   return definedOnly(result);
@@ -266,6 +269,7 @@ function parseAdBreaks(value: unknown, warn: (message: string) => void): Partial
     if (key === 'a_cada') adBreaks.every = count(label, entry, AD_BREAK_LIMITS.every, 'minutos (0 = sem intervalo no meio do episódio)', warn);
     else if (key === 'comerciais') adBreaks.ads = count(label, entry, AD_BREAK_LIMITS.ads, 'comerciais por intervalo', warn);
     else if (key === 'apos_episodio') adBreaks.afterEpisode = bool(label, entry, warn);
+    else if (key === 'vinhetas') adBreaks.bumpers = bool(label, entry, warn);
     else warn(`Opção desconhecida: "${label}". Ela foi ignorada.`);
   }
   return definedOnly(adBreaks);

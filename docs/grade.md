@@ -9,6 +9,7 @@ nome: TV Globinho (2003)
 descricao: Programação das manhãs de segunda a sexta.
 data_inicio: 2003-03-03     # dia em que a grade "estreou" (define qual episódio passa em cada dia)
 dias: [seg, ter, qua, qui, sex]
+vinhetas_intervalo: intervalos/tv-globinho   # opcional: de qual canal vêm as vinhetas dos intervalos
 
 blocos:
   - horario: "08:00"
@@ -36,6 +37,17 @@ blocos:
 | `vinheta: <categoria>/<arquivo>` | Uma vinheta específica. |
 | `comerciais: N` | N comerciais sorteados de `vinhetas/comerciais`. |
 
+## Chaves da grade
+
+| Chave | Significado |
+|---|---|
+| `nome` | Nome do canal (padrão: o nome do arquivo). |
+| `descricao` | Texto livre. |
+| `data_inicio` | Dia da estreia; define qual episódio passa em cada dia. |
+| `dias` | Dias da semana em que a grade passa (padrão: todos). |
+| `vinhetas_intervalo` | Opcional. De onde vêm as vinhetas que abrem e fecham os intervalos comerciais (veja "Intervalos comerciais" abaixo). |
+| `blocos` | Os blocos de horário, com seus itens. |
+
 ## Regras do motor
 
 1. **Os blocos começam no horário definido.** Se os itens de um bloco terminam até 10 minutos antes do próximo bloco, o espaço é preenchido com vinhetas de `intervalos` e `comerciais` (se estiverem ligados); o que sobrar vira chuvisco. Espaços maiores são pulados e o próximo bloco começa logo em seguida, para o canal estar sempre no ar (`horario: continuo`, o padrão, e `do_inicio`, que pula todos os espaços). Só com `horario: real` os espaços grandes são respeitados: o canal fica fora do ar até o próximo bloco.
@@ -60,6 +72,7 @@ Como na TV de verdade, os episódios não passam direto: o motor insere **interv
 - **Depois do episódio:** quando `apos_episodio` está ligado (padrão), todo episódio termina com um intervalo de `comerciais` comerciais (padrão 3), antes do que vier a seguir. Se o item seguinte da grade já é um `comerciais: N` (ou uma `vinheta` da categoria `comerciais`), o motor não duplica: vale o que a grade escreveu.
 - **Quais comerciais:** são sorteados com a mesma semente do dia dos outros sorteios (reproduzível entre aparelhos), sem repetir um comercial dentro do mesmo intervalo e passando primeiro pelos que não passaram no intervalo anterior.
 - **O tempo conta:** os intervalos entram na linha do tempo, então um bloco com intervalos dura mais que a soma dos episódios (e o preenchimento de espaços entre blocos, a regra 1, usa só o que sobrar). O episódio continua a partir do ponto em que parou, no mesmo arquivo.
+- **Vinhetas de intervalo:** com `intervalos.vinhetas` ligado (padrão), cada intervalo começa com uma vinheta de **entrada** ("TV Globinho volta já") e termina com uma de **saída** ("estamos de volta"), tiradas de `vinhetas/intervalos/` (nomes e pastas em [biblioteca.md](biblioteca.md)). Os dois lados de um intervalo vêm sempre da mesma marca (subpasta). Se a grade não diz nada, o motor sorteia uma marca **por dia**, com a semente do dia (igual em todo aparelho e durante o dia todo, então o canal parece uma emissora só naquele dia). Com `vinhetas_intervalo`, a grade escolhe a marca, na mesma sintaxe dos itens `vinheta`: uma categoria (`intervalos`, que volta a sortear uma subpasta por dia), uma subpasta (`intervalos/tv-globinho`) ou um arquivo (`intervalos/tv-globinho/entrada-01.mp4`, que só serve ao lado que o nome indica). Se o caminho não existe, aparece um aviso em Avisos e vale o sorteio diário. Sem vinheta de entrada (ou de saída) na marca, aquele lado do intervalo fica sem vinheta. As vinhetas contam no tempo do dia como os comerciais e só passam quando o intervalo acontece. O "Canal Automático" e os canais por programa também as usam, sempre com o sorteio diário.
 - **Vinhetas escritas na grade** (`vinheta: intervalos`, `encerramentos`...) continuam passando onde você escreveu: a grade é sua. O "Canal Automático" e os canais por programa não colocam mais vinhetas de intervalo entre os episódios; quem faz isso são os comerciais.
 
 ## Grades da comunidade

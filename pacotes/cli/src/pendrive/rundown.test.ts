@@ -53,7 +53,7 @@ const durations = (table: Record<string, number> = DURATIONS): DurationSource =>
   get: (path) => table[path],
 });
 
-const SETTINGS: RundownSettings = { interstitials: true, commercials: true, adBreaks: { every: 8, ads: 2, afterEpisode: true } };
+const SETTINGS: RundownSettings = { interstitials: true, commercials: true, adBreaks: { every: 8, ads: 2, afterEpisode: true, bumpers: true } };
 
 async function load(files = FILES): Promise<Library> {
   return scanLibrary(source(files));
@@ -138,6 +138,27 @@ describe('rundown', () => {
     expect(pieces.filter((piece) => piece.role === 'episodio')).toHaveLength(2);
   });
 
+  it('frames each break with the brand bumpers, as vinheta pieces inside the break', async () => {
+    const lib = await load({
+      ...FILES,
+      'vinhetas/intervalos/marca/entrada.mp4': '',
+      'vinhetas/intervalos/marca/saida.mp4': '',
+    });
+    const table = { ...DURATIONS, 'vinhetas/intervalos/marca/entrada.mp4': 4, 'vinhetas/intervalos/marca/saida.mp4': 6 };
+    const { days } = await rundownOf('2026-10-14', 1, SETTINGS, 30, lib, table);
+    const pieces = days[0]!.pieces;
+    const entrada = pieces.findIndex((piece) => piece.path.endsWith('marca/entrada.mp4'));
+    expect(entrada).toBeGreaterThan(0);
+    expect(pieces[entrada]).toMatchObject({ role: 'vinheta', inBreak: true, frames: 120 });
+    expect(pieces[entrada + 1]).toMatchObject({ role: 'comercial', inBreak: true });
+    expect(pieces[entrada + 2]).toMatchObject({ role: 'comercial', inBreak: true });
+    expect(pieces[entrada + 3]).toMatchObject({ role: 'vinheta', inBreak: true, frames: 180 });
+    expect(pieces[entrada + 3]!.path).toContain('saida');
+
+    const off = await rundownOf('2026-10-14', 1, { ...SETTINGS, adBreaks: { ...SETTINGS.adBreaks, bumpers: false } }, 30, lib, table);
+    expect(off.days[0]!.pieces.some((piece) => piece.path.includes('/marca/'))).toBe(false);
+  });
+
   it('drops the bumpers with --sem-vinhetas but keeps episodes and commercials', async () => {
     const { days } = await rundownOf('2026-10-12', 1, { ...SETTINGS, interstitials: false });
     expect(days[0]!.pieces.some((piece) => piece.role === 'vinheta')).toBe(false);
@@ -149,10 +170,10 @@ describe('rundown', () => {
     const long = { ...DURATIONS, 'programas/turma/episodios/003.mp4': 600 }; // Monday plays episode 003
     const turmaActs = (rundown: Awaited<ReturnType<typeof rundownOf>>) => rundown.days[0]!.pieces.filter((piece) => piece.path.endsWith('turma/episodios/003.mp4'));
     // Every 5 minutes of a 10-minute episode: 2 breaks, 3 equal acts of 200 s.
-    const every5 = await rundownOf('2026-10-12', 1, { ...SETTINGS, adBreaks: { every: 5, ads: 1, afterEpisode: false } }, 30, lib, long);
+    const every5 = await rundownOf('2026-10-12', 1, { ...SETTINGS, adBreaks: { every: 5, ads: 1, afterEpisode: false, bumpers: true } }, 30, lib, long);
     expect(turmaActs(every5).map((act) => act.frames)).toEqual([6000, 6000, 6000]);
     // 0 turns the breaks inside the episode off.
-    const none = await rundownOf('2026-10-12', 1, { ...SETTINGS, adBreaks: { every: 0, ads: 1, afterEpisode: false } }, 30, lib, long);
+    const none = await rundownOf('2026-10-12', 1, { ...SETTINGS, adBreaks: { every: 0, ads: 1, afterEpisode: false, bumpers: true } }, 30, lib, long);
     expect(turmaActs(none)).toHaveLength(1);
   });
 

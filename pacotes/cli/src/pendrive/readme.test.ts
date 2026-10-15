@@ -19,7 +19,7 @@ const INPUT: ReadmeInput = {
   crt: { intensity: 'medium', curvature: 50, scanlines: true },
   interstitials: true,
   commercials: true,
-  adBreaks: { every: 8, ads: 3, afterEpisode: true },
+  adBreaks: { every: 8, ads: 3, afterEpisode: true, bumpers: true },
   aspect: '4:3',
   fps: 30,
   libraryCopied: false,
@@ -75,7 +75,11 @@ describe('settingsSummary', () => {
     expect(settingsSummary({ ...base, crt: { intensity: 'strong', curvature: 0, scanlines: false } })[0]).toContain('forte, curvatura 0%, linhas de varredura não');
     expect(settingsSummary({ ...base, commercials: false })).toContain('Comerciais: não');
     expect(settingsSummary({ ...base, interstitials: false })).toContain('Vinhetas: não');
-    expect(settingsSummary({ ...base, adBreaks: { every: 0, ads: 2, afterEpisode: false } }).join('\n')).toContain('sem cortes no meio dos episódios');
+    expect(settingsSummary({ ...base, adBreaks: { every: 0, ads: 2, afterEpisode: false, bumpers: true } }).join('\n')).toContain('sem cortes no meio dos episódios');
+    const bumperLine = 'Vinhetas de intervalo (entrando e voltando dos comerciais): ';
+    expect(settingsSummary(base)).toContain(`${bumperLine}sim`);
+    expect(settingsSummary({ ...base, adBreaks: { ...base.adBreaks, bumpers: false } })).toContain(`${bumperLine}não`);
+    expect(settingsSummary({ ...base, interstitials: false })).toContain(`${bumperLine}não`);
     expect(settingsSummary({ ...base, aspect: 'stretch' }).join('\n')).toContain('esticada');
     expect(settingsSummary(base).join('\n')).toContain('25 quadros por segundo');
   });

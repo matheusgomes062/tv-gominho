@@ -113,11 +113,22 @@ relogio_na_tela: sim
   a_cada: 12
   comerciais: 4
   apos_episodio: não
+  vinhetas: não
 `);
     expect(warnings).toEqual([]);
-    expect(settings).toEqual({ adBreaks: { every: 12, ads: 4, afterEpisode: false } });
-    expect(mergeSettings(DEFAULT_SETTINGS, settings).adBreaks).toEqual({ every: 12, ads: 4, afterEpisode: false });
-    expect(DEFAULT_SETTINGS.adBreaks).toEqual({ every: 8, ads: 3, afterEpisode: true });
+    expect(settings).toEqual({ adBreaks: { every: 12, ads: 4, afterEpisode: false, bumpers: false } });
+    expect(mergeSettings(DEFAULT_SETTINGS, settings).adBreaks).toEqual({ every: 12, ads: 4, afterEpisode: false, bumpers: false });
+    expect(DEFAULT_SETTINGS.adBreaks).toEqual({ every: 8, ads: 3, afterEpisode: true, bumpers: true });
+  });
+
+  it('reads intervalos.vinhetas as sim/não and warns about anything else', () => {
+    expect(parse('intervalos:\n  vinhetas: sim\n').settings).toEqual({ adBreaks: { bumpers: true } });
+    expect(parse('intervalos:\n  vinhetas: Não\n').settings).toEqual({ adBreaks: { bumpers: false } });
+    const bad = parse('intervalos:\n  vinhetas: talvez\n');
+    expect(bad.settings).toEqual({});
+    expect(bad.warnings[0]!.message).toContain('"intervalos.vinhetas" deve ser sim ou não');
+    // The top-level `vinhetas` is the global switch and does not touch it.
+    expect(parse('vinhetas: não\n').settings).toEqual({ interstitials: false });
   });
 
   it('merges a partial intervalos block over the default one', () => {
@@ -224,9 +235,10 @@ describe('sanitizeSettings', () => {
   });
 
   it('sanitizes the stored commercial-break choices', () => {
-    expect(sanitizeSettings({ adBreaks: { every: 2, ads: 99, afterEpisode: false, extra: 1 } })).toEqual({
-      adBreaks: { every: 2, ads: 10, afterEpisode: false },
+    expect(sanitizeSettings({ adBreaks: { every: 2, ads: 99, afterEpisode: false, bumpers: false, extra: 1 } })).toEqual({
+      adBreaks: { every: 2, ads: 10, afterEpisode: false, bumpers: false },
     });
+    expect(sanitizeSettings({ adBreaks: { bumpers: 'sim' } })).toEqual({ adBreaks: {} });
     expect(sanitizeSettings({ adBreaks: { every: 'x', ads: -4 } })).toEqual({ adBreaks: { ads: 1 } });
     expect(sanitizeSettings({ adBreaks: 3 })).toEqual({});
   });

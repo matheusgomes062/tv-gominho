@@ -33,6 +33,13 @@ export function parseSchedule(path: string, text: string, warnings: LibraryWarni
 
   const days = parseDays(raw.dias, warn);
 
+  let breakBumpersRef: string | undefined;
+  if (raw.vinhetas_intervalo !== undefined && raw.vinhetas_intervalo !== null) {
+    const ref = typeof raw.vinhetas_intervalo === 'string' ? raw.vinhetas_intervalo.trim().replace(/^\/+|\/+$/g, '') : '';
+    if (ref) breakBumpersRef = ref;
+    else warn('"vinhetas_intervalo" deve ser uma pasta ou arquivo de vinhetas, por exemplo "intervalos/tv-globinho". Ela foi ignorada.');
+  }
+
   if (!Array.isArray(raw.blocos) || raw.blocos.length === 0) {
     warn('A grade não tem "blocos".');
     return null;
@@ -56,6 +63,7 @@ export function parseSchedule(path: string, text: string, warnings: LibraryWarni
     startDate,
     days,
     blocks,
+    ...(breakBumpersRef !== undefined ? { breakBumpersRef } : {}),
   };
 }
 

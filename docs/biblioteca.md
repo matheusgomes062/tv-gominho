@@ -25,7 +25,11 @@ biblioteca/
   vinhetas/
     aberturas/               # abertura do bloco
     encerramentos/           # encerramento do bloco
-    intervalos/              # passagens entre programas escritas na grade (os comerciais entre episódios são automáticos)
+    intervalos/              # vinhetas de intervalo ("volta já" / "estamos de volta"), uma subpasta por canal
+      tv-globinho/
+        entrada-01.mp4       # entrando no intervalo: "TV Globinho volta já"
+        saida-01.mp4         # voltando dele: "estamos de volta"
+      cartoon-network/
     comerciais/              # comerciais antigos (opcional)
     chamadas/                # chamadas de programação (opcional)
   grades/
@@ -42,6 +46,29 @@ biblioteca/
 - **Título do episódio:** vem de `episodios.yaml`. Se não houver, usa o nome do arquivo sem o número (`A Volta de Goku`).
 - **Arquivos ignorados:** qualquer coisa que não seja vídeo, imagem ou YAML conhecido, e arquivos que começam com `.`.
 - **Vinhetas** podem ficar em subpastas dentro de cada categoria (por exemplo, `vinhetas/aberturas/2003/`). A grade pode apontar para a categoria inteira ou para uma subpasta.
+
+## Vinhetas de intervalo (`vinhetas/intervalos/`)
+
+As TVs de verdade (TV Globinho, Cartoon Network, Disney Channel, Jetix, Nickelodeon...) enquadravam cada intervalo comercial com duas vinhetas: uma **entrando** no intervalo ("TV Globinho volta já", "a seguir") e uma **voltando** dele ("estamos de volta"). O app passa essas vinhetas ao redor dos comerciais: **entrada, comerciais, saída**. Quem decide quais vinhetas passam são a pasta e o nome dos arquivos:
+
+```
+vinhetas/intervalos/
+  tv-globinho/
+    entrada-01.mp4
+    entrada-02.mp4
+    saida-01.mp4
+    volta-ja.mp4            # sem "entrada" nem "saída": serve nos dois lugares
+  cartoon-network/
+    entrada.mp4
+    saída.mp4
+  avulsa.mp4                # fora de subpasta: forma um grupo só dela
+```
+
+- **Uma subpasta por canal ou marca** (`tv-globinho`, `cartoon-network`, `disney-channel`, `jetix`, `nickelodeon`...). Num mesmo intervalo, as duas vinhetas saem sempre da mesma subpasta: nunca uma entrada da Globinho com uma volta da Cartoon Network. Arquivos soltos direto em `vinhetas/intervalos/` (sem subpasta) formam um grupo próprio. Subpastas mais fundas (`tv-globinho/2005/`) contam como a subpasta de cima.
+- **O papel vem do nome do arquivo**, sem distinguir maiúsculas nem acentos, e só vale a palavra inteira: um nome com a palavra `entrada` (`entrada-01.mp4`, `Entrada 2.mp4`) vai **entrando** no intervalo; com `saida` ou `saída` (`saida.mp4`, `volta_saída.mp4`), **voltando** dele. Números e hífens contam como separadores (`entrada2` vale), mas `entradas` não. Com nenhuma das duas palavras (ou com as duas), o arquivo é **genérico** e pode ser usado nos dois lugares. O nome da pasta não conta, só o do arquivo.
+- **Qual canal passa no dia:** o motor sorteia uma subpasta por dia (com a mesma semente dos outros sorteios, então é igual em todo aparelho) e usa só ela em todos os intervalos daquele dia: o canal "parece" uma emissora só. Uma grade pode escolher a marca com `vinhetas_intervalo` (veja [grade.md](grade.md)).
+- **Se faltar um dos lados:** uma subpasta sem nenhuma vinheta de entrada (nem genérica) fica sem vinheta ao entrar no intervalo; sem nenhuma de saída (nem genérica), fica sem ao voltar. O intervalo segue normal, só sem aquela vinheta. O motor evita repetir o mesmo arquivo em seguida quando há outro à escolha.
+- As vinhetas de intervalo só passam quando o intervalo acontece (comerciais ligados e comerciais na biblioteca) e com a opção `intervalos.vinhetas` ligada (padrão); veja [configuracoes.md](configuracoes.md). Os arquivos de `intervalos/` continuam valendo como item escrito na grade (`vinheta: intervalos/...`) e como tapa-buracos entre blocos.
 
 ## `programa.yaml`
 

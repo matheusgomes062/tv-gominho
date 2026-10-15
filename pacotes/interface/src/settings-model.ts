@@ -306,6 +306,18 @@ export function buildDefs(channels: Schedule[], startChannel: string | null): Re
       get: (s) => s.adBreaks.afterEpisode,
       set: (afterEpisode) => ({ adBreaks: { afterEpisode: afterEpisode as boolean } }),
     }),
+    def({
+      key: 'adBreaks.bumpers',
+      label: 'Vinhetas de intervalo',
+      hint: 'Vinheta antes e depois dos comerciais (ex.: “TV Globinho volta já”).',
+      icon: 'interstitials',
+      kind: 'switch',
+      options: ON_OFF,
+      dimmed: (s) => !s.commercials || !s.interstitials,
+      dimmedReason: 'Comerciais ou vinhetas desligados',
+      get: (s) => s.adBreaks.bumpers,
+      set: (bumpers) => ({ adBreaks: { bumpers: bumpers as boolean } }),
+    }),
   ];
   return Object.fromEntries(list.map((item) => [item.key, item]));
 }
@@ -323,7 +335,7 @@ export const CATEGORIES: Category[] = [
   { id: 'picture', label: 'Imagem', icon: 'picture', rows: ['aspect', 'crt.enabled', 'crt.intensity', 'crt.curvature', 'crt.scanlines', 'clock'] },
   { id: 'schedule', label: 'Programação', icon: 'calendar', rows: ['schedule', 'interstitials', 'commercials'] },
   { id: 'channels', label: 'Canais', icon: 'tv', rows: ['startMode', 'startChannel', 'channelsPerShow', 'channelChangeStatic'] },
-  { id: 'ads', label: 'Intervalos comerciais', icon: 'ads', rows: ['adBreaks.every', 'adBreaks.ads', 'adBreaks.afterEpisode'] },
+  { id: 'ads', label: 'Intervalos comerciais', icon: 'ads', rows: ['adBreaks.every', 'adBreaks.ads', 'adBreaks.afterEpisode', 'adBreaks.bumpers'] },
   { id: 'about', label: 'Sobre e restaurar', icon: 'info', rows: [] },
 ];
 

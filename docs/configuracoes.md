@@ -67,6 +67,7 @@ Como o tema se combina com as outras opções:
 | `intervalos.a_cada` | minutos de 0 a 30 (0 = sem intervalo no meio do episódio) | `8` |
 | `intervalos.comerciais` | número de 1 a 10 | `3` |
 | `intervalos.apos_episodio` | sim/não | sim |
+| `intervalos.vinhetas` | sim/não | sim |
 | `relogio_na_tela` | sim/não | não |
 | `tema` | `tv_antiga`, `vhs`, `tv_moderna`, `personalizado` | `tv_antiga` |
 | `marca_dagua` | caminho de uma imagem do usuário | nenhuma |
@@ -97,7 +98,7 @@ Quanto a tela do tubo é abaulada, em porcentagem: `0` é uma tela perfeitamente
 
 ### `vinhetas` e `comerciais`
 
-Valem de forma independente. `vinhetas: não` tira as vinhetas das grades e as de `intervalos` que preenchem os espaços entre blocos; `comerciais: não` tira os comerciais (itens `comerciais` da grade e os de `vinhetas/comerciais/`, inclusive no preenchimento). Os episódios e os horários dos blocos não mudam.
+Valem de forma independente. `vinhetas: não` tira as vinhetas das grades, as de `intervalos` que preenchem os espaços entre blocos e as que enquadram os intervalos comerciais (`intervalos.vinhetas`); `comerciais: não` tira os comerciais (itens `comerciais` da grade e os de `vinhetas/comerciais/`, inclusive no preenchimento). Os episódios e os horários dos blocos não mudam.
 
 ### `intervalos`
 
@@ -108,13 +109,16 @@ intervalos:
   a_cada: 8            # minutos de episódio entre intervalos; 0 = sem intervalo no meio do episódio
   comerciais: 3        # quantos comerciais por intervalo (1 a 10)
   apos_episodio: sim   # um intervalo depois de cada episódio
+  vinhetas: sim        # vinheta ao entrar e ao voltar de cada intervalo
 ```
 
 - **`a_cada`**: de 0 a 30 minutos. Um episódio de 22 minutos com `a_cada: 8` é cortado em três atos de 7 min 20 s, com um intervalo entre cada um. Episódios curtos (menos que `a_cada` + 2 minutos) não são cortados. Com `0`, os episódios passam inteiros e só há o intervalo do fim. Um episódio pode ter seus próprios pontos de corte em `episodios.yaml` (veja [biblioteca.md](biblioteca.md)).
 - **`comerciais`**: de 1 a 10 comerciais em cada intervalo. Cada comercial dura uns 30 segundos nos anúncios de época, então 3 comerciais são cerca de um minuto e meio.
 - **`apos_episodio`**: um intervalo no fim de cada episódio. Se a grade já tem um `comerciais: N` logo depois do episódio, não há intervalo extra.
-- Os três só valem com `comerciais: sim` e com comerciais em `vinhetas/comerciais/`. Valores fora dos limites geram um aviso e viram o limite mais próximo; os que faltam ficam no padrão.
-- No app (Configurações → Intervalos comerciais), as mesmas opções são barras e um interruptor, apagados enquanto os comerciais estiverem desligados.
+- **`vinhetas`**: as vinhetas que enquadram cada intervalo, como na TV de verdade: uma **entrando** ("TV Globinho volta já") e uma **voltando** ("estamos de volta"), de `vinhetas/intervalos/` (como organizar as pastas e nomear os arquivos está em [biblioteca.md](biblioteca.md)). Cada intervalo fica assim: vinheta de entrada, comerciais, vinheta de saída. Sem vinhetas em `intervalos/`, ou sem uma das duas pontas, o intervalo passa sem elas. Quais passam em cada dia vem da grade (`vinhetas_intervalo`, veja [grade.md](grade.md)) ou, sem isso, de um sorteio diário entre as subpastas.
+- Os quatro só valem com `comerciais: sim` e com comerciais em `vinhetas/comerciais/`. Valores fora dos limites geram um aviso e viram o limite mais próximo; os que faltam ficam no padrão.
+- `intervalos.vinhetas` respeita também a chave geral `vinhetas`: `vinhetas: não` (que tira **todas** as vinhetas) tira estas também, mesmo com `intervalos.vinhetas: sim`. O contrário não vale: `intervalos.vinhetas: não` tira só as vinhetas dos intervalos, e as da grade e as dos espaços entre blocos continuam.
+- No app (Configurações → Intervalos comerciais), as mesmas opções são barras e interruptores ("Vinhetas de intervalo" é o último), apagados enquanto os comerciais estiverem desligados (as vinhetas de intervalo também, se as vinhetas gerais estiverem desligadas).
 
 ### Ainda não implementadas
 

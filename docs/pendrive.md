@@ -56,7 +56,7 @@ O mesmo motor de grade do app monta cada dia (o que passa, quais episódios, qua
 - **Cada dia começa pelo primeiro bloco da grade**, como uma maratona. Os espaços entre os blocos são pulados (não tem "fora do ar" nem chuvisco).
 - **Os dias são dias de exibição da grade.** Uma grade de segunda a sexta com `--dias 5` gera cinco dias, de segunda a sexta, e o fim de semana não conta (os episódios só avançam nos dias de exibição). Se você pedir a partir de um sábado, o primeiro dia é a segunda-feira.
 - **Os episódios avançam de um dia para o outro**, exatamente como no app: o Dia 02 traz os episódios seguintes aos do Dia 01.
-- **Os comerciais** seguem as configurações `intervalos` da biblioteca: cortes no meio dos episódios, ao fim de cada um, sorteados com a mesma semente do dia (os mesmos que o app mostraria nesse dia).
+- **Os comerciais** seguem as configurações `intervalos` da biblioteca: cortes no meio dos episódios, ao fim de cada um, sorteados com a mesma semente do dia (os mesmos que o app mostraria nesse dia). Cada intervalo leva as vinhetas de entrada e de saída de `vinhetas/intervalos/` (veja [biblioteca.md](biblioteca.md)); `--sem-vinhetas` ou `intervalos.vinhetas: não` tiram essas vinhetas.
 - Arquivos que faltam ou não podem ser lidos são pulados, com um aviso; o resto é gerado.
 
 ### O que não vai para o pendrive

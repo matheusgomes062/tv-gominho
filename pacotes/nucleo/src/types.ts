@@ -71,6 +71,11 @@ export interface Schedule {
   startDate: string;
   days: Weekday[];
   blocks: ScheduleBlock[];
+  /**
+   * `vinhetas_intervalo`: which bumpers frame the commercial breaks, as a reference like a `vinheta` item
+   * ("intervalos/tv-globinho"). Absent: the engine draws one brand from vinhetas/intervalos/ for each day.
+   */
+  breakBumpersRef?: string;
 }
 
 export interface LibraryWarning {

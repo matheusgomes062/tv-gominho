@@ -275,6 +275,12 @@ async function readYamlRecord(
 
 /** Warns about schedule items that point to shows or bumpers that don't exist. */
 function validateReferences(schedule: Schedule, library: Library) {
+  if (schedule.breakBumpersRef !== undefined && resolveInterstitials(library, schedule.breakBumpersRef).length === 0) {
+    library.warnings.push({
+      path: schedule.path,
+      message: `A grade usa "vinhetas_intervalo: ${schedule.breakBumpersRef}", que não existe em vinhetas/. Os intervalos usarão as vinhetas de vinhetas/intervalos/.`,
+    });
+  }
   const showIds = new Set(library.shows.map((show) => show.id.toLowerCase()));
   for (const block of schedule.blocks) {
     for (const item of block.items) {

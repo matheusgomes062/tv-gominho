@@ -68,7 +68,11 @@ export async function planTimelines(
   const days: DayTimeline[] = [];
   for (const [index, date] of dates.entries()) {
     onDay?.(date, index);
-    const plan = planDay(schedule, library, date, { interstitials: settings.interstitials, commercials: settings.commercials });
+    const plan = planDay(schedule, library, date, {
+      interstitials: settings.interstitials,
+      commercials: settings.commercials,
+      bumpers: settings.adBreaks.bumpers,
+    });
     await durations.load(requiredPaths(plan));
     // Same options as the app's `horario: do_inicio` (TvMode.tsx): maxGapFill 0 skips every gap.
     const timeline = buildTimeline(plan, durations.get, { maxGapFill: 0, adBreaks: settings.adBreaks });
@@ -118,7 +122,8 @@ export interface Rundown {
 function roleOf(entry: TimelineEntry): PieceRole {
   if (entry.kind === 'episode') return 'episodio';
   const category = entry.item?.kind === 'interstitial' ? entry.item.category : undefined;
-  const commercial = entry.inBreak || category === 'comerciais' || /(^|\/)vinhetas\/comerciais\//i.test(entry.path ?? '');
+  // The bumpers of a break (category intervalos, inBreak) are vinhetas, not commercials.
+  const commercial = category === 'comerciais' || (entry.inBreak === true && category === undefined) || /(^|\/)vinhetas\/comerciais\//i.test(entry.path ?? '');
   return commercial ? 'comercial' : 'vinheta';
 }
 

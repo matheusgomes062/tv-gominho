@@ -70,7 +70,7 @@ const FILES: Record<string, string> = {
   'grades/vazios.yaml': GAPS,
 };
 
-const BREAKS = { every: 8, ads: 3, afterEpisode: true };
+const BREAKS = { every: 8, ads: 3, afterEpisode: true, bumpers: false };
 const EPISODE = 22 * 60; // 1320 s
 const AD = 30;
 

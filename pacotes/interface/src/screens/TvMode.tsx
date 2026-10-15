@@ -98,7 +98,7 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
   const { settings } = useSettings();
   // Settings that change what plays: tune() runs again when they do.
   const { interstitials, commercials, schedule: scheduleMode } = settings;
-  const { every: breakEvery, ads: breakAds, afterEpisode: breakAfterEpisode } = settings.adBreaks;
+  const { every: breakEvery, ads: breakAds, afterEpisode: breakAfterEpisode, bumpers: breakBumpers } = settings.adBreaks;
   const video = useRef<HTMLVideoElement>(null);
   const timeline = useRef<Timeline | null>(null);
   const index = useRef(0);
@@ -253,15 +253,15 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
   /** Plans and lays out one day of the channel (durations are read as needed). */
   const loadTimeline = useCallback(
     async (date: string, token: number, mode: ScheduleMode): Promise<Timeline> => {
-      const plan = planDay(schedule!, library, date, { interstitials, commercials });
+      const plan = planDay(schedule!, library, date, { interstitials, commercials, bumpers: breakBumpers });
       await durations.load(requiredPaths(plan), (done, total) => {
         if (token === generation.current) setStatus({ name: 'tuning', done, total });
       });
       // Commercial breaks need `commercials` (the plan has no commercials otherwise).
-      const adBreaks = { every: breakEvery, ads: breakAds, afterEpisode: breakAfterEpisode };
+      const adBreaks = { every: breakEvery, ads: breakAds, afterEpisode: breakAfterEpisode, bumpers: breakBumpers };
       return buildTimeline(plan, durations.get, { ...timelineOptions(mode), adBreaks });
     },
-    [schedule, library, durations, interstitials, commercials, breakEvery, breakAds, breakAfterEpisode],
+    [schedule, library, durations, interstitials, commercials, breakEvery, breakAds, breakAfterEpisode, breakBumpers],
   );
 
   /** Builds the channel's timeline and jumps to what is on air now, according to `horario`. */

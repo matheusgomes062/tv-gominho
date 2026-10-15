@@ -13,6 +13,7 @@ import {
   WEEKDAYS,
   type Weekday,
 } from './dates';
+import { bumpersOf, groupBumpers, NO_BUMPERS, type BreakBumpers } from './bumpers';
 import { findShow, resolveInterstitials } from './library';
 import { createRng, hashString, pick, shuffled, type Rng } from './random';
 import type { AdBreakSettings } from './settings';
@@ -23,6 +24,11 @@ export interface PlanOptions {
   interstitials?: boolean;
   /** Play commercials (vinhetas/comerciais), also as gap fillers. Independent of `interstitials`. Default true. */
   commercials?: boolean;
+  /**
+   * Bumpers that open and close each commercial break (vinhetas/intervalos/). Default true. They also need
+   * `interstitials` and `commercials` (a break without commercials has nothing to frame).
+   */
+  bumpers?: boolean;
 }
 
 export type PlannedItem =
@@ -45,6 +51,11 @@ export interface DayPlan {
   fillers: string[];
   /** The commercials that commercial breaks (`buildTimeline`'s `adBreaks`) draw from: empty when commercials are off. */
   commercials: string[];
+  /**
+   * The bumpers that frame the breaks, all of one brand chosen for the day (see `bumpers.ts`):
+   * empty when bumpers, commercials or vinhetas are off or the library has none.
+   */
+  breakBumpers: BreakBumpers;
   seed: number;
 }
 
@@ -57,6 +68,7 @@ export function scheduleDays(schedule: Schedule): Set<Weekday> {
 export function planDay(schedule: Schedule, library: Library, date: string, options: PlanOptions = {}): DayPlan {
   const useInterstitials = options.interstitials ?? true;
   const useCommercials = options.commercials ?? true;
+  const useBumpers = (options.bumpers ?? true) && useInterstitials && useCommercials;
 
   const days = scheduleDays(schedule);
   const requested = isoToDayNumber(date);
@@ -127,13 +139,26 @@ export function planDay(schedule: Schedule, library: Library, date: string, opti
     blocks,
     fillers,
     commercials: commercialPaths,
+    breakBumpers: useBumpers && commercialPaths.length > 0 ? chooseBreakBumpers(schedule, library, seed) : NO_BUMPERS,
     seed,
   };
 }
 
+/**
+ * The brand whose bumpers frame every break of the day: the schedule's `vinhetas_intervalo` (or all of
+ * vinhetas/intervalos/ without it) split by subfolder, one subfolder drawn with the day's seed. A separate
+ * random stream, so the other picks of the day are the same with or without bumpers.
+ */
+function chooseBreakBumpers(schedule: Schedule, library: Library, seed: number): BreakBumpers {
+  const fromSchedule = schedule.breakBumpersRef ? resolveInterstitials(library, schedule.breakBumpersRef) : [];
+  const groups = groupBumpers(fromSchedule.length > 0 ? fromSchedule : resolveInterstitials(library, 'intervalos'));
+  const group = pick(createRng(seed ^ 0x2c1b3c6d), groups);
+  return group ? bumpersOf(group) : NO_BUMPERS;
+}
+
 /** Every file whose duration `buildTimeline` needs. */
 export function requiredPaths(plan: DayPlan): string[] {
-  const paths = new Set<string>([...plan.fillers, ...plan.commercials]);
+  const paths = new Set<string>([...plan.fillers, ...plan.commercials, ...plan.breakBumpers.entry, ...plan.breakBumpers.exit]);
   for (const block of plan.blocks) for (const item of block.items) paths.add(item.path);
   return [...paths];
 }
@@ -156,7 +181,7 @@ export interface TimelineEntry {
   fileOffset?: number;
   /** Set when the episode is cut by commercial breaks: this entry is part `index` of `count` (1-based). */
   part?: { index: number; count: number };
-  /** True for the commercials of a commercial break (as opposed to items the schedule asked for, or gap fillers). */
+  /** True for what a commercial break is made of: its commercials and the bumpers around them (as opposed to items the schedule asked for, or gap fillers). */
   inBreak?: boolean;
 }
 
@@ -184,7 +209,8 @@ export interface TimelineOptions {
   keepLongGaps?: boolean;
   /**
    * Commercial breaks: inside episodes and after them (docs/grade.md). Needs
-   * `plan.commercials` (the `commercials` option of `planDay`). Absent: episodes
+   * `plan.commercials` (the `commercials` option of `planDay`); the bumpers around
+   * them need `plan.breakBumpers` and `adBreaks.bumpers`. Absent: episodes
    * play whole, with no automatic breaks.
    */
   adBreaks?: AdBreakSettings;
@@ -248,6 +274,18 @@ export function buildTimeline(
   const breakRng = createRng(plan.seed ^ 0x7f4a7c15);
   let lastBreak: string[] = [];
 
+  // Bumpers framing each break: their own random stream too, so the commercials picked do not depend on them.
+  const usable = (paths: readonly string[]) =>
+    paths
+      .map((path) => ({ path, duration: durationOf(path) }))
+      .filter((b): b is { path: string; duration: number } => b.duration !== undefined && Number.isFinite(b.duration) && b.duration > 0);
+  const bumperRng = createRng(plan.seed ^ 0x5bd1e995);
+  const entryBumpers = breaksOn && adBreaks.bumpers ? usable(plan.breakBumpers.entry) : [];
+  const exitBumpers = breaksOn && adBreaks.bumpers ? usable(plan.breakBumpers.exit) : [];
+  const bumperCategory = plan.breakBumpers.group.split('/')[0] || 'intervalos';
+  let lastEntry: string | undefined;
+  let lastExit: string | undefined;
+
   const firstStart = plan.blocks[0]?.start ?? 0;
   let t = firstStart;
 
@@ -259,14 +297,28 @@ export function buildTimeline(
       if (gap > 0 && gap <= maxGapFill) t = fillGap(entries, t, gap, fillers, rng);
       else if (gap > maxGapFill && options.keepLongGaps) t = block.start;
     }
-    /** A commercial break: `adBreaks.ads` commercials, not repeating the previous break's if there are others. */
+    const addInBreak = (file: { path: string; duration: number }, category: string) => {
+      const planned: PlannedItem = { kind: 'interstitial', path: file.path, category };
+      entries.push({ kind: 'interstitial', start: t, duration: file.duration, path: file.path, item: planned, inBreak: true });
+      t += file.duration;
+    };
+    /**
+     * A commercial break: a bumper going in, `adBreaks.ads` commercials (not repeating the previous break's if
+     * there are others), a bumper coming back. A side without bumpers just has none.
+     */
     const addBreak = () => {
       const chosen = pickBreakAds(ads, adBreaks!.ads, lastBreak, breakRng);
       lastBreak = chosen.map((ad) => ad.path);
-      for (const ad of chosen) {
-        const planned: PlannedItem = { kind: 'interstitial', path: ad.path, category: 'comerciais' };
-        entries.push({ kind: 'interstitial', start: t, duration: ad.duration, path: ad.path, item: planned, inBreak: true });
-        t += ad.duration;
+      const entry = pickBumper(entryBumpers, [[lastEntry]], bumperRng);
+      if (entry) {
+        addInBreak(entry, bumperCategory);
+        lastEntry = entry.path;
+      }
+      for (const ad of chosen) addInBreak(ad, 'comerciais');
+      const exit = pickBumper(exitBumpers, [[lastExit, entry?.path], [entry?.path], [lastExit]], bumperRng);
+      if (exit) {
+        addInBreak(exit, bumperCategory);
+        lastExit = exit.path;
       }
     };
 
@@ -315,6 +367,19 @@ function pickBreakAds(
   // Not the same commercial as the last one of the previous break.
   if (cycle.length > 1 && cycle[0]!.path === previous.at(-1)) cycle.push(cycle.shift()!);
   return Array.from({ length: count }, (_, i) => cycle[i % cycle.length]!);
+}
+
+/** A bumper that is none of the first list of `avoid` that leaves anything, or any of them when no list does. */
+function pickBumper(
+  candidates: readonly { path: string; duration: number }[],
+  avoid: readonly (readonly (string | undefined)[])[],
+  rng: Rng,
+): { path: string; duration: number } | undefined {
+  for (const paths of avoid) {
+    const fresh = candidates.filter((bumper) => !paths.includes(bumper.path));
+    if (fresh.length > 0) return pick(rng, fresh);
+  }
+  return pick(rng, candidates);
 }
 
 function fillGap(
