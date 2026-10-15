@@ -17,11 +17,12 @@ import {
   type TimelineEntry,
   type TimelineOptions,
 } from '@tv-chuvisco/nucleo';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Clock } from '../components/Clock';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Clock, useClockText } from '../components/Clock';
 import { OffAir } from '../components/OffAir';
 import { Crt } from '../components/Crt';
-import { ChannelOsd } from '../components/Osd';
+import { ChannelOsd, formatTimecode, useVideoSeconds } from '../components/Osd';
+import type { OsdState } from '../components/osd-painter';
 import { Static } from '../components/Static';
 import { useFlash } from '../components/useFlash';
 import type { Durations } from '../media';
@@ -446,6 +447,29 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
   const showBlack = status.name === 'tuning' && !settings.channelChangeStatic;
   const item = entry?.item;
 
+  // With the WebGL tube, the OSD is painted into it (components/osd-painter.ts) so it gets the CRT treatment; the DOM
+  // copies below stay as the visually-hidden text for screen readers. Without it, the DOM OSD is the visible one.
+  const channelShown = (osd || status.name === 'tuning') && !!schedule;
+  const clockText = useClockText(settings.clock && crtActive);
+  const videoSeconds = useVideoSeconds(video, crtActive && settings.osdSkin === 'vhs' && channelShown);
+  const infoTitle = info && entry ? (item?.kind === 'episode' ? item.show.title : 'Intervalo') : null;
+  const infoSubtitle =
+    info && entry && item?.kind === 'episode' ? `${item.episode.title}${entry.part ? ` (parte ${entry.part.index} de ${entry.part.count})` : ''}` : null;
+  const channelName = schedule?.name;
+  const osdState = useMemo<OsdState>(
+    () => ({
+      skin: settings.osdSkin,
+      channel:
+        channelShown && channelName !== undefined
+          ? { number: channel + 1, name: channelName, timecode: settings.osdSkin === 'vhs' ? formatTimecode(videoSeconds) : null }
+          : null,
+      info: infoTitle !== null ? { title: infoTitle, subtitle: infoSubtitle } : null,
+      clock: settings.clock ? clockText : null,
+    }),
+    [settings.osdSkin, settings.clock, channelShown, channelName, channel, videoSeconds, infoTitle, infoSubtitle, clockText],
+  );
+  const hidden = crtActive ? 'osd-sr' : '';
+
   return (
     <main
       className={`tv ${aspectClass(settings.aspect)} skin-${settings.osdSkin} ${pointer ? 'show-pointer' : ''}`}
@@ -480,6 +504,7 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
             settings={settings.crt}
             aspect={settings.aspect}
             view={showStatic ? 'static' : showBlack ? 'black' : 'picture'}
+            osd={osdState}
             onActive={setCrtActive}
           />
         )}
@@ -493,13 +518,13 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
         )}
 
         {(osd || status.name === 'tuning') && schedule && (
-          <ChannelOsd skin={settings.osdSkin} number={channel + 1} name={schedule.name} video={video} />
+          <ChannelOsd skin={settings.osdSkin} number={channel + 1} name={schedule.name} video={video} className={hidden} timecode={!crtActive} />
         )}
 
-        {settings.clock && <Clock />}
+        {settings.clock && <Clock className={hidden} time={crtActive ? clockText : undefined} />}
 
         {info && entry && (
-          <div className="osd-info">
+          <div className={`osd-info ${hidden}`}>
             {item?.kind === 'episode' ? (
               <>
                 <strong>{item.show.title}</strong>

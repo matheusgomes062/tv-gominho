@@ -845,6 +845,26 @@ h2 {
   display: contents;
 }
 
+/*
+ * While the WebGL tube paints the OSD itself (components/osd-painter.ts), the DOM copies stay only for screen
+ * readers: visually hidden, not display:none.
+ */
+.tv .osd-sr {
+  position: absolute !important;
+  inset: auto !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  animation: none !important;
+}
+
 /* --- Fita VHS: white blocky VCR capitals, black edge, the odd tracking jitter ----------------------- */
 .skin-vhs .osd-channel {
   left: 6%;

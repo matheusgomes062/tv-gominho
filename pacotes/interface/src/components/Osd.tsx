@@ -8,20 +8,28 @@ function pad(value: number): string {
   return String(value).padStart(2, '0');
 }
 
-/** A VCR counter (H:MM:SS) that follows the video. */
-function Timecode({ video }: { video: RefObject<HTMLVideoElement | null> }) {
+/** The VCR counter text: "SP H:MM:SS". */
+export function formatTimecode(seconds: number): string {
+  return `SP ${Math.floor(seconds / 3600)}:${pad(Math.floor(seconds / 60) % 60)}:${pad(seconds % 60)}`;
+}
+
+/** The video's position in whole seconds, polled while `enabled` (state changes at most once a second). */
+export function useVideoSeconds(video: RefObject<HTMLVideoElement | null>, enabled = true): number {
   const [seconds, setSeconds] = useState(0);
   useEffect(() => {
+    if (!enabled) return;
     const read = () => setSeconds(Math.floor(video.current?.currentTime ?? 0));
     read();
     const timer = window.setInterval(read, 500);
     return () => clearInterval(timer);
-  }, [video]);
-  return (
-    <span className="osd-timecode">
-      SP {Math.floor(seconds / 3600)}:{pad(Math.floor(seconds / 60) % 60)}:{pad(seconds % 60)}
-    </span>
-  );
+  }, [video, enabled]);
+  return seconds;
+}
+
+/** A VCR counter (H:MM:SS) that follows the video. */
+function Timecode({ video }: { video: RefObject<HTMLVideoElement | null> }) {
+  const seconds = useVideoSeconds(video);
+  return <span className="osd-timecode">{formatTimecode(seconds)}</span>;
 }
 
 interface Props {
@@ -30,12 +38,16 @@ interface Props {
   number: number;
   name: string;
   video: RefObject<HTMLVideoElement | null>;
+  /** Extra class, e.g. the visually-hidden copy kept for screen readers while the CRT paints the OSD itself. */
+  className?: string;
+  /** Whether to show (and poll) the VHS counter; off for the hidden copy. */
+  timecode?: boolean;
 }
 
 /** Channel number and name, shown for a few seconds after tuning. */
-export function ChannelOsd({ skin, number, name, video }: Props) {
+export function ChannelOsd({ skin, number, name, video, className = '', timecode = true }: Props) {
   return (
-    <div className="osd-channel">
+    <div className={`osd-channel ${className}`}>
       {skin === 'vhs' && (
         <span className="osd-play">
           PLAY<i className="osd-triangle" />
@@ -52,7 +64,7 @@ export function ChannelOsd({ skin, number, name, video }: Props) {
           <span className="osd-name">{name}</span>
         </>
       )}
-      {skin === 'vhs' && <Timecode video={video} />}
+      {skin === 'vhs' && timecode && <Timecode video={video} />}
     </div>
   );
 }

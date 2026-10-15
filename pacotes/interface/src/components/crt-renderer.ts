@@ -21,6 +21,13 @@ export interface CrtRenderer {
   setParams(params: CrtParams): void;
   /** Call when the canvas' CSS size may have changed. */
   resize(): void;
+  /** The drawing-buffer size in pixels (applies a pending resize first); the OSD canvas should match it. */
+  size(): { width: number; height: number };
+  /**
+   * The on-screen display layer (components/osd-painter.ts), drawn inside the tube so it gets every CRT effect.
+   * The canvas is uploaded on the next draw after each call (never per frame); null removes the layer.
+   */
+  setOsd(layer: HTMLCanvasElement | null): void;
   destroy(): void;
 }
 
@@ -83,6 +90,8 @@ precision mediump float;
 #endif
 varying vec2 vUv;
 uniform sampler2D uTex;
+uniform sampler2D uOsd;   // the OSD layer, premultiplied RGBA, whole tube
+uniform float uOsdOn;     // 0 when there is no OSD layer: skips the extra texture reads
 uniform vec2 uFit;      // size of the video rectangle inside the tube (0..1 each)
 uniform vec2 uRes;      // canvas size in pixels
 uniform float uAspect;  // canvas width / height
@@ -102,6 +111,9 @@ uniform float uFlicker;
 uniform float uJitter;
 uniform float uGlitch;
 uniform float uGlass;
+
+// How much of the convergence error the OSD gets (the picture gets all of it).
+#define OSD_ABERR 0.4
 
 float hash12(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
@@ -123,7 +135,7 @@ vec3 snow(vec2 c) {
 }
 
 // What the electron guns paint at tube position c (0..1, y up), before any tube effects.
-vec3 scene(vec2 c) {
+vec3 scene(vec2 c, vec2 oc) {
   vec3 col = vec3(0.0);
   if (uPic > 0.001) {
     vec2 t = (c - 0.5) / uFit + 0.5;
@@ -132,6 +144,12 @@ vec3 scene(vec2 c) {
     }
   }
   if (uStatic > 0.001) col = mix(col, snow(c), uStatic);
+  // The on-screen display is painted by the same guns, over picture, snow and black alike (premultiplied alpha).
+  // oc is where the OSD is read: the same spot, or a bit less convergence-shifted so small type stays readable.
+  if (uOsdOn > 0.5 && oc.x >= 0.0 && oc.x <= 1.0 && oc.y >= 0.0 && oc.y <= 1.0) {
+    vec4 o = texture2D(uOsd, vec2(oc.x, 1.0 - oc.y));
+    col = col * (1.0 - o.a) + o.rgb;
+  }
   return col;
 }
 
@@ -154,11 +172,12 @@ void main() {
 
   // Convergence error: red and blue drift apart toward the edges.
   float ab = uAberr * (1.0 + 2.5 * dot(p, p));
-  vec3 col = vec3(scene(s + vec2(ab, 0.0)).r, scene(s).g, scene(s - vec2(ab, 0.0)).b);
+  vec3 col = vec3(scene(s + vec2(ab, 0.0), s + vec2(ab * OSD_ABERR, 0.0)).r, scene(s, s).g, scene(s - vec2(ab, 0.0), s - vec2(ab * OSD_ABERR, 0.0)).b);
 
   // Cheap bloom: four diagonal taps around the pixel, only the bright part is added back.
   vec2 r = vec2(0.0045, 0.0045 * uAspect);
-  vec3 bl = (scene(s + r) + scene(s - r) + scene(s + vec2(r.x, -r.y)) + scene(s + vec2(-r.x, r.y))) * 0.25;
+  vec2 r2 = vec2(r.x, -r.y);
+  vec3 bl = (scene(s + r, s + r) + scene(s - r, s - r) + scene(s + r2, s + r2) + scene(s - r2, s - r2)) * 0.25;
   col += uBloom * max(bl - col, 0.0);
 
   col *= col; // to linear light for the beam math
@@ -247,6 +266,11 @@ export function createCrtRenderer(canvas: HTMLCanvasElement, videoElement: HTMLV
   /** A new video frame is waiting to be uploaded. */
   let dirty = true;
   let lastTime = -1;
+  /** The OSD layer canvas, its texture, and whether the texture is out of date. */
+  let osdLayer: HTMLCanvasElement | null = null;
+  let osdTexture: WebGLTexture | null = null;
+  let osdDirty = false;
+  let osdValid = false;
 
   let params: CrtParams = { intensity: 'medium', curvature: 50, scanlines: true, view: 'picture', fit: 'contain', resolution: 1 };
   let pic = 0;
@@ -275,7 +299,7 @@ export function createCrtRenderer(canvas: HTMLCanvasElement, videoElement: HTMLV
     }
     gl!.useProgram(program);
     for (const name of [
-      'uTex', 'uFit', 'uRes', 'uAspect', 'uLines', 'uTime', 'uSeed', 'uPic', 'uStatic', 'uCurv', 'uScan', 'uMask',
+      'uTex', 'uOsd', 'uOsdOn', 'uFit', 'uRes', 'uAspect', 'uLines', 'uTime', 'uSeed', 'uPic', 'uStatic', 'uCurv', 'uScan', 'uMask',
       'uVig', 'uAberr', 'uBloom', 'uNoise', 'uFlicker', 'uJitter', 'uGlitch', 'uGlass',
     ]) {
       uniforms[name] = gl!.getUniformLocation(program, name);
@@ -294,6 +318,20 @@ export function createCrtRenderer(canvas: HTMLCanvasElement, videoElement: HTMLV
     gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_MIN_FILTER, gl!.LINEAR);
     gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_MAG_FILTER, gl!.LINEAR);
     gl!.uniform1i(uniforms.uTex!, 0);
+
+    // The OSD layer lives in texture unit 1.
+    osdTexture = gl!.createTexture();
+    gl!.activeTexture(gl!.TEXTURE1);
+    gl!.bindTexture(gl!.TEXTURE_2D, osdTexture);
+    gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_WRAP_S, gl!.CLAMP_TO_EDGE);
+    gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_WRAP_T, gl!.CLAMP_TO_EDGE);
+    gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_MIN_FILTER, gl!.LINEAR);
+    gl!.texParameteri(gl!.TEXTURE_2D, gl!.TEXTURE_MAG_FILTER, gl!.LINEAR);
+    gl!.uniform1i(uniforms.uOsd!, 1);
+    gl!.activeTexture(gl!.TEXTURE0);
+    osdValid = false;
+    osdDirty = osdLayer !== null; // after a lost context, upload the layer again
+
     texW = texH = 0;
     textureValid = false;
     dirty = true;
@@ -333,9 +371,31 @@ export function createCrtRenderer(canvas: HTMLCanvasElement, videoElement: HTMLV
     }
   }
 
+  /** Uploads the OSD canvas as premultiplied RGBA. Called only when the layer changed. */
+  function uploadOsd() {
+    osdDirty = false;
+    if (!osdLayer || osdLayer.width === 0 || osdLayer.height === 0) {
+      osdValid = false;
+      return;
+    }
+    try {
+      gl!.activeTexture(gl!.TEXTURE1);
+      gl!.bindTexture(gl!.TEXTURE_2D, osdTexture);
+      gl!.pixelStorei(gl!.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+      gl!.texImage2D(gl!.TEXTURE_2D, 0, gl!.RGBA, gl!.RGBA, gl!.UNSIGNED_BYTE, osdLayer);
+      osdValid = true;
+    } catch {
+      osdValid = false;
+    } finally {
+      gl!.pixelStorei(gl!.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+      gl!.activeTexture(gl!.TEXTURE0);
+    }
+  }
+
   function draw(now: number, fromVideo: boolean) {
     if (lost || destroyed || !program) return;
     if (needResize) applySize();
+    if (osdDirty) uploadOsd();
     const dt = Math.min(0.25, Math.max(0, (now - lastNow) / 1000));
     lastNow = now;
     lastRender = now;
@@ -373,6 +433,7 @@ export function createCrtRenderer(canvas: HTMLCanvasElement, videoElement: HTMLV
     gl!.uniform1f(u.uLines!, lines);
     gl!.uniform1f(u.uTime!, (now / 1000) % 1000);
     gl!.uniform1f(u.uSeed!, Math.random() * 100);
+    gl!.uniform1f(u.uOsdOn!, osdLayer && osdValid ? 1 : 0);
     gl!.uniform1f(u.uPic!, pic);
     gl!.uniform1f(u.uStatic!, snow);
     gl!.uniform1f(u.uCurv!, Math.min(1, Math.max(0, params.curvature / 100)) * MAX_CURV);
@@ -460,6 +521,15 @@ export function createCrtRenderer(canvas: HTMLCanvasElement, videoElement: HTMLV
     resize() {
       needResize = true;
     },
+    size() {
+      if (needResize) applySize();
+      return { width: canvas.width, height: canvas.height };
+    },
+    setOsd(layer) {
+      osdLayer = layer;
+      osdDirty = layer !== null;
+      if (!layer) osdValid = false;
+    },
     destroy() {
       destroyed = true;
       cancelAnimationFrame(rafId);
@@ -474,6 +544,7 @@ export function createCrtRenderer(canvas: HTMLCanvasElement, videoElement: HTMLV
       video.removeEventListener('loadstart', invalidate);
       if (!lost) {
         if (texture) gl.deleteTexture(texture);
+        if (osdTexture) gl.deleteTexture(osdTexture);
         if (buffer) gl.deleteBuffer(buffer);
         if (program) gl.deleteProgram(program);
       }
