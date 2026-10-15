@@ -7,6 +7,7 @@ import { useSettings } from '../settings';
 import {
   buildDefs,
   CATEGORIES,
+  clickDirection,
   cycled,
   originOf,
   rangeAt,
@@ -25,6 +26,9 @@ interface Props {
   initialCategory?: string;
   onBack(): void;
 }
+
+/** A value box is only reserved at its widest when that is at most this many characters. */
+const MAX_RESERVED_VALUE = 14;
 
 const THEME_ORDER: Theme[] = ['classic', 'vhs', 'modern', 'custom'];
 
@@ -65,6 +69,9 @@ export function SettingsPanel({ channels, libraryName, initialCategory = 'theme'
         <header className="panel-header">
           <Icon name="settings" />
           <h1>Configurações</h1>
+          <button className="panel-close" onClick={onBack} aria-label="Fechar" title="Fechar" tabIndex={-1}>
+            <Icon name="close" />
+          </button>
         </header>
 
         <nav className="panel-cats" aria-label="Categorias">
@@ -127,7 +134,7 @@ export function SettingsPanel({ channels, libraryName, initialCategory = 'theme'
           ))}
 
           {current.id === 'ads' && settings.commercials === false && (
-            <p className="panel-note">Os comerciais estão desligados em Programação, então estes ajustes não têm efeito.</p>
+            <p className="panel-note">Os comerciais estão desligados em Programação, então estes ajustes ficam bloqueados.</p>
           )}
 
           {current.id === 'about' && (
@@ -160,10 +167,15 @@ function SettingRow({ item, origin, apply }: { item: SettingDef; origin: string 
   const { settings } = useSettings();
   const value = item.get(settings);
   const label = valueLabel(item, settings);
+  // The value's box is as wide as its longest possible text, so changing it never moves the arrows, the slider or
+  // the wrapped text next to it (the pointer is usually right on top of them). Long lists (channel names) get a fixed box instead.
+  const widest = widestValue(item);
+  const valueWidth = widest <= MAX_RESERVED_VALUE ? `${(widest * 1.15).toFixed(1)}ch` : undefined;
+  // A greyed-out row (its parent setting is off) stays focusable so the remote can reach it, but nothing changes it.
   const dimmed = item.dimmed?.(settings) ?? false;
 
   const onKeyDown = (event: KeyboardEvent) => {
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    if (dimmed || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
     const direction = event.key === 'ArrowLeft' ? -1 : 1;
     event.preventDefault();
     if (item.kind === 'switch') {
@@ -179,6 +191,7 @@ function SettingRow({ item, origin, apply }: { item: SettingDef; origin: string 
     return box.width > 0 ? (event.clientX - box.left) / box.width : 0;
   };
   const dragTo = (event: PointerEvent<HTMLElement>) => {
+    if (dimmed) return;
     const next = rangeAt(item, settings, amountAt(event));
     if (next) apply(next);
   };
@@ -191,23 +204,34 @@ function SettingRow({ item, origin, apply }: { item: SettingDef; origin: string 
       className={`row row-${item.kind} ${dimmed ? 'dimmed' : ''}`}
       role={item.kind === 'switch' ? 'switch' : undefined}
       aria-checked={item.kind === 'switch' ? (value as boolean) : undefined}
+      aria-disabled={dimmed || undefined}
       onKeyDown={onKeyDown}
       onClick={(event) => {
+        if (dimmed) return;
         if (item.kind === 'range') {
           // Enter/OK (detail 0) steps up and wraps; pointer clicks are handled on the track.
           if (event.detail === 0) apply(steppedWrapping(item, settings));
-        } else apply(cycled(item, settings, 1));
+          return;
+        }
+        // A pointer click on the left half of a selector's value (the ‹ arrow) goes back; anywhere else goes forward.
+        const selector = event.detail > 0 && item.kind === 'select' ? (event.target as Element).closest('.selector') : null;
+        apply(cycled(item, settings, selector ? clickDirection(selector, event.clientX) : 1));
       }}
     >
       <Icon name={item.icon} className="row-lead" />
       <span className="row-text">
         <span className="row-label">{item.label}</span>
         {item.hint && <span className="row-meta">{item.hint}</span>}
-        {origin && (
-          <span className="row-meta">
-            <em className={origin === 'da biblioteca' ? 'from-library' : 'from-user'}>{origin}</em>
-          </span>
-        )}
+        {/* Always one line, so a value changing (and its origin tag appearing) never moves the controls under the pointer. */}
+        <span className="row-meta row-origin">
+          {dimmed ? (
+            <em className="from-lock">{item.dimmedReason}</em>
+          ) : (
+            <em className={origin === 'alterado por você' ? 'from-user' : origin === 'da biblioteca' ? 'from-library' : 'from-default'}>
+              {origin ?? 'padrão'}
+            </em>
+          )}
+        </span>
       </span>
 
       {item.kind === 'switch' && (
@@ -221,14 +245,20 @@ function SettingRow({ item, origin, apply }: { item: SettingDef; origin: string 
       {item.kind === 'select' && (
         <span className="row-control selector">
           <Icon name="chevronLeft" className="selector-arrow" />
-          <strong>{label}</strong>
+          <strong
+            // Long lists (channel names) get one fixed box, too long names are cut: the row never re-wraps.
+            style={valueWidth ? { minWidth: `max(calc(3.6 * var(--u)), ${valueWidth})` } : { width: '16ch', overflow: 'hidden', textOverflow: 'ellipsis' }}
+            title={valueWidth ? undefined : label}
+          >
+            {label}
+          </strong>
           <Icon name="chevronRight" className="selector-arrow" />
         </span>
       )}
       {item.kind === 'range' && (
         <>
           <span className="row-control">
-            <strong>{label}</strong>
+            <strong style={{ minWidth: valueWidth, textAlign: 'right' }}>{label}</strong>
           </span>
           <span
             className="range-track"
@@ -239,6 +269,7 @@ function SettingRow({ item, origin, apply }: { item: SettingDef; origin: string 
             aria-valuenow={value as number}
             aria-valuetext={label}
             onPointerDown={(event) => {
+              if (dimmed) return;
               event.currentTarget.setPointerCapture(event.pointerId);
               dragTo(event);
             }}
@@ -255,6 +286,15 @@ function SettingRow({ item, origin, apply }: { item: SettingDef; origin: string 
       )}
     </button>
   );
+}
+
+/** Characters in the longest text a setting's value can show. */
+function widestValue(item: SettingDef): number {
+  if (item.kind === 'range') {
+    const { min, max, format } = item.range!;
+    return Math.max(format(min).length, format(max).length);
+  }
+  return Math.max(...item.options.map((option) => option.label.length));
 }
 
 /** A tiny sample of what a theme's on-screen display looks like. */

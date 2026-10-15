@@ -1,5 +1,5 @@
 import type { Schedule } from '@tv-chuvisco/nucleo';
-import { useMemo, useState, type KeyboardEvent } from 'react';
+import { useMemo, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { Icon } from '../components/Icon';
 import { KeyHints, Overlay } from '../components/Overlay';
 import { BACK_KEYS } from '../nav';
@@ -8,6 +8,7 @@ import {
   buildDefs,
   cycled,
   QUICK_TILES,
+  rangeAt,
   rangeFraction,
   stepped,
   steppedWrapping,
@@ -24,7 +25,9 @@ interface Props {
 /**
  * The quick-settings bar along the bottom of the picture: one tile per setting, with its
  * current value. Left/Right choose a tile, Up/Down change its value (live), OK toggles it or
- * lists its values. The last tile opens the full panel.
+ * lists its values. The last tile opens the full panel. With the mouse or a finger: a click does what OK does,
+ * a click or drag on a tile's bar sets that value directly, and a click on the dimmed backdrop closes the bar.
+ * A greyed-out tile (its parent setting is off) can be focused but nothing changes it.
  */
 export function QuickSettings({ channels, onAll, onBack }: Props) {
   const { settings, update } = useSettings();
@@ -35,6 +38,7 @@ export function QuickSettings({ channels, onAll, onBack }: Props) {
 
   /** direction 1 = Down (next in a list / less for a range) is handled by the caller. */
   const change = (item: SettingDef, direction: 1 | -1) => {
+    if (item.dimmed?.(settings)) return;
     const next = item.kind === 'range' ? stepped(item, settings, direction) : cycled(item, settings, direction);
     if (next) update(next);
   };
@@ -55,9 +59,18 @@ export function QuickSettings({ channels, onAll, onBack }: Props) {
   };
 
   const activate = (item: SettingDef) => {
+    if (item.dimmed?.(settings)) return;
     if (item.kind === 'switch') change(item, 1);
     else if (item.kind === 'range') update(steppedWrapping(item, settings));
     else setListed((open) => (open === item.key ? null : item.key));
+  };
+
+  /** A click or drag along a range tile's bar: the value under the pointer. */
+  const setFromBar = (item: SettingDef, event: PointerEvent<HTMLElement>) => {
+    if (item.dimmed?.(settings)) return;
+    const box = event.currentTarget.getBoundingClientRect();
+    const next = rangeAt(item, settings, box.width > 0 ? (event.clientX - box.left) / box.width : 0);
+    if (next) update(next);
   };
 
   return (
@@ -69,6 +82,7 @@ export function QuickSettings({ channels, onAll, onBack }: Props) {
               data-nav
               data-autofocus={i === 0 ? '' : undefined}
               data-tile={item.key}
+              aria-disabled={item.dimmed?.(settings) || undefined}
               className={`qs-tile ${item.dimmed?.(settings) ? 'dimmed' : ''}`}
               onClick={() => activate(item)}
               onKeyDown={onKeyDown(item)}
@@ -80,8 +94,23 @@ export function QuickSettings({ channels, onAll, onBack }: Props) {
               <span className="qs-label">{item.tile ?? item.label}</span>
               <span className="qs-value">{valueLabel(item, settings, true)}</span>
               {item.kind === 'range' && (
-                <span className="qs-bar" aria-hidden="true">
-                  <i style={{ width: `${rangeFraction(item, settings) * 100}%` }} />
+                <span
+                  className="qs-bar"
+                  aria-hidden="true"
+                  onPointerDown={(event) => {
+                    if (item.dimmed?.(settings)) return;
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                    setFromBar(item, event);
+                  }}
+                  onPointerMove={(event) => {
+                    if (event.currentTarget.hasPointerCapture(event.pointerId)) setFromBar(item, event);
+                  }}
+                  // The bar sets the value itself: the tile's own click (step up) must not follow.
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <span className="qs-rail">
+                    <i style={{ width: `${rangeFraction(item, settings) * 100}%` }} />
+                  </span>
                 </span>
               )}
               <span className="qs-arrows" aria-hidden="true">

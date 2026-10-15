@@ -85,8 +85,7 @@ h2 {
   background: #ffd75a;
 }
 
-[data-nav]:focus-visible,
-[data-nav]:focus {
+[data-nav]:focus-visible {
   outline: 4px solid var(--focus);
   outline-offset: 3px;
   transform: scale(1.04);
@@ -271,6 +270,14 @@ h2 {
   text-align: center;
   font-weight: 800;
   font-size: 1.1em;
+}
+
+.show-card:hover {
+  transform: scale(1.03);
+}
+
+.show-card:hover .show-card-title {
+  color: var(--accent);
 }
 
 .show-card-title {
@@ -502,8 +509,23 @@ h2 {
   background: linear-gradient(rgb(0 0 0 / 0.8), transparent);
 }
 
-.player-title div {
+.player-title > div:not(.player-actions) {
   display: grid;
+}
+
+.player-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.6rem;
+}
+
+.player-actions .button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.player-actions .button:disabled:hover {
+  background: var(--surface-strong);
 }
 
 .player-title span {
@@ -547,26 +569,46 @@ h2 {
   text-shadow: 0.1em 0.1em 0 #000;
 }
 
-.player-state {
-  fill: currentColor;
-  width: 1em;
-  height: 1em;
-  display: inline-block;
-  vertical-align: -0.12em;
-}
-
 .player-progress {
   flex: 1 0 100%;
+  /* A tall grab area around a thin rail (the rail is the content box, painted by the background). */
+  box-sizing: content-box;
   height: 0.5rem;
+  padding: 0.5rem 0;
   background: rgb(255 255 255 / 0.25);
+  background-clip: content-box;
   border-radius: 99px;
   cursor: pointer;
+  touch-action: none;
 }
 
 .player-progress-fill {
   height: 100%;
   background: var(--osd);
   border-radius: 99px;
+}
+
+.player-play {
+  display: grid;
+  place-items: center;
+  width: 2em;
+  height: 2em;
+  padding: 0;
+  color: inherit;
+  background: rgb(255 255 255 / 0.12);
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.player-play:hover {
+  background: rgb(255 255 255 / 0.28);
+}
+
+.player-play .icon {
+  width: 1em;
+  height: 1em;
+  fill: currentColor;
 }
 
 .player-hint {
@@ -666,8 +708,14 @@ h2 {
  * ========================================================================== */
 :root,
 :root[data-skin='classic'] {
-  /* --ff-osd: the big on-screen numbers; --ff-osd-text: running OSD text; --ff-display/--ff-body: overlays. */
+  /*
+   * --ff-osd: the big on-screen numbers (digits and ASCII only!); --ff-osd-title: names and titles, which come
+   * from the library and carry accents; --ff-osd-text: running OSD text; --ff-display/--ff-body: overlays.
+   * Press Start 2P draws every glyph on an 8x8 grid, so its accented capitals (É, Ã, Ç...) lose their accent or
+   * their height and read as lowercase: never put library text in it. The other fonts have real accented capitals.
+   */
   --ff-osd: 'Press Start 2P', 'Courier New', monospace;
+  --ff-osd-title: 'Jersey 15', 'Figtree', sans-serif;
   --ff-osd-text: 'Jersey 15', 'Figtree', sans-serif;
   --ff-display: 'Jersey 15', 'Figtree', sans-serif;
   --ff-body: var(--font-sans);
@@ -676,6 +724,7 @@ h2 {
 
 :root[data-skin='vhs'] {
   --ff-osd: 'VT323', 'Courier New', monospace;
+  --ff-osd-title: 'VT323', 'Courier New', monospace;
   --ff-osd-text: 'VT323', 'Courier New', monospace;
   --ff-display: 'VT323', 'Courier New', monospace;
   --ff-body: 'Share Tech Mono', ui-monospace, Consolas, monospace;
@@ -687,6 +736,7 @@ h2 {
 
 :root[data-skin='modern'] {
   --ff-osd: var(--font-sans);
+  --ff-osd-title: var(--font-sans);
   --ff-osd-text: var(--font-sans);
   --ff-display: var(--font-sans);
   --ff-body: var(--font-sans);
@@ -739,9 +789,9 @@ h2 {
 }
 
 .osd-name {
-  font-size: 0.75em;
-  font-size: max(16px, round(nearest, 0.75em, 8px));
-  line-height: 1.3;
+  font-family: var(--ff-osd-title);
+  font-size: 1.7em;
+  line-height: 1.15;
   text-align: right;
 }
 
@@ -775,11 +825,10 @@ h2 {
 
 .osd-info strong {
   color: var(--osd);
-  font-family: var(--ff-osd);
-  font-size: 1.1em;
-  font-size: max(16px, round(nearest, 1.1em, 8px));
+  font-family: var(--ff-osd-title);
+  font-size: 2.3em;
   font-weight: 400;
-  line-height: 1.4;
+  line-height: 1.2;
   text-transform: uppercase;
   text-shadow: var(--edge);
   text-rendering: optimizeSpeed;
@@ -1153,7 +1202,6 @@ h2 {
   font: inherit;
 }
 
-.overlay [data-nav]:focus,
 .overlay [data-nav]:focus-visible {
   outline: none;
   transform: none;
@@ -1352,7 +1400,7 @@ h2 {
   background: color-mix(in srgb, var(--ov-solid), white 12%);
 }
 
-.qs-tile:focus {
+.qs-tile:focus-visible {
   transform: scale(var(--focus-scale));
   color: var(--ov-on-focus);
   background: var(--ov-focus);
@@ -1361,8 +1409,17 @@ h2 {
   z-index: 1;
 }
 
-.qs-tile.dimmed:not(:focus) {
+.qs-tile.dimmed:not(:focus-visible) {
   opacity: 0.55;
+}
+
+.qs-tile.dimmed,
+.qs-tile.dimmed .qs-bar {
+  cursor: not-allowed;
+}
+
+.qs-tile.dimmed:hover {
+  background: var(--ov-solid);
 }
 
 .qs-icon {
@@ -1390,20 +1447,28 @@ h2 {
   font-size: calc(var(--fs-tile-value) * 0.92);
 }
 
-.qs-tile:focus .qs-label {
+.qs-tile:focus-visible .qs-label {
   color: var(--ov-on-focus-dim);
 }
 
+/* The bar is a tall invisible grab area around a thin rail: easy to hit with a mouse or a finger. */
 .qs-bar {
   display: block;
+  margin: calc(0.1 * var(--u)) 0 calc(-0.4 * var(--u));
+  padding: calc(0.5 * var(--u)) 0;
+  touch-action: none;
+  cursor: pointer;
+}
+
+.qs-rail {
+  display: block;
   height: calc(0.32 * var(--u));
-  margin-top: calc(0.4 * var(--u));
   border-radius: 99px;
   background: var(--ov-rail);
   overflow: hidden;
 }
 
-.qs-bar i {
+.qs-rail i {
   display: block;
   height: 100%;
   border-radius: 99px;
@@ -1411,18 +1476,18 @@ h2 {
   transition: width 0.15s;
 }
 
-.qs-tile:focus .qs-bar {
+.qs-tile:focus-visible .qs-rail {
   background: rgb(0 0 0 / 0.16);
 }
 
-.qs-tile:focus .qs-bar i {
+.qs-tile:focus-visible .qs-rail i {
   background: var(--ov-on-focus);
 }
 
-:root[data-skin='classic'] .overlay .qs-bar,
-:root[data-skin='classic'] .overlay .qs-bar i,
-:root[data-skin='vhs'] .overlay .qs-bar,
-:root[data-skin='vhs'] .overlay .qs-bar i {
+:root[data-skin='classic'] .overlay .qs-rail,
+:root[data-skin='classic'] .overlay .qs-rail i,
+:root[data-skin='vhs'] .overlay .qs-rail,
+:root[data-skin='vhs'] .overlay .qs-rail i {
   border-radius: 0;
 }
 
@@ -1441,7 +1506,7 @@ h2 {
   height: calc(1 * var(--u));
 }
 
-.qs-tile:focus .qs-arrows {
+.qs-tile:focus-visible .qs-arrows {
   opacity: 0.6;
 }
 
@@ -1579,7 +1644,7 @@ h2 {
   border-color: var(--ov-accent);
 }
 
-.channel-card:focus {
+.channel-card:focus-visible {
   transform: scale(var(--focus-scale));
   color: var(--ov-on-focus);
   background: var(--ov-focus);
@@ -1595,7 +1660,7 @@ h2 {
   color: var(--ov-dim);
 }
 
-.channel-card:focus .channel-number {
+.channel-card:focus-visible .channel-number {
   color: var(--ov-on-focus-dim);
 }
 
@@ -1650,7 +1715,7 @@ h2 {
   background: var(--ov-tile-hover);
 }
 
-.action-tile:focus {
+.action-tile:focus-visible {
   transform: scale(var(--focus-scale));
   color: var(--ov-on-focus);
   background: var(--ov-focus);
@@ -1690,10 +1755,33 @@ h2 {
   padding: calc(1.2 * var(--u)) calc(1.5 * var(--u)) calc(0.4 * var(--u));
 }
 
-.panel-header .icon {
+.panel-header > .icon {
   width: calc(1.5 * var(--u));
   height: calc(1.5 * var(--u));
   color: var(--ov-accent);
+}
+
+/* The panel's close button: for the mouse and touch (the remote has Back). */
+.panel-close {
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  width: calc(2.2 * var(--u));
+  height: calc(2.2 * var(--u));
+  color: var(--ov-text);
+  background: var(--ov-tile);
+  border: var(--bw) solid transparent;
+  border-radius: calc(var(--k-md) * var(--u));
+  cursor: pointer;
+}
+
+.panel-close:hover {
+  background: var(--ov-tile-hover);
+}
+
+.panel-close .icon {
+  width: calc(1.2 * var(--u));
+  height: calc(1.2 * var(--u));
 }
 
 .panel-header h1 {
@@ -1763,14 +1851,14 @@ h2 {
   background: var(--ov-tile-hover);
 }
 
-.cat:focus {
+.cat:focus-visible {
   color: var(--ov-on-focus);
   background: var(--ov-focus);
   border-color: var(--ov-focus);
   box-shadow: var(--shadow-focus);
 }
 
-.cat:focus .cat-icon {
+.cat:focus-visible .cat-icon {
   opacity: 1;
 }
 
@@ -1815,7 +1903,7 @@ h2 {
   background: var(--ov-tile-hover);
 }
 
-.row:focus {
+.row:focus-visible {
   color: var(--ov-on-focus);
   background: var(--ov-focus);
   border-color: var(--ov-focus);
@@ -1823,8 +1911,18 @@ h2 {
   z-index: 1;
 }
 
-.row.dimmed:not(:focus) {
+.row.dimmed:not(:focus-visible) {
   opacity: 0.55;
+}
+
+/* Locked (its parent setting is off): looks greyed, and the pointer says so. */
+.row[aria-disabled='true'],
+.row[aria-disabled='true'] .range-track {
+  cursor: not-allowed;
+}
+
+.row[aria-disabled='true']:hover {
+  background: var(--ov-tile);
 }
 
 .row-lead {
@@ -1833,7 +1931,7 @@ h2 {
   opacity: 0.7;
 }
 
-.row:focus .row-lead {
+.row:focus-visible .row-lead {
   opacity: 0.9;
 }
 
@@ -1858,12 +1956,34 @@ h2 {
   text-transform: none;
 }
 
-.row:focus .row-meta {
+.row:focus-visible .row-meta {
   color: var(--ov-on-focus-dim);
 }
 
 .row-meta em {
   font-style: normal;
+}
+
+/* The origin / lock tag is always exactly one line (a second one would shift the controls under the pointer). */
+.row-origin {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.row-meta .from-default {
+  opacity: 0.75;
+}
+
+.row-meta .from-lock::before {
+  content: '';
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-right: 0.5em;
+  border: 0.12em solid currentColor;
+  border-radius: 50%;
+  vertical-align: 0.05em;
 }
 
 .row-meta .from-user::before {
@@ -1877,7 +1997,7 @@ h2 {
   vertical-align: 0.05em;
 }
 
-.row:focus .row-meta .from-user::before {
+.row:focus-visible .row-meta .from-user::before {
   background: var(--ov-on-focus);
 }
 
@@ -1905,7 +2025,7 @@ h2 {
   display: inline;
 }
 
-.row:focus .row-state {
+.row:focus-visible .row-state {
   color: var(--ov-on-focus-dim);
 }
 
@@ -1925,7 +2045,7 @@ h2 {
   opacity: 0.5;
 }
 
-.row:focus .selector-arrow {
+.row:focus-visible .selector-arrow {
   opacity: 0.9;
 }
 
@@ -1959,15 +2079,15 @@ h2 {
   transform: translateX(calc(1.4 * var(--u)));
 }
 
-.row:focus .switch {
+.row:focus-visible .switch {
   background: rgb(0 0 0 / 0.22);
 }
 
-.row:focus .switch[data-on='true'] {
+.row:focus-visible .switch[data-on='true'] {
   background: var(--ov-on-focus);
 }
 
-.row:focus .switch[data-on='true'] i {
+.row:focus-visible .switch[data-on='true'] i {
   background: var(--ov-focus);
   box-shadow: none;
 }
@@ -2013,15 +2133,15 @@ h2 {
   transition: left 0.12s;
 }
 
-.row:focus .range-rail {
+.row:focus-visible .range-rail {
   background: rgb(0 0 0 / 0.2);
 }
 
-.row:focus .range-fill {
+.row:focus-visible .range-fill {
   background: var(--ov-on-focus);
 }
 
-.row:focus .range-thumb {
+.row:focus-visible .range-thumb {
   background: var(--ov-on-focus);
   box-shadow: 0 0 0 calc(0.18 * var(--u)) var(--ov-focus), 0 1px 6px rgb(0 0 0 / 0.5);
 }
@@ -2056,8 +2176,8 @@ h2 {
   display: none;
 }
 
-:root[data-skin='classic'] .overlay .row:focus .range-rail::before,
-:root[data-skin='vhs'] .overlay .row:focus .range-rail::before {
+:root[data-skin='classic'] .overlay .row:focus-visible .range-rail::before,
+:root[data-skin='vhs'] .overlay .row:focus-visible .range-rail::before {
   background: rgb(0 0 0 / 0.22);
 }
 
@@ -2107,7 +2227,7 @@ h2 {
   box-shadow: inset 0 0 0 calc(0.1 * var(--u)) var(--ov-accent);
 }
 
-.theme-card:focus {
+.theme-card:focus-visible {
   color: var(--ov-on-focus);
   background: var(--ov-focus);
   border-color: var(--ov-focus);
@@ -2131,7 +2251,7 @@ h2 {
   color: var(--ov-accent);
 }
 
-.theme-card:focus .theme-check {
+.theme-card:focus-visible .theme-check {
   color: var(--ov-on-focus);
 }
 
@@ -2259,7 +2379,7 @@ h2 {
   height: calc(2 * var(--u));
 }
 
-.theme-card:focus .preview-custom {
+.theme-card:focus-visible .preview-custom {
   border-color: rgb(0 0 0 / 0.3);
   color: var(--ov-on-focus-dim);
 }
@@ -2320,11 +2440,13 @@ h2 {
   height: calc(1.6 * var(--u));
 }
 
-/* --- Corner buttons on the TV (mouse only) ----------------------------------------------------------- */
+/* --- Menu / Ajustes buttons on the TV (mouse only) ----------------------------------------------------------- */
 .tv-corner-buttons {
   position: absolute;
+  /* Top centre: the corners belong to the clock and the channel number, in every skin. */
   top: calc(1.2 * var(--u));
-  left: calc(1.2 * var(--u));
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   gap: calc(0.6 * var(--u));
   opacity: 0;

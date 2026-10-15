@@ -25,8 +25,10 @@ export interface SettingDef {
   kind: 'switch' | 'select' | 'range';
   options: Option[];
   range?: { min: number; max: number; step: number; format(value: number): string };
-  /** Shown under another setting's switch; greyed out when that does not apply. */
+  /** Shown under another setting's switch; greyed out and locked (no pointer or key changes it) when that does not apply. */
   dimmed?(settings: Settings): boolean;
+  /** Why the setting is locked while `dimmed` is true; shown where the origin tag normally goes. */
+  dimmedReason?: string;
   get(settings: Settings): unknown;
   set(value: unknown): PartialSettings;
 }
@@ -149,6 +151,7 @@ export function buildDefs(channels: Schedule[], startChannel: string | null): Re
         { value: 'strong', label: 'Forte' },
       ],
       dimmed: (s) => !s.crt.enabled,
+      dimmedReason: 'Efeito de tubo desligado',
       get: (s) => s.crt.intensity,
       set: (intensity) => ({ crt: { intensity: intensity as Settings['crt']['intensity'] } }),
     }),
@@ -161,6 +164,7 @@ export function buildDefs(channels: Schedule[], startChannel: string | null): Re
       options: [],
       range: { min: 0, max: 100, step: 10, format: (value) => `${value}%` },
       dimmed: (s) => !s.crt.enabled,
+      dimmedReason: 'Efeito de tubo desligado',
       get: (s) => s.crt.curvature,
       set: (curvature) => ({ crt: { curvature: curvature as number } }),
     }),
@@ -171,6 +175,7 @@ export function buildDefs(channels: Schedule[], startChannel: string | null): Re
       kind: 'switch',
       options: ON_OFF,
       dimmed: (s) => !s.crt.enabled,
+      dimmedReason: 'Efeito de tubo desligado',
       get: (s) => s.crt.scanlines,
       set: (scanlines) => ({ crt: { scanlines: scanlines as boolean } }),
     }),
@@ -274,6 +279,7 @@ export function buildDefs(channels: Schedule[], startChannel: string | null): Re
         format: (value) => (value === 0 ? 'Desligado' : `${value} min`),
       },
       dimmed: (s) => !s.commercials,
+      dimmedReason: 'Comerciais desligados',
       get: (s) => s.adBreaks.every,
       set: (every) => ({ adBreaks: { every: every as number } }),
     }),
@@ -285,6 +291,7 @@ export function buildDefs(channels: Schedule[], startChannel: string | null): Re
       options: [],
       range: { min: AD_BREAK_LIMITS.ads.min, max: AD_BREAK_LIMITS.ads.max, step: 1, format: (value) => String(value) },
       dimmed: (s) => !s.commercials,
+      dimmedReason: 'Comerciais desligados',
       get: (s) => s.adBreaks.ads,
       set: (ads) => ({ adBreaks: { ads: ads as number } }),
     }),
@@ -295,6 +302,7 @@ export function buildDefs(channels: Schedule[], startChannel: string | null): Re
       kind: 'switch',
       options: ON_OFF,
       dimmed: (s) => !s.commercials,
+      dimmedReason: 'Comerciais desligados',
       get: (s) => s.adBreaks.afterEpisode,
       set: (afterEpisode) => ({ adBreaks: { afterEpisode: afterEpisode as boolean } }),
     }),
@@ -334,6 +342,12 @@ export function cycled(item: SettingDef, settings: Settings, direction: 1 | -1):
   const index = item.options.findIndex((option) => option.value === item.get(settings));
   const next = item.options[(index + direction + item.options.length) % item.options.length]!;
   return item.set(next.value);
+}
+
+/** A selector moved to the next (1) or previous (-1) value by a pointer click: left half of the value goes back. */
+export function clickDirection(selector: Element, clientX: number): 1 | -1 {
+  const box = selector.getBoundingClientRect();
+  return clientX < box.left + box.width / 2 ? -1 : 1;
 }
 
 /** A range moved one step (clamped), or null when it would not change. */

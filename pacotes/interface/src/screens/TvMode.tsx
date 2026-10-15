@@ -82,6 +82,16 @@ function resumeTime(resume: Resume): number {
   return new Date(year, month - 1, day, 0, 0, resume.seconds).getTime();
 }
 
+/** Double click: into fullscreen, or back out of it. */
+async function toggleFullscreen() {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else await document.documentElement.requestFullscreen?.();
+  } catch {
+    // Fullscreen refused (e.g. blocked by the browser): nothing to do.
+  }
+}
+
 export function TvMode({ source, library, durations, channels, channel, onChannel, overlayOpen, onMenu, onQuick }: Props) {
   const schedule = channels[channel];
   const { settings } = useSettings();
@@ -440,7 +450,7 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
     <main
       className={`tv ${aspectClass(settings.aspect)} skin-${settings.osdSkin} ${pointer ? 'show-pointer' : ''}`}
       onMouseMove={showPointer}
-      onDoubleClick={() => void document.documentElement.requestFullscreen?.().catch(() => undefined)}
+      onDoubleClick={() => void toggleFullscreen()}
     >
       {/* The picture: a 4:3 frame, or the whole screen (see `proporcao`). Everything drawn on the TV goes inside. */}
       <div className="tv-screen">

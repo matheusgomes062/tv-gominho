@@ -1,5 +1,5 @@
 import type { Show } from '@tv-chuvisco/nucleo';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
 import { Crt } from '../components/Crt';
 import { useFlash } from '../components/useFlash';
 import { BACK_KEYS } from '../nav';
@@ -30,6 +30,22 @@ export function Player({ source, show, index, onIndex, overlayOpen, onQuick, onB
   const [title, showTitle] = useFlash(4000, true);
   const episode = show.episodes[index]!;
 
+  const togglePlay = useCallback(() => {
+    const element = video.current;
+    if (!element) return;
+    if (element.paused) void element.play();
+    else element.pause();
+    showTitle();
+  }, [showTitle]);
+  /** Seeks to the pointer's position along the progress bar (a click, or a drag with the button held). */
+  const seekTo = (event: PointerEvent<HTMLElement>) => {
+    const element = video.current;
+    if (!element || !clock.duration) return;
+    const box = event.currentTarget.getBoundingClientRect();
+    element.currentTime = clock.duration * Math.min(1, Math.max(0, (event.clientX - box.left) / box.width));
+    showTitle();
+  };
+
   useEffect(() => {
     let cancelled = false;
     setError(false);
@@ -51,11 +67,8 @@ export function Player({ source, show, index, onIndex, overlayOpen, onQuick, onB
       if (!element || overlayOpen || event.defaultPrevented) return;
       if (BACK_KEYS.has(event.key)) onBack();
       else if (event.key === 's' || event.key === 'S' || event.key === 'ContextMenu') onQuick();
-      else if (event.key === 'Enter' || event.key === ' ' || event.key === 'MediaPlayPause') {
-        if (element.paused) void element.play();
-        else element.pause();
-        showTitle();
-      } else if (event.key === 'ArrowLeft') element.currentTime = Math.max(0, element.currentTime - 10);
+      else if (event.key === 'Enter' || event.key === ' ' || event.key === 'MediaPlayPause') togglePlay();
+      else if (event.key === 'ArrowLeft') element.currentTime = Math.max(0, element.currentTime - 10);
       else if (event.key === 'ArrowRight') element.currentTime += 10;
       else if ((event.key === 'ArrowDown' || event.key === 'MediaTrackNext') && index + 1 < show.episodes.length) onIndex(index + 1);
       else if ((event.key === 'ArrowUp' || event.key === 'MediaTrackPrevious') && index > 0) onIndex(index - 1);
@@ -64,11 +77,12 @@ export function Player({ source, show, index, onIndex, overlayOpen, onQuick, onB
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [index, show.episodes.length, overlayOpen, onBack, onQuick, onIndex, showTitle]);
+  }, [index, show.episodes.length, overlayOpen, onBack, onQuick, onIndex, togglePlay]);
 
   return (
     <main className={`player ${aspectClass(settings.aspect)}`} onMouseMove={showTitle}>
-      <div className="tv-screen">
+      {/* While the CRT canvas hides the <video>, a click on the picture pauses/plays (the native controls do it otherwise). */}
+      <div className="tv-screen" onClick={crtActive ? togglePlay : undefined}>
         <video
           ref={video}
           className={`player-video ${crtActive ? 'crt-hidden' : ''}`}
@@ -93,17 +107,28 @@ export function Player({ source, show, index, onIndex, overlayOpen, onQuick, onB
             aria-valuemin={0}
             aria-valuemax={Math.round(clock.duration)}
             aria-valuenow={Math.round(clock.time)}
-            onClick={(event) => {
-              const element = video.current;
-              if (!element || !clock.duration) return;
-              const box = event.currentTarget.getBoundingClientRect();
-              element.currentTime = clock.duration * Math.min(1, Math.max(0, (event.clientX - box.left) / box.width));
+            onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture(event.pointerId);
+              seekTo(event);
+            }}
+            onPointerMove={(event) => {
+              if (event.currentTarget.hasPointerCapture(event.pointerId)) seekTo(event);
             }}
           >
             <div className="player-progress-fill" style={{ width: `${clock.duration ? (clock.time / clock.duration) * 100 : 0}%` }} />
           </div>
+          <button
+            className="player-play"
+            data-player="toggle"
+            onClick={togglePlay}
+            onMouseDown={(event) => event.preventDefault()}
+            aria-label={paused ? 'Tocar' : 'Pausar'}
+            tabIndex={-1}
+          >
+            <Icon name={paused ? 'play' : 'pause'} />
+          </button>
           <span>
-            <Icon name={paused ? 'pause' : 'play'} className="player-state" /> {formatTime(clock.time)} / {formatTime(clock.duration)}
+            {formatTime(clock.time)} / {formatTime(clock.duration)}
           </span>
           <span className="player-hint">OK: pausar · ← → : 10 s · ↑ ↓ : episódio · S: ajustes · Voltar: sair</span>
         </div>
@@ -116,6 +141,18 @@ export function Player({ source, show, index, onIndex, overlayOpen, onQuick, onB
           <div>
             <strong>{show.title}</strong>
             <span>{episode.title}</span>
+          </div>
+          {/* Mouse/touch only: the buttons never take keyboard focus, so Enter/Space keep toggling playback. */}
+          <div className="player-actions" onMouseDown={(event) => event.preventDefault()}>
+            <button className="button" data-player="prev" onClick={() => onIndex(index - 1)} disabled={index === 0} aria-label="Episódio anterior" tabIndex={-1}>
+              <Icon name="skipBack" />
+            </button>
+            <button className="button" data-player="next" onClick={() => onIndex(index + 1)} disabled={index + 1 >= show.episodes.length} aria-label="Próximo episódio" tabIndex={-1}>
+              <Icon name="skipForward" />
+            </button>
+            <button className="button" data-player="quick" onClick={onQuick} tabIndex={-1}>
+              <Icon name="settings" /> Ajustes
+            </button>
           </div>
         </div>
       )}

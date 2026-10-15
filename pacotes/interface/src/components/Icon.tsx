@@ -28,12 +28,15 @@ import {
   Proportions,
   RotateCcw,
   ScanLine,
+  SkipBack,
+  SkipForward,
   SlidersHorizontal,
   Spline,
   Timer,
   Tv,
   TriangleAlert,
   Type,
+  X,
   Zap,
   type LucideIcon,
 } from 'lucide-react';
@@ -73,6 +76,9 @@ const ICONS = {
   chevronUp: ChevronUp,
   chevronDown: ChevronDown,
   check: Check,
+  close: X,
+  skipBack: SkipBack,
+  skipForward: SkipForward,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

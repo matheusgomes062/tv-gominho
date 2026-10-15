@@ -10,8 +10,8 @@ Cada tema (`tema`) escolhe um **estilo dos textos** (TV antiga, Fita VHS ou TV m
 
 | Onde | TV antiga | Fita VHS | TV moderna |
 |---|---|---|---|
-| Número do canal, relógio, título da barra de informações | Press Start 2P | VT323 | Figtree |
-| Nome do canal, episódio, "Fora do ar", menus (títulos, rótulos, valores) | Jersey 15 | VT323 | Figtree |
+| Número do canal e relógio (só dígitos) | Press Start 2P | VT323 | Figtree |
+| Nome do canal, título do programa, episódio, "Fora do ar", menus (títulos, rótulos, valores) | Jersey 15 | VT323 | Figtree |
 | Descrições e dicas nos painéis | Figtree | Share Tech Mono | Figtree |
 | Biblioteca, Boas-vindas, Avisos | Figtree | Figtree | Figtree |
 
@@ -19,7 +19,7 @@ Cada tema (`tema`) escolhe um **estilo dos textos** (TV antiga, Fita VHS ou TV m
 
 | Fonte | Uso | Pacote npm | Licença | Direitos autorais (conforme o arquivo de licença) |
 |---|---|---|---|---|
-| **Press Start 2P** | TV antiga: números do canal, relógio | `@fontsource/press-start-2p` | SIL OFL 1.1 | The Press Start 2P Project Authors (Cody, zone38.net) |
+| **Press Start 2P** | TV antiga: número do canal e relógio (só dígitos) | `@fontsource/press-start-2p` | SIL OFL 1.1 | The Press Start 2P Project Authors (Cody, zone38.net) |
 | **Jersey 15** | TV antiga: menus e textos da tela | `@fontsource/jersey-15` | SIL OFL 1.1 | The Soft Type Project Authors |
 | **VT323** | Fita VHS: textos da tela e menus | `@fontsource/vt323` | SIL OFL 1.1 | The VT323 Project Authors (Peter Hull) |
 | **Share Tech Mono** | Fita VHS: descrições | `@fontsource/share-tech-mono` | SIL OFL 1.1 | Carrois Type Design (Ralph du Carrois) |
@@ -31,7 +31,7 @@ A OFL permite usar, copiar e redistribuir as fontes junto com o programa (inclus
 
 **TV antiga.** Os OSDs das TVs de tubo vendidas no Brasil nos anos 90 (Philco, CCE, Semp Toshiba, Philips, Sharp) desenhavam o canal e o volume com um gerador de caracteres de matriz de pontos: letras maiúsculas grossas, em baixa resolução, quase sempre em **verde** (às vezes branco) com uma borda escura. Não existe uma fonte "oficial" desses aparelhos, então a escolha foi a mais próxima:
 
-- **Press Start 2P** (grade de 8×8 pixels, maiúsculas largas) é a que mais lembra um gerador de caracteres de TV. Só é usada em tamanhos múltiplos de 8 px (`round()` no CSS), para os pixels caírem inteiros, e com uma borda preta dura (sem brilho), como no tubo. Fica restrita a textos curtos: é larga demais para frases.
+- **Press Start 2P** (grade de 8×8 pixels, maiúsculas largas) é a que mais lembra um gerador de caracteres de TV. Só é usada em tamanhos múltiplos de 8 px (`round()` no CSS), para os pixels caírem inteiros, e com uma borda preta dura (sem brilho), como no tubo. Fica restrita ao número do canal e ao relógio (dígitos): é larga demais para frases e, como cada letra cabe numa grade de 8×8 pixels, **as maiúsculas acentuadas (É, Ã, Ç…) perdem o acento ou a altura e parecem minúsculas** ("O GATO FÉLIX" saía "O GATO FéLIX"). Por isso nomes de canais e títulos, que vêm da biblioteca e levam acento, usam a **Jersey 15**, que tem maiúsculas acentuadas de verdade. A verificação automática dessa regra está em `pacotes/interface/src/fonts.test.ts` (roda com `npm test`: confere que os subconjuntos importados cobrem todos os caracteres do português e que a Press Start 2P só aparece no número do canal e no relógio).
 - **Jersey 15** é uma fonte de pixels em negrito, estreita e muito legível, usada nos menus. Foi escolhida depois de testar a **Pixelify Sans**, que parecia mais "amigável", mas em tamanhos pequenos a letra C se fecha e vira O ("CRT" lia-se "ORT"), o que é inaceitável a 3 m. A VT323 e a Silkscreen também foram vistas e descartadas para menus (finas demais ou só maiúsculas).
 
 **Fita VHS.** O OSD de um videocassete (PLAY ▶, "SP 0:12:04", o número do canal) é feito de letras brancas, quadradas e em maiúsculas, com borda escura. A fonte mais citada para isso é a **"VCR OSD Mono"**, mas ela é distribuída em sites de fontes com a marca "100% free" sem texto de licença verificável (nem arquivo de licença do autor), então **não foi usada**: não dá para garantir que possa ser redistribuída num projeto GPL. No lugar entrou a **VT323** (OFL), que tem o mesmo ar de terminal/matriz de pontos; como ela é pequena para o tamanho nominal, os textos usam fatores maiores (1,3×). Para descrições longas, a **Share Tech Mono** (também OFL) mantém o clima monoespaçado e é mais legível que a VT323 em tamanhos pequenos. O "▶" é desenhado em CSS, para não depender de nenhuma fonte ter esse símbolo.
@@ -50,5 +50,5 @@ Os ícones são do **Lucide** (`lucide-react`), licença **ISC** (https://lucide
 
 1. `npm i -w @tv-chuvisco/interface @fontsource/<nome>` (confira que a licença do pacote é OFL ou Apache 2.0; **não** use fontes sem licença clara).
 2. Importe só o arquivo `latin-<peso>.css` em `pacotes/interface/src/fonts.ts`.
-3. Aponte a fonte nas variáveis de cada estilo em `styles.css` (`--ff-osd`, `--ff-osd-text`, `--ff-display`, `--ff-body`).
+3. Aponte a fonte nas variáveis de cada estilo em `styles.css` (`--ff-osd` só para dígitos, `--ff-osd-title` para nomes e títulos, `--ff-osd-text`, `--ff-display`, `--ff-body`). Confira que a fonte tem as maiúsculas acentuadas do português (ÁÀÂÃÉÊÍÓÔÕÚÇ) *desenhadas* como maiúsculas, não só presentes no arquivo.
 4. Copie o `LICENSE` do pacote para `pacotes/interface/public/licencas/` e atualize esta página.
