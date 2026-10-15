@@ -1,6 +1,5 @@
 import {
   buildTimeline,
-  formatTimeOfDay,
   localIsoDate,
   locate,
   nextAiringDate,
@@ -29,6 +28,7 @@ import type { Durations } from '../media';
 import { BACK_KEYS } from '../nav';
 import { aspectClass, useSettings } from '../settings';
 import type { BrowserLibrary } from '../sources/types';
+import { Icon } from '../components/Icon';
 
 interface Props {
   source: BrowserLibrary;
@@ -105,7 +105,6 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
 
   const [status, setStatus] = useState<Status>({ name: 'tuning', done: 0, total: 0 });
   const [entry, setEntry] = useState<TimelineEntry>();
-  const [nextEntry, setNextEntry] = useState<TimelineEntry>();
   const [osd, showOsd] = useFlash(OSD_MS, true);
   const [info, showInfo] = useFlash(OSD_MS);
   const [pointer, showPointer] = useFlash(2500);
@@ -126,7 +125,6 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
     element?.load();
     index.current = 0;
     setEntry(undefined);
-    setNextEntry(undefined);
     setStatus({ name: 'offair', resume });
     resumeAtMs.current = resumeTime(resume);
     clearTimeout(resumeTimer.current);
@@ -168,15 +166,6 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
       loadedIndex.current = -1;
       const item = current.entries[i]!;
       setEntry(item);
-      // The day loops in continuous mode, so after the last episode comes the first. Real and
-      // do_inicio have nothing to announce past the end of the day's timeline.
-      const isEpisode = (e: TimelineEntry) => e.kind === 'episode';
-      // The parts of the episode on air are not "the next one".
-      const isOther = (e: TimelineEntry) => isEpisode(e) && e.item !== item.item;
-      setNextEntry(
-        current.entries.slice(i + 1).find(isOther) ?? (modeRef.current === 'continuous' ? current.entries.find(isOther) : undefined),
-      );
-
       if (item.kind === 'idle' || !item.path) {
         element.removeAttribute('src');
         element.load();
@@ -512,19 +501,13 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
             ) : (
               <strong>Intervalo</strong>
             )}
-            {nextEntry?.item?.kind === 'episode' && (
-              <span className="osd-next">
-                A seguir{scheduleMode === 'real' ? ` às ${formatTimeOfDay(nextEntry.start - dayShift.current)}` : ''}:{' '}
-                {nextEntry.item.show.title} · {nextEntry.item.episode.title}
-              </span>
-            )}
           </div>
         )}
       </div>
 
       {status.name === 'blocked' && (
         <button className="tv-blocked button primary" onClick={() => void video.current?.play()}>
-          ▶ Aperte OK para ligar a TV
+          <Icon name="play" /> Aperte OK para ligar a TV
         </button>
       )}
 
@@ -536,10 +519,10 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
 
       <div className="tv-corner-buttons">
         <button className="button" onClick={onMenu} tabIndex={-1}>
-          ☰ Menu
+          <Icon name="menu" /> Menu
         </button>
         <button className="button" onClick={onQuick} tabIndex={-1}>
-          Ajustes
+          <Icon name="settings" /> Ajustes
         </button>
       </div>
     </main>

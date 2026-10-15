@@ -36,9 +36,9 @@ Um tema é um **conjunto de ajustes prontos** mais o **estilo dos textos na tela
 
 | `tema` | Nome no app | CRT | Curvatura | Proporção | Chuvisco | Textos na tela |
 |---|---|---|---|---|---|---|
-| `tv_antiga` (padrão) | TV antiga | ligado, média, linhas | 50 | 4:3 | sim | verdes, de TV antiga |
-| `vhs` | Fita VHS | ligado, forte, linhas | 15 | 4:3 | sim | brancos e quadrados, com "PLAY ▶", contador e uma leve tremida |
-| `tv_moderna` | TV moderna | desligado | 0 | original | não (tela preta) | limpos, em cápsulas arredondadas |
+| `tv_antiga` (padrão) | TV antiga | ligado, média, linhas | 50 | 4:3 | sim | verdes, em fonte de pixels grossos, de TV de tubo dos anos 90 |
+| `vhs` | Fita VHS | ligado, forte, linhas | 15 | 4:3 | sim | brancos, em maiúsculas quadradas de videocassete, com "PLAY ▶", contador e uma leve tremida |
+| `tv_moderna` | TV moderna | desligado | 0 | original | não (tela preta) | limpos, em fonte sem serifa parecida com a das TVs Samsung, em cápsulas arredondadas |
 | `personalizado` | Personalizado | os que você escolheu | | | | os do último tema |
 
 Como o tema se combina com as outras opções:
@@ -46,7 +46,7 @@ Como o tema se combina com as outras opções:
 - Escolher um tema no app grava os valores dele como **escolhas suas** (CRT, curvatura, proporção, chuvisco) e troca o estilo dos textos. O restante (relógio, horário, comerciais…) não muda.
 - Depois disso, mudar qualquer ajuste que o tema define (CRT, intensidade, curvatura, linhas, proporção, chuvisco ou o estilo dos textos) troca o tema para **Personalizado**, que continua com o estilo de textos do último tema. Escolher um tema de novo reaplica o conjunto inteiro.
 - No `configuracoes.yaml`, `tema: vhs` vale como os ajustes do tema como padrão da biblioteca. O que o arquivo disser explicitamente (por exemplo, `proporcao: 4:3` junto de `tema: tv_moderna`) vale mais que o tema, em qualquer ordem. `tema: personalizado` não aplica nada.
-- O estilo dos textos também dá o tom de cor dos painéis (amarelo na TV antiga, azul na Fita VHS e na TV moderna).
+- O estilo dos textos também veste os menus e painéis: na TV antiga, um menu de TV de tubo (painel azul-escuro, letras de pixel e destaque em verde); na Fita VHS, um menu de videocassete (tela azul, maiúsculas brancas, destaque em vídeo invertido); na TV moderna, painéis translúcidos e arredondados. As fontes são embutidas no aplicativo (funcionam sem internet); veja [fontes-e-icones.md](fontes-e-icones.md).
 
 ## Lista
 

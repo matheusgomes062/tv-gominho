@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useFileUrl } from '../components/useFileUrl';
 import { focusFirst, useSpatialNav } from '../nav';
 import type { BrowserLibrary } from '../sources/types';
+import { Icon } from '../components/Icon';
 
 interface Props {
   source: BrowserLibrary;
@@ -24,7 +25,7 @@ export function LibraryMode({ source, library, focusShow, onOpen, onTv }: Props)
     <main className="page">
       <header className="page-header">
         <button data-nav className="button" onClick={onTv}>
-          📺 TV
+          <Icon name="tv" /> TV
         </button>
         <h1>Biblioteca</h1>
       </header>

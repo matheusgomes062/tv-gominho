@@ -5,6 +5,7 @@ import { useFlash } from '../components/useFlash';
 import { BACK_KEYS } from '../nav';
 import { aspectClass, useSettings } from '../settings';
 import type { BrowserLibrary } from '../sources/types';
+import { Icon } from '../components/Icon';
 
 interface Props {
   source: BrowserLibrary;
@@ -102,7 +103,7 @@ export function Player({ source, show, index, onIndex, overlayOpen, onQuick, onB
             <div className="player-progress-fill" style={{ width: `${clock.duration ? (clock.time / clock.duration) * 100 : 0}%` }} />
           </div>
           <span>
-            {paused ? '❚❚' : '▶'} {formatTime(clock.time)} / {formatTime(clock.duration)}
+            <Icon name={paused ? 'pause' : 'play'} className="player-state" /> {formatTime(clock.time)} / {formatTime(clock.duration)}
           </span>
           <span className="player-hint">OK: pausar · ← → : 10 s · ↑ ↓ : episódio · S: ajustes · Voltar: sair</span>
         </div>
@@ -110,7 +111,7 @@ export function Player({ source, show, index, onIndex, overlayOpen, onQuick, onB
       {(title || error) && (
         <div className="player-title">
           <button className="button" onClick={onBack}>
-            ← Voltar
+            <Icon name="back" /> Voltar
           </button>
           <div>
             <strong>{show.title}</strong>

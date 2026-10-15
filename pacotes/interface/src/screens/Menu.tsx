@@ -24,7 +24,7 @@ interface Props {
 export function Menu({ channels, channel, warningCount, libraryName, onWatch, onLibrary, onWarnings, onQuick, onSettings, onChangeFolder, onBack }: Props) {
   const actions: Array<{ id: string; icon: IconName; label: string; badge?: number; run(): void }> = [
     { id: 'library', icon: 'book', label: 'Biblioteca', run: onLibrary },
-    { id: 'quick', icon: 'gear', label: 'Ajustes rápidos', run: onQuick },
+    { id: 'quick', icon: 'settings', label: 'Ajustes rápidos', run: onQuick },
     { id: 'settings', icon: 'palette', label: 'Configurações', run: onSettings },
     { id: 'warnings', icon: 'alert', label: 'Avisos', badge: warningCount, run: onWarnings },
     { id: 'folder', icon: 'folder', label: 'Trocar pasta', run: onChangeFolder },

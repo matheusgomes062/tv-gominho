@@ -10,7 +10,10 @@
   --danger: #ff7a6b;
   --osd: #5dff6a;
   --radius: 14px;
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  /* Fonts (bundled, see fonts.ts): Figtree is the app's sans, a free stand-in for Samsung One. */
+  --font-sans: 'Figtree', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, Consolas, monospace;
+  font-family: var(--font-sans);
   font-size: clamp(16px, 1.15vw + 8px, 26px);
   color: var(--text);
   background: var(--bg);
@@ -57,6 +60,15 @@ h2 {
   padding: 0.6em 1.1em;
   cursor: pointer;
   transition: transform 0.12s, background 0.12s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+}
+
+.button .icon {
+  width: 1.2em;
+  height: 1.2em;
 }
 
 .button.primary {
@@ -171,9 +183,23 @@ h2 {
   background: var(--surface);
   border-left: 4px solid var(--accent);
   border-radius: 8px;
-  padding: 0.6em 0.9em;
+  padding: 0.6em 0.9em 0.6em 0.9em;
   display: grid;
-  gap: 0.25em;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 0.7em;
+  row-gap: 0.25em;
+}
+
+.warning-list li > :not(.warning-icon) {
+  grid-column: 2;
+}
+
+.warning-icon {
+  grid-row: 1 / span 2;
+  width: 1.3em;
+  height: 1.3em;
+  margin-top: 0.1em;
+  color: var(--accent);
 }
 
 .warning-list code {
@@ -195,6 +221,11 @@ h2 {
   align-items: center;
   gap: 1rem;
   flex-wrap: wrap;
+}
+
+.page-header .icon {
+  width: 1.2em;
+  height: 1.2em;
 }
 
 .page h2 {
@@ -440,77 +471,6 @@ h2 {
   --crt-vig: 0.55;
 }
 
-.tv-tuning {
-  position: absolute;
-  left: 50%;
-  bottom: 8%;
-  transform: translateX(-50%);
-  margin: 0;
-  padding: 0.3em 0.8em;
-  background: rgb(0 0 0 / 0.65);
-  font-family: ui-monospace, Consolas, monospace;
-  border-radius: 6px;
-}
-
-.osd-channel {
-  position: absolute;
-  top: 6%;
-  right: 6%;
-  display: grid;
-  justify-items: end;
-  gap: 0.2em;
-  color: var(--osd);
-  font-family: 'Courier New', ui-monospace, monospace;
-  font-weight: 700;
-  text-shadow: 0 0 0.3em rgb(93 255 106 / 0.7), 0.08em 0.08em 0 #000;
-  pointer-events: none;
-}
-
-.osd-number {
-  font-size: 2.6em;
-  letter-spacing: 0.05em;
-}
-
-.osd-name {
-  font-size: 1.1em;
-}
-
-.osd-clock {
-  position: absolute;
-  top: 6%;
-  left: 6%;
-  color: var(--osd);
-  font-family: 'Courier New', ui-monospace, monospace;
-  font-weight: 700;
-  font-size: 1.8em;
-  letter-spacing: 0.05em;
-  text-shadow: 0 0 0.3em rgb(93 255 106 / 0.7), 0.08em 0.08em 0 #000;
-  pointer-events: none;
-}
-
-.osd-info {
-  position: absolute;
-  left: 6%;
-  right: 6%;
-  bottom: 7%;
-  display: grid;
-  gap: 0.3em;
-  padding: 1em 1.4em;
-  background: linear-gradient(90deg, rgb(13 16 32 / 0.92), rgb(13 16 32 / 0.6));
-  border-left: 6px solid var(--accent);
-  border-radius: 10px;
-  pointer-events: none;
-}
-
-.osd-info strong {
-  font-size: 1.4em;
-}
-
-.osd-next {
-  color: var(--muted);
-  font-size: 0.85em;
-}
-
 .tv-blocked {
   position: absolute;
   left: 50%;
@@ -581,9 +541,18 @@ h2 {
   gap: 0.4rem 1.2rem;
   padding: 3rem 1.6rem 1.2rem;
   background: linear-gradient(transparent, rgb(0 0 0 / 0.8));
-  font-family: 'Courier New', ui-monospace, monospace;
+  font-family: var(--ff-osd-text);
+  font-size: 1.25em;
   color: var(--osd);
-  text-shadow: 0 0 0.3em rgb(93 255 106 / 0.7);
+  text-shadow: 0.1em 0.1em 0 #000;
+}
+
+.player-state {
+  fill: currentColor;
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  vertical-align: -0.12em;
 }
 
 .player-progress {
@@ -654,72 +623,444 @@ h2 {
   background: rgb(0 0 0 / 0.86);
   border: 0.6cqmin solid #fff;
   text-align: center;
-  font-family: 'Courier New', ui-monospace, monospace;
+  font-family: var(--ff-osd-text);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
 .offair-channel {
   color: var(--accent);
-  font-size: 4.2cqmin;
+  font-size: calc(4.2cqmin * var(--oz, 1));
   font-weight: 700;
 }
 
 .offair-title {
-  font-size: 9cqmin;
+  font-size: calc(9cqmin * var(--oz, 1));
   line-height: 1.05;
   letter-spacing: 0.12em;
 }
 
 .offair-back {
-  font-size: 4.2cqmin;
+  font-size: calc(4.2cqmin * var(--oz, 1));
 }
 
 .offair-clock {
   margin-top: 0.8cqmin;
   color: var(--osd);
-  font-size: 5cqmin;
+  font-size: calc(5cqmin * var(--oz, 1));
   font-weight: 700;
-  text-shadow: 0 0 0.3em rgb(93 255 106 / 0.7);
+  text-shadow: 0.1em 0.1em 0 #000;
   font-variant-numeric: tabular-nums;
 }
 
 /* ==========================================================================
- * Overlays over the live picture: menu, quick settings, settings panel.
- * Samsung One UI-like: dark translucent rounded surfaces with background blur,
- * the focused item filled white. Sized in rem from the overlay's own font size,
- * which follows the screen height (readable at 3 m from 720p to 4K).
+ * On-screen display (the TV set's own texts) and the theme skins.
+ *
+ * A theme picks a skin (settings `osdSkin`, `data-skin` on <html>, `skin-*` on the TV). A skin is a
+ * font family plus colours and shapes:
+ *   classic  TV antiga   90s tube TV: chunky pixel digits in green with a black edge (Press Start 2P),
+ *                        pixel menus (Jersey 15).
+ *   vhs      Fita VHS    VCR on-screen display: white blocky capitals (VT323) with a black edge.
+ *   modern   TV moderna  flat smart TV: clean rounded sans (Figtree, close to Samsung One).
+ * Fonts, sources and licenses: docs/fontes-e-icones.md.
  * ========================================================================== */
-:root {
-  --ov-bg: rgb(17 19 28 / 0.76);
-  --ov-tile: rgb(255 255 255 / 0.09);
-  --ov-tile-hover: rgb(255 255 255 / 0.16);
-  --ov-line: rgb(255 255 255 / 0.14);
-  --ov-text: #f6f7fb;
-  --ov-dim: rgb(246 247 251 / 0.64);
-  --ov-focus: #f6f7fb;
-  --ov-on-focus: #12141d;
-  --ov-on-focus-dim: rgb(18 20 29 / 0.62);
-  --u: 1rem;
-  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+:root,
+:root[data-skin='classic'] {
+  /* --ff-osd: the big on-screen numbers; --ff-osd-text: running OSD text; --ff-display/--ff-body: overlays. */
+  --ff-osd: 'Press Start 2P', 'Courier New', monospace;
+  --ff-osd-text: 'Jersey 15', 'Figtree', sans-serif;
+  --ff-display: 'Jersey 15', 'Figtree', sans-serif;
+  --ff-body: var(--font-sans);
+  --oz: 1.15;
 }
 
-/* The theme's skin also tints the overlays and the library. */
 :root[data-skin='vhs'] {
+  --ff-osd: 'VT323', 'Courier New', monospace;
+  --ff-osd-text: 'VT323', 'Courier New', monospace;
+  --ff-display: 'VT323', 'Courier New', monospace;
+  --ff-body: 'Share Tech Mono', ui-monospace, Consolas, monospace;
+  --oz: 1.3;
   --accent: #4db4ff;
   --accent-text: #001a2e;
   --focus: #4db4ff;
 }
 
 :root[data-skin='modern'] {
+  --ff-osd: var(--font-sans);
+  --ff-osd-text: var(--font-sans);
+  --ff-display: var(--font-sans);
+  --ff-body: var(--font-sans);
+  --oz: 1;
   --accent: #8aa4ff;
   --accent-text: #0a1233;
   --focus: #8aa4ff;
 }
 
+/* The black edge that keeps OSD text readable on any frame: a hard outline, no blur. */
+.tv {
+  --edge: 0.09em 0 0 #000, -0.09em 0 0 #000, 0 0.09em 0 #000, 0 -0.09em 0 #000, 0.09em 0.09em 0 #000, -0.09em 0.09em 0 #000,
+    0.09em -0.09em 0 #000, -0.09em -0.09em 0 #000;
+}
+
+.tv-tuning {
+  position: absolute;
+  left: 50%;
+  bottom: 8%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.3em 0.8em;
+  background: rgb(0 0 0 / 0.65);
+  font-family: var(--ff-osd-text);
+  font-size: calc(1.1em * var(--oz));
+  color: var(--osd);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.osd-channel {
+  position: absolute;
+  top: 6%;
+  right: 6%;
+  display: grid;
+  justify-items: end;
+  gap: 0.5em;
+  color: var(--osd);
+  font-family: var(--ff-osd);
+  text-shadow: var(--edge);
+  text-transform: uppercase;
+  text-rendering: optimizeSpeed;
+  pointer-events: none;
+}
+
+.osd-number {
+  font-size: 2.2em;
+  font-size: round(nearest, 2.2em, 8px);
+  line-height: 1;
+}
+
+.osd-name {
+  font-size: 0.75em;
+  font-size: max(16px, round(nearest, 0.75em, 8px));
+  line-height: 1.3;
+  text-align: right;
+}
+
+.osd-clock {
+  position: absolute;
+  top: 6%;
+  left: 6%;
+  color: var(--osd);
+  font-family: var(--ff-osd);
+  font-size: 1.05em;
+  font-size: max(16px, round(nearest, 1.05em, 8px));
+  text-shadow: var(--edge);
+  text-rendering: optimizeSpeed;
+  pointer-events: none;
+}
+
+.osd-info {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: 7%;
+  display: grid;
+  gap: 0.5em;
+  padding: 1em 1.3em 1.05em;
+  background: rgb(4 10 36 / 0.86);
+  border: 0.19em solid #fff;
+  box-shadow: 0 0 0 0.19em #000;
+  font-family: var(--ff-osd-text);
+  pointer-events: none;
+}
+
+.osd-info strong {
+  color: var(--osd);
+  font-family: var(--ff-osd);
+  font-size: 1.1em;
+  font-size: max(16px, round(nearest, 1.1em, 8px));
+  font-weight: 400;
+  line-height: 1.4;
+  text-transform: uppercase;
+  text-shadow: var(--edge);
+  text-rendering: optimizeSpeed;
+}
+
+.osd-info span {
+  font-size: 1.55em;
+  line-height: 1.15;
+}
+
+.osd-play,
+.osd-timecode,
+.osd-badge {
+  display: contents;
+}
+
+/* --- Fita VHS: white blocky VCR capitals, black edge, the odd tracking jitter ----------------------- */
+.skin-vhs .osd-channel {
+  left: 6%;
+  right: 6%;
+  top: 7%;
+  grid-template-columns: 1fr auto;
+  justify-items: start;
+  row-gap: 0.05em;
+  color: #fff;
+  letter-spacing: 0.05em;
+  animation: vhs-jitter 3.2s steps(1, end) infinite;
+}
+
+.skin-vhs .osd-play {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 3.1em;
+  line-height: 0.9;
+}
+
+.osd-triangle {
+  display: inline-block;
+  width: 0.62em;
+  height: 0.7em;
+  background: currentColor;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+  filter: drop-shadow(0.07em 0.07em 0 #000) drop-shadow(-0.04em -0.04em 0 #000);
+}
+
+.skin-vhs .osd-number {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  font-size: 3.1em;
+}
+
+.skin-vhs .osd-name {
+  grid-column: 1;
+  grid-row: 2;
+  font-size: 1.7em;
+  text-align: left;
+}
+
+.skin-vhs .osd-timecode {
+  display: block;
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
+  font-size: 1.7em;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes vhs-jitter {
+  0%,
+  88%,
+  100% {
+    transform: none;
+  }
+  90% {
+    transform: translate(0.12em, -0.04em) skewX(-2deg);
+  }
+  93% {
+    transform: translate(-0.1em, 0.05em);
+  }
+}
+
+.skin-vhs .osd-clock {
+  right: 6%;
+  left: auto;
+  top: auto;
+  bottom: 7%;
+  color: #fff;
+  font-size: 2.2em;
+  letter-spacing: 0.05em;
+}
+
+.skin-vhs .osd-info {
+  background: linear-gradient(90deg, rgb(6 10 96 / 0.9), rgb(6 10 96 / 0.6));
+  border: 0;
+  border-top: 0.16em solid #fff;
+  box-shadow: none;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  gap: 0.2em;
+  padding: 0.8em 1.2em 0.9em;
+}
+
+.skin-vhs .osd-info strong {
+  color: #fff;
+  font-size: 2.1em;
+  line-height: 1;
+}
+
+.skin-vhs .osd-info span {
+  font-size: 1.8em;
+  color: rgb(255 255 255 / 0.88);
+  line-height: 1.05;
+}
+
+/* --- TV moderna: clean sans-serif, rounded translucent pills ---------------------------------------- */
+.skin-modern .osd-channel {
+  top: 5%;
+  right: 5%;
+  display: block;
+  text-shadow: none;
+  text-transform: none;
+}
+
+.skin-modern .osd-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  padding: 0.35em 1.2em 0.35em 0.35em;
+  color: #fff;
+  border-radius: 99px;
+  background: rgb(14 16 24 / 0.74);
+  -webkit-backdrop-filter: blur(0.8rem);
+  backdrop-filter: blur(0.8rem);
+  box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.35);
+}
+
+.skin-modern .osd-number {
+  display: grid;
+  place-items: center;
+  min-width: 2.1em;
+  height: 2.1em;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 1.3em;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.skin-modern .osd-name {
+  font-size: 1.15em;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.skin-modern .osd-clock {
+  top: 5%;
+  left: 5%;
+  padding: 0.25em 0.9em;
+  border-radius: 99px;
+  background: rgb(14 16 24 / 0.74);
+  -webkit-backdrop-filter: blur(0.8rem);
+  backdrop-filter: blur(0.8rem);
+  color: #fff;
+  font-size: 1.2em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-shadow: none;
+}
+
+.skin-modern .osd-info {
+  left: 5%;
+  right: 5%;
+  bottom: 6%;
+  gap: 0.3em;
+  border: 0;
+  border-radius: 1.4rem;
+  background: rgb(14 16 24 / 0.78);
+  -webkit-backdrop-filter: blur(1rem);
+  backdrop-filter: blur(1rem);
+  box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.35);
+}
+
+.skin-modern .osd-info strong {
+  color: #fff;
+  font-family: var(--ff-display);
+  font-size: 1.4em;
+  font-weight: 700;
+  text-transform: none;
+  text-shadow: none;
+}
+
+.skin-modern .osd-info span {
+  font-size: 1.05em;
+  color: rgb(255 255 255 / 0.8);
+}
+
+.skin-modern .tv-tuning {
+  border-radius: 99px;
+  color: #fff;
+  text-transform: none;
+}
+
+.skin-modern .offair-card {
+  border: 0;
+  border-radius: 3cqmin;
+  background: rgb(14 16 24 / 0.88);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.skin-vhs .offair-card {
+  background: rgb(8 12 90 / 0.88);
+  letter-spacing: 0.06em;
+}
+
+.skin-vhs .tv-tuning {
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skin-vhs .osd-channel {
+    animation: none !important;
+  }
+}
+
+/* ==========================================================================
+ * Overlays over the live picture: menu, quick settings, settings panel.
+ * Sized in `--u` units, which follow the screen height (readable at 3 m from 720p to 4K).
+ * Each skin sets the tokens below, so one set of rules gives the three looks:
+ *   modern  Samsung One UI-like: dark translucent rounded surfaces with blur, focused item filled white.
+ *   classic 90s tube TV menu: solid deep-blue panel with a light frame, pixel type, focus filled OSD green.
+ *   vhs     VCR menu: blue screen, white capitals, focus drawn as inverse video.
+ * ========================================================================== */
+:root {
+  --u: 1rem;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
 .overlay {
-  --ov-radius: calc(1.1 * var(--u));
+  /* --- tokens: modern (default) --- */
+  --ov-bg: rgb(17 19 28 / 0.84);
+  --ov-solid: rgb(20 22 32 / 0.9);
+  --ov-tile: rgb(255 255 255 / 0.09);
+  --ov-tile-hover: rgb(255 255 255 / 0.16);
+  --ov-line: rgb(255 255 255 / 0.14);
+  --ov-text: #f6f7fb;
+  --ov-dim: rgb(246 247 251 / 0.68);
+  --ov-focus: #f6f7fb;
+  --ov-on-focus: #12141d;
+  --ov-on-focus-dim: rgb(18 20 29 / 0.64);
+  --ov-accent: var(--accent);
+  --ov-on-accent: var(--accent-text);
+  --ov-rail: rgb(255 255 255 / 0.22);
   --ov-blur: blur(calc(1.5 * var(--u))) saturate(1.5);
+  --k-lg: 1.65;
+  --k-md: 1;
+  --k-sm: 0.7;
+  --r-pill: 99px;
+  --bw: 1px;
+  --focus-scale: 1.04;
+  --shadow-surface: 0 calc(1.5 * var(--u)) calc(4 * var(--u)) rgb(0 0 0 / 0.45);
+  --shadow-focus: 0 calc(0.6 * var(--u)) calc(1.6 * var(--u)) rgb(0 0 0 / 0.45);
+  --tt: none;
+  --fw-display: 650;
+  /* type scale (em of the overlay's own size) */
+  --fs-title: 1.55em;
+  --fs-section: 0.82em;
+  --fs-label: 1em;
+  --fs-value: 1em;
+  --fs-meta: 0.78em;
+  --fs-hint: 0.74em;
+  --fs-tile-label: 0.8em;
+  --fs-tile-value: 1.06em;
+  --fs-button: 1em;
+  --ls-section: 0.09em;
+
   --sp-1: calc(0.25 * var(--u));
   --sp-2: calc(0.5 * var(--u));
   --sp-3: calc(0.75 * var(--u));
@@ -731,11 +1072,84 @@ h2 {
   z-index: 50;
   --u: clamp(15px, min(2.9vh, 1.6vw), 72px);
   font-size: var(--u);
+  font-family: var(--ff-display);
   color: var(--ov-text);
   cursor: default;
 }
 
-.overlay button {
+:root[data-skin='classic'] .overlay {
+  --ov-bg: rgb(7 17 50 / 0.95);
+  --ov-solid: rgb(7 17 50 / 0.96);
+  --ov-tile: rgb(255 255 255 / 0.07);
+  --ov-tile-hover: rgb(255 255 255 / 0.14);
+  --ov-line: rgb(132 176 255 / 0.65);
+  --ov-text: #ffffff;
+  --ov-dim: rgb(176 198 247 / 0.82);
+  --ov-focus: #5dff6a;
+  --ov-on-focus: #03200a;
+  --ov-on-focus-dim: rgb(3 32 10 / 0.8);
+  --ov-accent: #5dff6a;
+  --ov-on-accent: #03200a;
+  --ov-rail: rgb(255 255 255 / 0.16);
+  --ov-blur: none;
+  --k-lg: 0.4;
+  --k-md: 0.28;
+  --k-sm: 0.2;
+  --r-pill: calc(0.28 * var(--u));
+  --bw: calc(0.13 * var(--u));
+  --focus-scale: 1;
+  --shadow-surface: 0 0 0 calc(0.13 * var(--u)) #000, 0 calc(1 * var(--u)) calc(3 * var(--u)) rgb(0 0 0 / 0.6);
+  --shadow-focus: none;
+  --fw-display: 400;
+  --fs-title: 2em;
+  --fs-section: 1.1em;
+  --fs-label: 1.3em;
+  --fs-value: 1.3em;
+  --fs-meta: 0.8em;
+  --fs-hint: 0.76em;
+  --fs-tile-label: 1.02em;
+  --fs-tile-value: 1.3em;
+  --ls-section: 0.04em;
+}
+
+:root[data-skin='vhs'] .overlay {
+  --ov-bg: rgb(4 8 96 / 0.94);
+  --ov-solid: rgb(4 8 96 / 0.95);
+  --ov-tile: rgb(255 255 255 / 0.1);
+  --ov-tile-hover: rgb(255 255 255 / 0.2);
+  --ov-line: rgb(255 255 255 / 0.8);
+  --ov-text: #ffffff;
+  --ov-dim: rgb(255 255 255 / 0.74);
+  --ov-focus: #ffffff;
+  --ov-on-focus: #04085e;
+  --ov-on-focus-dim: rgb(4 8 94 / 0.72);
+  --ov-accent: #ffe14d;
+  --ov-on-accent: #1c1600;
+  --ov-rail: rgb(255 255 255 / 0.2);
+  --ov-blur: none;
+  --k-lg: 0;
+  --k-md: 0;
+  --k-sm: 0;
+  --r-pill: 0;
+  --bw: calc(0.1 * var(--u));
+  --focus-scale: 1;
+  --shadow-surface: 0 0 0 calc(0.1 * var(--u)) #000;
+  --shadow-focus: none;
+  --tt: uppercase;
+  --fw-display: 400;
+  --fs-title: 2.2em;
+  --fs-section: 1.35em;
+  --fs-label: 1.32em;
+  --fs-value: 1.32em;
+  --fs-meta: 0.82em;
+  --fs-hint: 0.82em;
+  --fs-tile-label: 1.15em;
+  --fs-tile-value: 1.5em;
+  --fs-button: 1.3em;
+  --ls-section: 0.06em;
+}
+
+:where(.overlay button) {
   font: inherit;
 }
 
@@ -771,18 +1185,22 @@ h2 {
   animation: ov-rise 0.34s var(--ease) both;
 }
 
+.overlay-left .overlay-surface,
+.overlay-bottom.menu-overlay .overlay-surface {
+  border-radius: calc(var(--k-lg) * var(--u));
+  background: var(--ov-bg);
+  -webkit-backdrop-filter: var(--ov-blur);
+  backdrop-filter: var(--ov-blur);
+  border: var(--bw) solid var(--ov-line);
+  box-shadow: var(--shadow-surface);
+}
+
 .overlay-left .overlay-surface {
   top: 1.5vh;
   bottom: 1.5vh;
   left: 1.2vw;
-  width: clamp(calc(30 * var(--u)), 46vw, calc(66 * var(--u)));
+  width: clamp(calc(34 * var(--u)), 60vw, calc(80 * var(--u)));
   max-width: calc(100vw - 2.4vw);
-  border-radius: calc(var(--ov-radius) * 1.5);
-  background: var(--ov-bg);
-  -webkit-backdrop-filter: var(--ov-blur);
-  backdrop-filter: var(--ov-blur);
-  border: 1px solid var(--ov-line);
-  box-shadow: 0 calc(1.5 * var(--u)) calc(4 * var(--u)) rgb(0 0 0 / 0.45);
   overflow: hidden;
   animation: ov-slide 0.34s var(--ease) both;
 }
@@ -792,12 +1210,6 @@ h2 {
   right: 1.2vw;
   bottom: 2vh;
   padding: calc(1.1 * var(--u)) calc(1.5 * var(--u)) calc(0.9 * var(--u));
-  border-radius: calc(var(--ov-radius) * 1.5);
-  background: var(--ov-bg);
-  -webkit-backdrop-filter: var(--ov-blur);
-  backdrop-filter: var(--ov-blur);
-  border: 1px solid var(--ov-line);
-  box-shadow: 0 calc(1.5 * var(--u)) calc(4 * var(--u)) rgb(0 0 0 / 0.45);
 }
 
 @keyframes ov-fade {
@@ -827,29 +1239,69 @@ h2 {
   }
 }
 
+/* Icons: Lucide strokes, sized per place below. The retro skins get square caps, like a bitmap. */
+.icon {
+  display: block;
+  flex: none;
+}
+
+:root[data-skin='classic'] .overlay .icon,
+:root[data-skin='vhs'] .overlay .icon {
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  stroke-width: 2.4;
+}
+
+/* --- Key hints --------------------------------------------------------------------------------------- */
 .key-hints {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: calc(0.3 * var(--u)) calc(1.4 * var(--u));
   margin: calc(0.9 * var(--u)) 0 0;
-  font-size: 0.72em;
+  font-family: var(--ff-body);
+  font-size: var(--fs-hint);
   color: var(--ov-dim);
   text-shadow: 0 1px 6px rgb(0 0 0 / 0.8);
 }
 
+.key-hints span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
 .key-hints kbd {
   font: inherit;
-  font-weight: 600;
-  padding: 0.1em 0.55em;
-  margin-right: 0.3em;
-  border-radius: 0.45em;
+  font-weight: 700;
+  padding: 0.12em 0.6em;
+  border-radius: calc(0.45 * var(--u) * var(--k-sm) / 0.7);
   background: rgb(255 255 255 / 0.16);
   color: var(--ov-text);
   text-shadow: none;
 }
 
-/* --- Quick settings ------------------------------------------------------ */
+:root[data-skin='classic'] .overlay .key-hints kbd {
+  background: none;
+  border: var(--bw) solid var(--ov-line);
+  font-family: var(--ff-display);
+  font-weight: 400;
+  font-size: 1.3em;
+  line-height: 1.1;
+  padding: 0 0.45em;
+}
+
+:root[data-skin='vhs'] .overlay .key-hints kbd {
+  background: #fff;
+  color: var(--ov-on-focus);
+  font-family: var(--ff-display);
+  font-weight: 400;
+  font-size: 1.25em;
+  padding: 0 0.4em;
+  text-transform: uppercase;
+}
+
+/* --- Quick settings ---------------------------------------------------------------------------------- */
 .overlay.quick {
   --u: clamp(14px, min(2.55vh, 1.42vw), 64px);
 }
@@ -863,6 +1315,7 @@ h2 {
 
 .qs-item {
   position: relative;
+  display: flex;
   flex: 1 1 0;
   min-width: 0;
   max-width: calc(10.5 * var(--u));
@@ -876,32 +1329,35 @@ h2 {
 .qs-tile {
   position: relative;
   width: 100%;
-  min-height: calc(7.6 * var(--u));
+  height: 100%;
+  min-height: calc(7.8 * var(--u));
   display: grid;
-  align-content: space-between;
-  gap: calc(0.15 * var(--u));
-  padding: calc(0.8 * var(--u)) calc(0.8 * var(--u)) calc(0.85 * var(--u));
+  grid-template-rows: auto 1fr auto;
+  align-items: end;
+  gap: calc(0.12 * var(--u));
+  padding: calc(0.85 * var(--u)) calc(0.85 * var(--u)) calc(0.9 * var(--u));
   text-align: left;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
   color: var(--ov-text);
-  background: rgb(20 22 32 / 0.72);
+  background: var(--ov-solid);
   -webkit-backdrop-filter: var(--ov-blur);
   backdrop-filter: var(--ov-blur);
-  border: 1px solid var(--ov-line);
-  border-radius: var(--ov-radius);
+  border: var(--bw) solid var(--ov-line);
+  border-radius: calc(var(--k-md) * var(--u));
   cursor: pointer;
   transition: transform 0.2s var(--ease), background 0.2s, color 0.2s, box-shadow 0.2s;
 }
 
 .qs-tile:hover {
-  background: rgb(46 49 64 / 0.78);
+  background: color-mix(in srgb, var(--ov-solid), white 12%);
 }
 
 .qs-tile:focus {
-  transform: scale(1.07);
+  transform: scale(var(--focus-scale));
   color: var(--ov-on-focus);
   background: var(--ov-focus);
-  box-shadow: 0 calc(0.7 * var(--u)) calc(2 * var(--u)) rgb(0 0 0 / 0.5);
+  border-color: var(--ov-focus);
+  box-shadow: var(--shadow-focus);
   z-index: 1;
 }
 
@@ -910,24 +1366,28 @@ h2 {
 }
 
 .qs-icon {
-  width: calc(1.6 * var(--u));
-  height: calc(1.6 * var(--u));
-  margin-bottom: calc(0.4 * var(--u));
+  width: calc(1.55 * var(--u));
+  height: calc(1.55 * var(--u));
+  margin-bottom: calc(0.35 * var(--u));
+  align-self: start;
 }
 
 .qs-label {
-  font-size: 0.78em;
+  font-size: var(--fs-tile-label);
+  text-transform: var(--tt);
+  line-height: 1.2;
   color: var(--ov-dim);
 }
 
 .qs-value {
-  font-size: 1.04em;
-  font-weight: 650;
-  line-height: 1.15;
+  font-size: var(--fs-tile-value);
+  font-weight: var(--fw-display);
+  line-height: 1.12;
+  text-transform: var(--tt);
 }
 
 .qs-all .qs-value {
-  font-size: 0.95em;
+  font-size: calc(var(--fs-tile-value) * 0.92);
 }
 
 .qs-tile:focus .qs-label {
@@ -939,7 +1399,7 @@ h2 {
   height: calc(0.32 * var(--u));
   margin-top: calc(0.4 * var(--u));
   border-radius: 99px;
-  background: rgb(255 255 255 / 0.2);
+  background: var(--ov-rail);
   overflow: hidden;
 }
 
@@ -947,35 +1407,42 @@ h2 {
   display: block;
   height: 100%;
   border-radius: 99px;
-  background: var(--accent);
+  background: var(--ov-accent);
   transition: width 0.15s;
 }
 
 .qs-tile:focus .qs-bar {
-  background: rgb(18 20 29 / 0.18);
+  background: rgb(0 0 0 / 0.16);
 }
 
 .qs-tile:focus .qs-bar i {
   background: var(--ov-on-focus);
 }
 
+:root[data-skin='classic'] .overlay .qs-bar,
+:root[data-skin='classic'] .overlay .qs-bar i,
+:root[data-skin='vhs'] .overlay .qs-bar,
+:root[data-skin='vhs'] .overlay .qs-bar i {
+  border-radius: 0;
+}
+
 .qs-arrows {
   position: absolute;
-  top: calc(0.7 * var(--u));
+  top: calc(0.75 * var(--u));
   right: calc(0.6 * var(--u));
   display: grid;
-  gap: calc(0.05 * var(--u));
+  gap: 0;
   opacity: 0;
   transition: opacity 0.2s;
 }
 
 .qs-arrows .icon {
-  width: calc(0.95 * var(--u));
-  height: calc(0.95 * var(--u));
+  width: calc(1 * var(--u));
+  height: calc(1 * var(--u));
 }
 
 .qs-tile:focus .qs-arrows {
-  opacity: 0.55;
+  opacity: 0.6;
 }
 
 .qs-all .qs-arrows {
@@ -985,7 +1452,7 @@ h2 {
 .qs-list {
   position: absolute;
   left: 50%;
-  bottom: calc(100% + calc(0.8 * var(--u)));
+  bottom: calc(100% + 0.8 * var(--u));
   z-index: 2;
   width: max-content;
   min-width: 100%;
@@ -993,13 +1460,16 @@ h2 {
   padding: calc(0.35 * var(--u));
   list-style: none;
   transform: translateX(-50%);
-  border-radius: var(--ov-radius);
-  background: rgb(20 22 32 / 0.92);
+  border-radius: calc(var(--k-md) * var(--u));
+  background: var(--ov-solid);
   -webkit-backdrop-filter: var(--ov-blur);
   backdrop-filter: var(--ov-blur);
-  border: 1px solid var(--ov-line);
-  box-shadow: 0 calc(1 * var(--u)) calc(2.5 * var(--u)) rgb(0 0 0 / 0.55);
+  border: var(--bw) solid var(--ov-line);
+  box-shadow: var(--shadow-surface);
   animation: ov-body 0.2s var(--ease) both;
+  font-weight: var(--fw-display);
+  font-size: var(--fs-value);
+  text-transform: var(--tt);
 }
 
 .qs-list li {
@@ -1007,8 +1477,8 @@ h2 {
   align-items: center;
   justify-content: space-between;
   gap: calc(1 * var(--u));
-  padding: calc(0.55 * var(--u)) calc(0.9 * var(--u));
-  border-radius: calc(0.8 * var(--u));
+  padding: calc(0.5 * var(--u)) calc(0.9 * var(--u));
+  border-radius: calc(var(--k-sm) * var(--u) * 1.1);
   cursor: pointer;
 }
 
@@ -1017,9 +1487,8 @@ h2 {
 }
 
 .qs-list li[aria-selected='true'] {
-  background: var(--accent);
-  color: var(--accent-text);
-  font-weight: 700;
+  background: var(--ov-accent);
+  color: var(--ov-on-accent);
 }
 
 .qs-list .icon {
@@ -1027,7 +1496,7 @@ h2 {
   height: calc(1.1 * var(--u));
 }
 
-/* --- Menu sheet ---------------------------------------------------------- */
+/* --- Menu sheet -------------------------------------------------------------------------------------- */
 .sheet-header {
   display: flex;
   align-items: baseline;
@@ -1038,17 +1507,36 @@ h2 {
 .sheet-header .logo {
   font-size: 1.5em;
   text-shadow: none;
+  font-family: var(--font-sans);
+  color: var(--ov-text);
+}
+
+.sheet-header .logo span {
+  color: var(--ov-accent);
+}
+
+:root[data-skin='classic'] .overlay .sheet-header .logo,
+:root[data-skin='vhs'] .overlay .sheet-header .logo {
+  font-family: var(--ff-display);
+  font-weight: var(--fw-display);
+  letter-spacing: 0;
+  font-size: calc(var(--fs-title) * 0.95);
+  text-transform: var(--tt);
 }
 
 .sheet-library {
+  font-family: var(--ff-body);
   color: var(--ov-dim);
-  font-size: 0.78em;
+  font-size: var(--fs-meta);
 }
 
-.sheet-title {
+.sheet-title,
+.panel-body h2 {
   margin: calc(0.9 * var(--u)) 0 0;
-  font-size: 0.82em;
-  font-weight: 600;
+  font-size: var(--fs-section);
+  font-weight: var(--fw-display);
+  letter-spacing: var(--ls-section);
+  text-transform: uppercase;
   color: var(--ov-dim);
 }
 
@@ -1077,8 +1565,8 @@ h2 {
   text-align: left;
   color: var(--ov-text);
   background: var(--ov-tile);
-  border: 0;
-  border-radius: var(--ov-radius);
+  border: var(--bw) solid transparent;
+  border-radius: calc(var(--k-md) * var(--u));
   cursor: pointer;
   transition: transform 0.2s var(--ease), background 0.2s, color 0.2s, box-shadow 0.2s;
 }
@@ -1088,21 +1576,22 @@ h2 {
 }
 
 .channel-card.current {
-  box-shadow: inset 0 0 0 calc(0.14 * var(--u)) var(--accent);
+  border-color: var(--ov-accent);
 }
 
 .channel-card:focus {
-  transform: scale(1.06);
+  transform: scale(var(--focus-scale));
   color: var(--ov-on-focus);
   background: var(--ov-focus);
-  box-shadow: 0 calc(0.6 * var(--u)) calc(1.6 * var(--u)) rgb(0 0 0 / 0.45);
+  border-color: var(--ov-focus);
+  box-shadow: var(--shadow-focus);
   z-index: 1;
 }
 
 .channel-number {
-  font-family: ui-monospace, Consolas, monospace;
-  font-weight: 700;
-  font-size: 0.8em;
+  font-weight: var(--fw-display);
+  font-size: calc(var(--fs-label) * 0.82);
+  letter-spacing: 0.06em;
   color: var(--ov-dim);
 }
 
@@ -1111,8 +1600,10 @@ h2 {
 }
 
 .channel-name {
-  font-weight: 650;
-  line-height: 1.15;
+  font-weight: var(--fw-display);
+  font-size: var(--fs-label);
+  text-transform: var(--tt);
+  line-height: 1.1;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1123,14 +1614,14 @@ h2 {
   position: absolute;
   top: calc(0.7 * var(--u));
   right: calc(0.75 * var(--u));
-  padding: 0.1em 0.6em;
-  border-radius: 99px;
-  background: var(--accent);
-  color: var(--accent-text);
-  font-size: 0.66em;
+  padding: 0.05em 0.6em 0.1em;
+  border-radius: var(--r-pill);
+  background: var(--ov-accent);
+  color: var(--ov-on-accent);
+  font-size: calc(var(--fs-label) * 0.66);
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
 .menu-actions {
@@ -1146,8 +1637,11 @@ h2 {
   padding: calc(0.7 * var(--u)) calc(1.3 * var(--u)) calc(0.7 * var(--u)) calc(1 * var(--u));
   color: var(--ov-text);
   background: var(--ov-tile);
-  border: 0;
-  border-radius: 99px;
+  border: var(--bw) solid transparent;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-button);
+  font-weight: var(--fw-display);
+  text-transform: var(--tt);
   cursor: pointer;
   transition: transform 0.2s var(--ease), background 0.2s, color 0.2s, box-shadow 0.2s;
 }
@@ -1157,10 +1651,11 @@ h2 {
 }
 
 .action-tile:focus {
-  transform: scale(1.06);
+  transform: scale(var(--focus-scale));
   color: var(--ov-on-focus);
   background: var(--ov-focus);
-  box-shadow: 0 calc(0.6 * var(--u)) calc(1.6 * var(--u)) rgb(0 0 0 / 0.45);
+  border-color: var(--ov-focus);
+  box-shadow: var(--shadow-focus);
 }
 
 .action-icon {
@@ -1171,38 +1666,48 @@ h2 {
 .badge {
   min-width: 1.5em;
   padding: 0 0.45em;
-  border-radius: 99px;
-  background: var(--accent);
-  color: var(--accent-text);
+  border-radius: var(--r-pill);
+  background: var(--ov-accent);
+  color: var(--ov-on-accent);
   font-size: 0.78em;
   font-weight: 800;
   text-align: center;
 }
 
-/* --- Settings panel ------------------------------------------------------ */
+/* --- Settings panel ---------------------------------------------------------------------------------- */
 .panel {
   display: grid;
-  grid-template-columns: minmax(calc(11.4 * var(--u)), 0.4fr) minmax(0, 1fr);
+  grid-template-columns: calc(12.4 * var(--u)) minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
   height: 100%;
 }
 
 .panel-header {
   grid-column: 1 / -1;
-  padding: calc(1.3 * var(--u)) calc(1.7 * var(--u)) calc(0.5 * var(--u));
+  display: flex;
+  align-items: center;
+  gap: calc(0.7 * var(--u));
+  padding: calc(1.2 * var(--u)) calc(1.5 * var(--u)) calc(0.4 * var(--u));
+}
+
+.panel-header .icon {
+  width: calc(1.5 * var(--u));
+  height: calc(1.5 * var(--u));
+  color: var(--ov-accent);
 }
 
 .panel-header h1 {
-  font-size: 1.55em;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-size: var(--fs-title);
+  font-weight: var(--fw-display);
+  text-transform: var(--tt);
+  letter-spacing: -0.005em;
 }
 
 .panel-cats {
   display: grid;
   align-content: start;
-  gap: calc(0.3 * var(--u));
-  padding: calc(0.6 * var(--u)) calc(0.8 * var(--u)) calc(1 * var(--u)) calc(1 * var(--u));
+  gap: calc(0.25 * var(--u));
+  padding: calc(0.6 * var(--u)) calc(0.7 * var(--u)) calc(1 * var(--u)) calc(1 * var(--u));
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: none;
@@ -1212,39 +1717,46 @@ h2 {
   position: relative;
   display: flex;
   align-items: center;
-  gap: calc(0.6 * var(--u));
-  padding: calc(0.75 * var(--u)) calc(0.8 * var(--u));
+  gap: calc(0.65 * var(--u));
+  padding: calc(0.7 * var(--u)) calc(0.75 * var(--u));
   min-width: 0;
   text-align: left;
-  line-height: 1.15;
+  line-height: 1.12;
+  font-size: var(--fs-label);
+  font-weight: var(--fw-display);
+  text-transform: var(--tt);
   color: var(--ov-text);
   background: transparent;
-  border: 0;
-  border-radius: calc(0.95 * var(--u));
+  border: var(--bw) solid transparent;
+  border-radius: calc(var(--k-md) * var(--u));
   cursor: pointer;
-  transition: transform 0.2s var(--ease), background 0.2s, color 0.2s;
+  transition: background 0.2s, color 0.2s;
 }
 
 .cat-icon {
-  flex: none;
-  width: calc(1.5 * var(--u));
-  height: calc(1.5 * var(--u));
+  width: calc(1.4 * var(--u));
+  height: calc(1.4 * var(--u));
+  opacity: 0.85;
 }
 
 .cat[aria-current='true'] {
-  background: rgb(255 255 255 / 0.13);
-  font-weight: 650;
+  background: rgb(255 255 255 / 0.12);
 }
 
 .cat[aria-current='true']::before {
   content: '';
   position: absolute;
-  left: calc(-0.45 * var(--u));
+  left: calc(-0.55 * var(--u));
   top: 24%;
   bottom: 24%;
-  width: calc(0.22 * var(--u));
+  width: calc(0.24 * var(--u));
   border-radius: 99px;
-  background: var(--accent);
+  background: var(--ov-accent);
+}
+
+:root[data-skin='classic'] .overlay .cat[aria-current='true']::before,
+:root[data-skin='vhs'] .overlay .cat[aria-current='true']::before {
+  border-radius: 0;
 }
 
 .cat:hover {
@@ -1254,49 +1766,49 @@ h2 {
 .cat:focus {
   color: var(--ov-on-focus);
   background: var(--ov-focus);
-  font-weight: 650;
-  transform: scale(1.03);
-  transform-origin: left center;
-  box-shadow: 0 calc(0.5 * var(--u)) calc(1.4 * var(--u)) rgb(0 0 0 / 0.35);
+  border-color: var(--ov-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+.cat:focus .cat-icon {
+  opacity: 1;
 }
 
 .panel-body {
   display: grid;
   align-content: start;
-  gap: calc(0.5 * var(--u));
-  padding: calc(0.4 * var(--u)) calc(1.2 * var(--u)) calc(1.2 * var(--u)) calc(0.6 * var(--u));
+  gap: calc(0.45 * var(--u));
+  padding: calc(0.3 * var(--u)) calc(1.2 * var(--u)) calc(1.2 * var(--u)) calc(0.5 * var(--u));
   overflow-y: auto;
   scrollbar-width: none;
   animation: ov-body 0.28s var(--ease) both;
 }
 
 .panel-body h2 {
-  margin: calc(0.55 * var(--u)) calc(0.4 * var(--u)) calc(0.35 * var(--u));
-  font-size: 1.05em;
-  font-weight: 650;
-  color: var(--ov-dim);
+  margin: calc(0.5 * var(--u)) calc(0.3 * var(--u)) calc(0.2 * var(--u));
 }
 
 .panel .key-hints {
   grid-column: 1 / -1;
   margin: 0;
   padding: calc(0.7 * var(--u)) calc(1 * var(--u)) calc(0.85 * var(--u));
-  border-top: 1px solid var(--ov-line);
+  border-top: var(--bw) solid var(--ov-line);
 }
 
+/* A setting: icon, label (with its help and origin), and the control on the right. */
 .row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: calc(0.35 * var(--u)) calc(1 * var(--u));
-  padding: calc(0.8 * var(--u)) calc(1 * var(--u));
+  gap: calc(0.3 * var(--u)) calc(0.9 * var(--u));
+  padding: calc(0.75 * var(--u)) calc(1 * var(--u));
   text-align: left;
   color: var(--ov-text);
   background: var(--ov-tile);
-  border: 0;
-  border-radius: calc(1 * var(--u));
+  border: var(--bw) solid transparent;
+  border-radius: calc(var(--k-md) * var(--u));
   cursor: pointer;
-  transition: transform 0.2s var(--ease), background 0.2s, color 0.2s, box-shadow 0.2s;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
 }
 
 .row:hover {
@@ -1306,9 +1818,8 @@ h2 {
 .row:focus {
   color: var(--ov-on-focus);
   background: var(--ov-focus);
-  transform: scale(1.025);
-  transform-origin: left center;
-  box-shadow: 0 calc(0.6 * var(--u)) calc(1.6 * var(--u)) rgb(0 0 0 / 0.4);
+  border-color: var(--ov-focus);
+  box-shadow: var(--shadow-focus);
   z-index: 1;
 }
 
@@ -1316,20 +1827,35 @@ h2 {
   opacity: 0.55;
 }
 
+.row-lead {
+  width: calc(1.35 * var(--u));
+  height: calc(1.35 * var(--u));
+  opacity: 0.7;
+}
+
+.row:focus .row-lead {
+  opacity: 0.9;
+}
+
 .row-text {
   display: grid;
   gap: calc(0.15 * var(--u));
+  min-width: 0;
 }
 
 .row-label {
-  font-weight: 600;
-  line-height: 1.2;
+  font-size: var(--fs-label);
+  font-weight: var(--fw-display);
+  line-height: 1.15;
+  text-transform: var(--tt);
 }
 
 .row-meta {
-  font-size: 0.72em;
-  line-height: 1.3;
+  font-family: var(--ff-body);
+  font-size: var(--fs-meta);
+  line-height: 1.35;
   color: var(--ov-dim);
+  text-transform: none;
 }
 
 .row:focus .row-meta {
@@ -1343,11 +1869,11 @@ h2 {
 .row-meta .from-user::before {
   content: '';
   display: inline-block;
-  width: 0.45em;
-  height: 0.45em;
-  margin-right: 0.45em;
+  width: 0.5em;
+  height: 0.5em;
+  margin-right: 0.5em;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--ov-accent);
   vertical-align: 0.05em;
 }
 
@@ -1360,11 +1886,23 @@ h2 {
   align-items: center;
   gap: calc(0.7 * var(--u));
   justify-content: flex-end;
+  font-size: var(--fs-value);
+  font-weight: var(--fw-display);
+  text-transform: var(--tt);
+  white-space: nowrap;
 }
 
+/* The word next to a switch ("Ligado") only where the era's menu showed ON/OFF. */
 .row-state {
-  font-size: 0.82em;
+  display: none;
+  min-width: 3.6em;
+  text-align: right;
   color: var(--ov-dim);
+}
+
+:root[data-skin='classic'] .overlay .row-state,
+:root[data-skin='vhs'] .overlay .row-state {
+  display: inline;
 }
 
 .row:focus .row-state {
@@ -1372,41 +1910,41 @@ h2 {
 }
 
 .selector {
-  gap: calc(0.25 * var(--u));
+  gap: calc(0.2 * var(--u));
 }
 
 .selector strong {
-  min-width: calc(4.5 * var(--u));
+  min-width: calc(3.6 * var(--u));
   text-align: center;
-  font-weight: 650;
+  font-weight: inherit;
 }
 
 .selector-arrow {
-  width: calc(1.1 * var(--u));
-  height: calc(1.1 * var(--u));
+  width: calc(1.15 * var(--u));
+  height: calc(1.15 * var(--u));
   opacity: 0.5;
 }
 
 .row:focus .selector-arrow {
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .switch {
   position: relative;
   flex: none;
   width: calc(3.1 * var(--u));
-  height: calc(1.75 * var(--u));
-  border-radius: 99px;
-  background: rgb(255 255 255 / 0.26);
+  height: calc(1.7 * var(--u));
+  border-radius: calc(var(--r-pill) * 0.9);
+  background: var(--ov-rail);
   transition: background 0.2s;
 }
 
 .switch i {
   position: absolute;
-  top: calc(0.22 * var(--u));
-  left: calc(0.22 * var(--u));
-  width: calc(1.31 * var(--u));
-  height: calc(1.31 * var(--u));
+  top: calc(0.2 * var(--u));
+  left: calc(0.2 * var(--u));
+  width: calc(1.3 * var(--u));
+  height: calc(1.3 * var(--u));
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
@@ -1414,45 +1952,52 @@ h2 {
 }
 
 .switch[data-on='true'] {
-  background: var(--accent);
+  background: var(--ov-accent);
 }
 
 .switch[data-on='true'] i {
-  transform: translateX(calc(1.35 * var(--u)));
+  transform: translateX(calc(1.4 * var(--u)));
 }
 
 .row:focus .switch {
-  background: rgb(18 20 29 / 0.28);
+  background: rgb(0 0 0 / 0.22);
 }
 
 .row:focus .switch[data-on='true'] {
-  background: var(--accent);
-  box-shadow: inset 0 0 0 calc(0.12 * var(--u)) rgb(18 20 29 / 0.55);
+  background: var(--ov-on-focus);
 }
 
+.row:focus .switch[data-on='true'] i {
+  background: var(--ov-focus);
+  box-shadow: none;
+}
+
+/* Slider: a rail with a fill and a thumb; a tall invisible track makes it easy to grab. */
 .range-track {
   position: relative;
-  grid-column: 1 / -1;
-  height: calc(0.5 * var(--u));
-  margin: calc(0.55 * var(--u)) calc(0.7 * var(--u)) calc(0.35 * var(--u)) calc(0.2 * var(--u));
-  border-radius: 99px;
-  background: rgb(255 255 255 / 0.22);
+  grid-column: 2 / -1;
+  height: calc(1.5 * var(--u));
+  margin: calc(-0.1 * var(--u)) calc(0.65 * var(--u)) calc(0.1 * var(--u)) 0;
   touch-action: none;
   cursor: pointer;
 }
 
-/* A taller invisible hit area, so the thin bar is easy to grab. */
-.range-track::before {
-  content: '';
+.range-rail {
   position: absolute;
-  inset: calc(-0.8 * var(--u)) calc(-0.4 * var(--u));
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: calc(0.5 * var(--u));
+  transform: translateY(-50%);
+  border-radius: 99px;
+  background: var(--ov-rail);
+  overflow: hidden;
 }
 
 .range-fill {
   position: absolute;
   inset: 0 auto 0 0;
-  border-radius: 99px;
-  background: var(--accent);
+  background: var(--ov-accent);
   transition: width 0.12s;
 }
 
@@ -1468,8 +2013,8 @@ h2 {
   transition: left 0.12s;
 }
 
-.row:focus .range-track {
-  background: rgb(18 20 29 / 0.2);
+.row:focus .range-rail {
+  background: rgb(0 0 0 / 0.2);
 }
 
 .row:focus .range-fill {
@@ -1478,12 +2023,58 @@ h2 {
 
 .row:focus .range-thumb {
   background: var(--ov-on-focus);
-  box-shadow: 0 0 0 calc(0.2 * var(--u)) #fff, 0 1px 6px rgb(0 0 0 / 0.5);
+  box-shadow: 0 0 0 calc(0.18 * var(--u)) var(--ov-focus), 0 1px 6px rgb(0 0 0 / 0.5);
+}
+
+/* Retro skins: a chunky bar of blocks (like a volume bar on a 90s TV), no thumb. */
+:root[data-skin='classic'] .overlay .range-rail,
+:root[data-skin='vhs'] .overlay .range-rail {
+  height: calc(0.95 * var(--u));
+  border-radius: 0;
+  background: none;
+  --step: calc(0.62 * var(--u));
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 calc(var(--step) - 0.17 * var(--u)), transparent calc(var(--step) - 0.17 * var(--u)) var(--step));
+  mask: repeating-linear-gradient(90deg, #000 0 calc(var(--step) - 0.17 * var(--u)), transparent calc(var(--step) - 0.17 * var(--u)) var(--step));
+}
+
+:root[data-skin='classic'] .overlay .range-rail::before,
+:root[data-skin='vhs'] .overlay .range-rail::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--ov-rail);
+}
+
+:root[data-skin='classic'] .overlay .range-fill,
+:root[data-skin='vhs'] .overlay .range-fill {
+  z-index: 1;
+  transition: none;
+}
+
+:root[data-skin='classic'] .overlay .range-thumb,
+:root[data-skin='vhs'] .overlay .range-thumb {
+  display: none;
+}
+
+:root[data-skin='classic'] .overlay .row:focus .range-rail::before,
+:root[data-skin='vhs'] .overlay .row:focus .range-rail::before {
+  background: rgb(0 0 0 / 0.22);
+}
+
+/* Retro skins: a square switch. */
+:root[data-skin='classic'] .overlay .switch,
+:root[data-skin='vhs'] .overlay .switch,
+:root[data-skin='classic'] .overlay .switch i,
+:root[data-skin='vhs'] .overlay .switch i {
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .panel-note {
-  margin: calc(0.3 * var(--u)) calc(0.4 * var(--u));
-  font-size: 0.8em;
+  margin: calc(0.3 * var(--u)) calc(0.3 * var(--u));
+  font-family: var(--ff-body);
+  font-size: calc(var(--fs-meta) * 1.05);
+  line-height: 1.4;
   color: var(--ov-dim);
 }
 
@@ -1501,10 +2092,10 @@ h2 {
   text-align: left;
   color: var(--ov-text);
   background: var(--ov-tile);
-  border: 0;
-  border-radius: calc(1.1 * var(--u));
+  border: var(--bw) solid transparent;
+  border-radius: calc(var(--k-md) * var(--u) * 1.1);
   cursor: pointer;
-  transition: transform 0.2s var(--ease), background 0.2s, color 0.2s, box-shadow 0.2s;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
 }
 
 .theme-card:hover {
@@ -1512,14 +2103,15 @@ h2 {
 }
 
 .theme-card[aria-checked='true'] {
-  box-shadow: inset 0 0 0 calc(0.16 * var(--u)) var(--accent);
+  border-color: var(--ov-accent);
+  box-shadow: inset 0 0 0 calc(0.1 * var(--u)) var(--ov-accent);
 }
 
 .theme-card:focus {
-  transform: scale(1.04);
   color: var(--ov-on-focus);
   background: var(--ov-focus);
-  box-shadow: 0 calc(0.6 * var(--u)) calc(1.6 * var(--u)) rgb(0 0 0 / 0.4);
+  border-color: var(--ov-focus);
+  box-shadow: var(--shadow-focus);
   z-index: 1;
 }
 
@@ -1528,13 +2120,15 @@ h2 {
   align-items: center;
   justify-content: space-between;
   padding: 0 calc(0.3 * var(--u));
-  font-weight: 650;
+  font-size: var(--fs-label);
+  font-weight: var(--fw-display);
+  text-transform: var(--tt);
 }
 
 .theme-check {
-  width: calc(1.2 * var(--u));
-  height: calc(1.2 * var(--u));
-  color: var(--accent);
+  width: calc(1.25 * var(--u));
+  height: calc(1.25 * var(--u));
+  color: var(--ov-accent);
 }
 
 .theme-card:focus .theme-check {
@@ -1542,9 +2136,10 @@ h2 {
 }
 
 .theme-description {
-  margin: calc(0.2 * var(--u)) calc(0.4 * var(--u)) calc(0.4 * var(--u));
-  font-size: 0.82em;
-  line-height: 1.4;
+  margin: calc(0.2 * var(--u)) calc(0.3 * var(--u)) calc(0.3 * var(--u));
+  font-family: var(--ff-body);
+  font-size: calc(var(--fs-meta) * 1.08);
+  line-height: 1.45;
   color: var(--ov-dim);
 }
 
@@ -1556,30 +2151,35 @@ h2 {
   overflow: hidden;
   border-radius: calc(0.7 * var(--u));
   background: #1b1f2e;
+  font-size: var(--u);
+  text-transform: none;
 }
 
 .theme-preview b {
-  font-weight: 800;
-}
-
-.theme-preview small {
-  font-size: 0.62em;
+  font-weight: 400;
 }
 
 .preview-classic {
   justify-items: end;
   align-content: start;
+  gap: 0.35em;
   background:
     repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.35) 2px 3px),
     radial-gradient(ellipse at center, #2a3b45, #0a0e12);
   border-radius: calc(1 * var(--u)) / calc(1.2 * var(--u));
-  font-family: 'Courier New', ui-monospace, monospace;
+  font-family: 'Press Start 2P', monospace;
   color: var(--osd);
-  text-shadow: 0 0 0.35em rgb(93 255 106 / 0.7);
+  text-shadow: 0.09em 0.09em 0 #000;
 }
 
 .preview-classic b {
-  font-size: 1.15em;
+  font-size: 1.05em;
+  line-height: 1.1;
+}
+
+.preview-classic small {
+  font-size: 0.46em;
+  line-height: 1.4;
 }
 
 .preview-vhs {
@@ -1588,46 +2188,68 @@ h2 {
   background:
     repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.3) 2px 3px),
     linear-gradient(135deg, #1a2a6c, #3b2a62 70%, #11163d);
-  font-family: 'Lucida Console', ui-monospace, monospace;
+  font-family: 'VT323', monospace;
   color: #fff;
-  text-shadow: 0.06em 0 rgb(255 40 80 / 0.6), -0.06em 0 rgb(40 220 255 / 0.6);
+  text-shadow: 0.08em 0.08em 0 #000;
+  text-transform: uppercase;
 }
 
 .preview-vhs b {
-  font-size: 1.05em;
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  font-size: 1.6em;
+  line-height: 1;
+}
+
+.preview-vhs b .osd-triangle {
+  width: 0.5em;
+  height: 0.6em;
+}
+
+.preview-vhs small {
+  font-size: 1.15em;
 }
 
 .preview-modern {
   align-content: start;
   justify-items: end;
   background: linear-gradient(135deg, #3b4a78, #1c2338);
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-sans);
 }
 
 .preview-pill {
   display: flex;
   align-items: center;
   gap: 0.4em;
-  padding: 0.2em 0.6em 0.2em 0.2em;
+  padding: 0.2em 0.7em 0.2em 0.2em;
   border-radius: 99px;
   background: rgb(10 12 20 / 0.7);
   color: #fff;
+  font-size: 0.85em;
+}
+
+.preview-pill small {
+  font-size: 0.78em;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .preview-pill b {
   display: grid;
   place-items: center;
-  width: 1.5em;
-  height: 1.5em;
+  width: 1.55em;
+  height: 1.55em;
   border-radius: 50%;
   background: #8aa4ff;
   color: #0a1233;
-  font-size: 0.8em;
+  font-size: 0.85em;
+  font-weight: 800;
 }
 
 .preview-custom {
   place-items: center;
-  border: calc(0.15 * var(--u)) dashed rgb(255 255 255 / 0.3);
+  border: calc(0.13 * var(--u)) dashed rgb(255 255 255 / 0.3);
   background: transparent;
   color: var(--ov-dim);
 }
@@ -1638,7 +2260,7 @@ h2 {
 }
 
 .theme-card:focus .preview-custom {
-  border-color: rgb(18 20 29 / 0.3);
+  border-color: rgb(0 0 0 / 0.3);
   color: var(--ov-on-focus-dim);
 }
 
@@ -1651,34 +2273,40 @@ h2 {
 .about-lib {
   display: grid;
   gap: calc(0.15 * var(--u));
-  margin: calc(0.2 * var(--u)) calc(0.4 * var(--u));
+  margin: calc(0.2 * var(--u)) calc(0.3 * var(--u));
 }
 
 .about-lib strong {
-  font-size: 1.25em;
+  font-size: calc(var(--fs-label) * 1.2);
+  font-weight: var(--fw-display);
+  text-transform: var(--tt);
 }
 
 .about-lib span {
+  font-family: var(--ff-body);
   color: var(--ov-dim);
-  font-size: 0.82em;
+  font-size: calc(var(--fs-meta) * 1.1);
 }
 
 .about-keys {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: calc(0.45 * var(--u)) calc(1 * var(--u));
-  margin: 0 calc(0.4 * var(--u));
-  font-size: 0.85em;
+  margin: 0 calc(0.3 * var(--u));
+  font-size: var(--fs-label);
 }
 
 .about-keys dt {
-  font-weight: 700;
-  color: var(--accent);
+  font-weight: var(--fw-display);
+  color: var(--ov-accent);
   white-space: nowrap;
+  text-transform: var(--tt);
 }
 
 .about-keys dd {
   margin: 0;
+  font-family: var(--ff-body);
+  font-size: 0.85em;
   color: var(--ov-dim);
 }
 
@@ -1692,12 +2320,7 @@ h2 {
   height: calc(1.6 * var(--u));
 }
 
-.icon {
-  display: block;
-  flex: none;
-}
-
-/* --- Corner buttons on the TV (mouse only) ------------------------------- */
+/* --- Corner buttons on the TV (mouse only) ----------------------------------------------------------- */
 .tv-corner-buttons {
   position: absolute;
   top: calc(1.2 * var(--u));
@@ -1714,191 +2337,9 @@ h2 {
   pointer-events: auto;
 }
 
-/* ==========================================================================
- * On-screen display skins (settings `osdSkin`, set by the theme).
- * The default look (classic) is the base .osd-* rules above.
- * ========================================================================== */
-.osd-play,
-.osd-timecode,
-.osd-badge {
-  display: contents;
-}
-
-/* Fita VHS: white blocky VCR text with a colour fringe and an occasional jitter. */
-.skin-vhs .osd-channel {
-  left: 6%;
-  right: 6%;
-  top: 7%;
-  grid-template-columns: 1fr auto;
-  justify-items: start;
-  row-gap: 0.15em;
-  color: #fff;
-  font-family: 'Lucida Console', 'Courier New', ui-monospace, monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  text-shadow: 0.07em 0 rgb(255 40 80 / 0.6), -0.07em 0 rgb(40 220 255 / 0.6), 0 0 0.3em rgb(255 255 255 / 0.5);
-  animation: vhs-jitter 3.2s steps(1, end) infinite;
-}
-
-.skin-vhs .osd-play {
-  display: block;
-  grid-column: 1;
-  grid-row: 1;
-  font-size: 2.2em;
-  font-weight: 900;
-}
-
-.skin-vhs .osd-number {
-  grid-column: 2;
-  grid-row: 1;
-  justify-self: end;
-  font-size: 2.2em;
-}
-
-.skin-vhs .osd-name {
-  grid-column: 1;
-  grid-row: 2;
-  font-size: 1.1em;
-}
-
-.skin-vhs .osd-timecode {
-  display: block;
-  grid-column: 2;
-  grid-row: 2;
-  justify-self: end;
-  font-size: 1.1em;
-  font-variant-numeric: tabular-nums;
-}
-
-@keyframes vhs-jitter {
-  0%,
-  88%,
-  100% {
-    transform: none;
-  }
-  90% {
-    transform: translate(0.12em, -0.04em) skewX(-2deg);
-  }
-  93% {
-    transform: translate(-0.1em, 0.05em);
-  }
-}
-
-.skin-vhs .osd-clock {
-  right: 6%;
-  left: auto;
-  top: auto;
-  bottom: 7%;
-  color: #fff;
-  font-family: 'Lucida Console', 'Courier New', ui-monospace, monospace;
-  text-shadow: 0.07em 0 rgb(255 40 80 / 0.6), -0.07em 0 rgb(40 220 255 / 0.6);
-}
-
-.skin-vhs .osd-info {
-  background: linear-gradient(90deg, rgb(8 12 70 / 0.85), rgb(8 12 70 / 0.55));
-  border-left: 0;
-  border-top: 0.2em solid #fff;
-  border-radius: 0;
-  font-family: 'Lucida Console', 'Courier New', ui-monospace, monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.skin-vhs .osd-next {
-  color: rgb(255 255 255 / 0.75);
-}
-
-/* TV moderna: clean sans-serif, rounded translucent pills. */
-.skin-modern .osd-channel {
-  top: 5%;
-  right: 5%;
-  display: block;
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  text-shadow: none;
-}
-
-.skin-modern .osd-badge {
-  display: flex;
-  align-items: center;
-  gap: 0.7em;
-  padding: 0.35em 1.2em 0.35em 0.35em;
-  color: #fff;
-  border-radius: 99px;
-  background: rgb(14 16 24 / 0.74);
-  -webkit-backdrop-filter: blur(0.8rem);
-  backdrop-filter: blur(0.8rem);
-  box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.35);
-}
-
-.skin-modern .osd-number {
-  display: grid;
-  place-items: center;
-  min-width: 2.1em;
-  height: 2.1em;
-  border-radius: 50%;
-  background: var(--accent);
-  color: var(--accent-text);
-  font-size: 1.3em;
-  font-weight: 800;
-  letter-spacing: 0;
-}
-
-.skin-modern .osd-name {
-  font-size: 1.15em;
-  font-weight: 600;
-}
-
-.skin-modern .osd-clock {
-  top: 5%;
-  left: 5%;
-  padding: 0.25em 0.9em;
-  border-radius: 99px;
-  background: rgb(14 16 24 / 0.74);
-  -webkit-backdrop-filter: blur(0.8rem);
-  backdrop-filter: blur(0.8rem);
-  color: #fff;
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  font-size: 1.2em;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-shadow: none;
-}
-
-.skin-modern .osd-info {
-  left: 5%;
-  right: 5%;
-  bottom: 6%;
-  border-left: 0;
-  border-radius: 1.4rem;
-  background: rgb(14 16 24 / 0.74);
-  -webkit-backdrop-filter: blur(1rem);
-  backdrop-filter: blur(1rem);
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.35);
-}
-
-.skin-modern .tv-tuning {
-  border-radius: 99px;
-  font-family: system-ui, sans-serif;
-}
-
-.skin-modern .offair-card {
-  border: 0;
-  border-radius: 3cqmin;
-  background: rgb(14 16 24 / 0.88);
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-.skin-vhs .offair-card {
-  background: rgb(8 12 90 / 0.88);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .overlay *,
-  .overlay-scrim,
-  .skin-vhs .osd-channel {
+  .overlay-scrim {
     animation: none !important;
   }
 }

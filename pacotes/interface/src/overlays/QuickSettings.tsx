@@ -110,7 +110,7 @@ export function QuickSettings({ channels, onAll, onBack }: Props) {
         ))}
         <div className="qs-item qs-all">
           <button data-nav data-tile="all" className="qs-tile" onClick={onAll}>
-            <Icon name="gear" className="qs-icon" />
+            <Icon name="settings" className="qs-icon" />
             <span className="qs-value">Todas as configurações</span>
           </button>
         </div>

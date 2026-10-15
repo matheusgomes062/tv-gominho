@@ -14,6 +14,7 @@ import {
 } from '../sources/folder';
 import type { BrowserLibrary } from '../sources/types';
 import { WarningList } from './Warnings';
+import { Icon } from '../components/Icon';
 
 interface Props {
   onOpen(source: BrowserLibrary, library: Library): void;
@@ -98,11 +99,11 @@ export function Welcome({ onOpen }: Props) {
           <div className="welcome-actions">
             {saved && (
               <button data-nav className="button primary" onClick={() => reopen(saved)}>
-                Abrir “{saved.name}”
+                <Icon name="play" /> Abrir “{saved.name}”
               </button>
             )}
             <button data-nav className={`button ${saved ? '' : 'primary'}`} onClick={choose}>
-              {saved ? 'Escolher outra pasta' : 'Escolher biblioteca'}
+              <Icon name="folder" /> {saved ? 'Escolher outra pasta' : 'Escolher biblioteca'}
             </button>
             {import.meta.env.DEV && (
               <button data-nav className="button" onClick={() => load(openDevLibrary)}>

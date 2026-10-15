@@ -36,7 +36,11 @@ interface Props {
 export function ChannelOsd({ skin, number, name, video }: Props) {
   return (
     <div className="osd-channel">
-      {skin === 'vhs' && <span className="osd-play">PLAY ▶</span>}
+      {skin === 'vhs' && (
+        <span className="osd-play">
+          PLAY<i className="osd-triangle" />
+        </span>
+      )}
       {skin === 'modern' ? (
         <span className="osd-badge">
           <span className="osd-number">{pad(number)}</span>

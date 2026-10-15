@@ -86,7 +86,7 @@ export function buildDefs(channels: Schedule[], startChannel: string | null): Re
       key: 'osdSkin',
       label: 'Estilo dos textos na tela',
       hint: 'Número do canal, barra de informações e relógio.',
-      icon: 'tv',
+      icon: 'text',
       kind: 'select',
       options: [
         { value: 'classic', label: 'TV antiga' },
@@ -141,7 +141,7 @@ export function buildDefs(channels: Schedule[], startChannel: string | null): Re
     def({
       key: 'crt.intensity',
       label: 'Intensidade do efeito',
-      icon: 'tube',
+      icon: 'intensity',
       kind: 'select',
       options: [
         { value: 'soft', label: 'Suave' },
@@ -167,7 +167,7 @@ export function buildDefs(channels: Schedule[], startChannel: string | null): Re
     def({
       key: 'crt.scanlines',
       label: 'Linhas de varredura',
-      icon: 'tube',
+      icon: 'scanlines',
       kind: 'switch',
       options: ON_OFF,
       dimmed: (s) => !s.crt.enabled,
@@ -202,7 +202,7 @@ export function buildDefs(channels: Schedule[], startChannel: string | null): Re
     def({
       key: 'interstitials',
       label: 'Vinhetas',
-      icon: 'tv',
+      icon: 'interstitials',
       kind: 'switch',
       options: ON_OFF,
       get: (s) => s.interstitials,
@@ -222,7 +222,7 @@ export function buildDefs(channels: Schedule[], startChannel: string | null): Re
     def({
       key: 'startMode',
       label: 'Ao abrir, mostrar',
-      icon: 'tv',
+      icon: 'power',
       kind: 'select',
       options: [
         { value: 'tv', label: 'TV' },
@@ -235,7 +235,7 @@ export function buildDefs(channels: Schedule[], startChannel: string | null): Re
       key: 'startChannel',
       label: 'Canal inicial',
       hint: 'Só vale quando você ainda não escolheu um canal neste navegador.',
-      icon: 'tv',
+      icon: 'channel',
       kind: 'select',
       options: channelOptions,
       get: (s) => s.startChannel,
@@ -253,7 +253,7 @@ export function buildDefs(channels: Schedule[], startChannel: string | null): Re
     def({
       key: 'channelChangeStatic',
       label: 'Chuvisco ao trocar de canal',
-      icon: 'tv',
+      icon: 'snow',
       kind: 'switch',
       options: ON_OFF,
       get: (s) => s.channelChangeStatic,
@@ -264,7 +264,7 @@ export function buildDefs(channels: Schedule[], startChannel: string | null): Re
       key: 'adBreaks.every',
       label: 'Intervalo a cada',
       hint: 'Minutos de episódio entre um intervalo e outro. Desligado: só entre episódios.',
-      icon: 'ads',
+      icon: 'timer',
       kind: 'range',
       options: [],
       range: {
@@ -291,7 +291,7 @@ export function buildDefs(channels: Schedule[], startChannel: string | null): Re
     def({
       key: 'adBreaks.afterEpisode',
       label: 'Intervalo depois de cada episódio',
-      icon: 'ads',
+      icon: 'episode',
       kind: 'switch',
       options: ON_OFF,
       dimmed: (s) => !s.commercials,

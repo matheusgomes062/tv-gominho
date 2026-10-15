@@ -1,12 +1,14 @@
 import type { LibraryWarning } from '@tv-chuvisco/nucleo';
 import { useEffect } from 'react';
 import { focusFirst, useSpatialNav } from '../nav';
+import { Icon } from '../components/Icon';
 
 export function WarningList({ warnings }: { warnings: LibraryWarning[] }) {
   return (
     <ul className="warning-list">
       {warnings.map((warning, i) => (
         <li key={i}>
+          <Icon name="alert" className="warning-icon" />
           {warning.path && <code>{warning.path}</code>}
           <span>{warning.message}</span>
         </li>
@@ -22,7 +24,7 @@ export function Warnings({ warnings, onBack }: { warnings: LibraryWarning[]; onB
     <main className="page">
       <header className="page-header">
         <button data-nav className="button" onClick={onBack}>
-          ← Voltar
+          <Icon name="back" /> Voltar
         </button>
         <h1>Avisos da biblioteca</h1>
       </header>

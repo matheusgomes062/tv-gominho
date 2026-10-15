@@ -63,6 +63,7 @@ export function SettingsPanel({ channels, libraryName, initialCategory = 'theme'
       {/* The keydown here only intercepts keys that move between the two columns. */}
       <div className="panel" onKeyDown={onKeyDown}>
         <header className="panel-header">
+          <Icon name="settings" />
           <h1>Configurações</h1>
         </header>
 
@@ -198,6 +199,7 @@ function SettingRow({ item, origin, apply }: { item: SettingDef; origin: string 
         } else apply(cycled(item, settings, 1));
       }}
     >
+      <Icon name={item.icon} className="row-lead" />
       <span className="row-text">
         <span className="row-label">{item.label}</span>
         {item.hint && <span className="row-meta">{item.hint}</span>}
@@ -244,7 +246,9 @@ function SettingRow({ item, origin, apply }: { item: SettingDef; origin: string 
               if (event.currentTarget.hasPointerCapture(event.pointerId)) dragTo(event);
             }}
           >
-            <span className="range-fill" style={{ width: `${rangeFraction(item, settings) * 100}%` }} />
+            <span className="range-rail">
+              <span className="range-fill" style={{ width: `${rangeFraction(item, settings) * 100}%` }} />
+            </span>
             <span className="range-thumb" style={{ left: `${rangeFraction(item, settings) * 100}%` }} />
           </span>
         </>
@@ -265,7 +269,9 @@ function ThemePreview({ theme }: { theme: Theme }) {
       )}
       {theme === 'vhs' && (
         <>
-          <b>PLAY ▶</b>
+          <b>
+            PLAY<i className="osd-triangle" />
+          </b>
           <small>SP 0:12:04</small>
         </>
       )}
@@ -275,7 +281,7 @@ function ThemePreview({ theme }: { theme: Theme }) {
           <small>TV Globinho</small>
         </span>
       )}
-      {theme === 'custom' && <Icon name="gear" />}
+      {theme === 'custom' && <Icon name="settings" />}
     </span>
   );
 }

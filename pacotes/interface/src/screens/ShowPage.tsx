@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useFileUrl } from '../components/useFileUrl';
 import { focusFirst, useSpatialNav } from '../nav';
 import type { BrowserLibrary } from '../sources/types';
+import { Icon } from '../components/Icon';
 
 interface Props {
   source: BrowserLibrary;
@@ -30,7 +31,7 @@ export function ShowPage({ source, show, focusEpisode, onPlay, onBack }: Props) 
       {backdrop && <div className="show-backdrop" style={{ backgroundImage: `url("${backdrop}")` }} />}
       <header className="page-header">
         <button data-nav className="button" onClick={onBack}>
-          ← Biblioteca
+          <Icon name="back" /> Biblioteca
         </button>
       </header>
       <section className="show-info">
