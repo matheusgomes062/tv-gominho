@@ -41,7 +41,15 @@ function devLibrary(): Plugin {
       // seeking through ~100 videos aborts many requests, and every aborted read stream must
       // be closed (or the server runs out of file handles and crashes with EMFILE).
       server.middlewares.use('/__biblioteca/arquivo/', async (req, res) => {
-        const relative = decodeURIComponent((req.url ?? '').split('?')[0]!.replace(/^\/+/, ''));
+        let relative: string;
+        try {
+          relative = decodeURIComponent((req.url ?? '').split('?')[0]!.replace(/^\/+/, ''));
+        } catch {
+          // Malformed %-escape: a throw here would be an unhandled rejection and stop the server.
+          res.statusCode = 400;
+          res.end();
+          return;
+        }
         const file = path.resolve(dir, relative);
         const inside = path.relative(dir, file);
         const info = inside && !inside.startsWith('..') && !path.isAbsolute(inside) ? await stat(file).catch(() => null) : null;
@@ -57,8 +65,13 @@ function devLibrary(): Plugin {
         let end = info.size - 1;
         const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '');
         if (range) {
-          if (range[1]) start = Number(range[1]);
-          if (range[2]) end = range[1] ? Math.min(Number(range[2]), end) : info.size - Number(range[2]);
+          if (range[1]) {
+            start = Number(range[1]);
+            if (range[2]) end = Math.min(Number(range[2]), end);
+          } else if (range[2]) {
+            // Suffix range "bytes=-N": the last N bytes.
+            start = Math.max(0, info.size - Number(range[2]));
+          }
           if (start > end || start >= info.size) {
             res.statusCode = 416;
             res.setHeader('Content-Range', `bytes */${info.size}`);
