@@ -1,4 +1,4 @@
-import { AUTO_SCHEDULE_ID, scanLibrary, type LibrarySource } from '@tv-chuvisco/nucleo';
+import { AUTO_SCHEDULE_ID, scanLibrary, type LibrarySource } from '@tv-gominho/nucleo';
 import { describe, expect, it } from 'vitest';
 import { chooseSchedule, pendriveCommand } from './pendrive';
 

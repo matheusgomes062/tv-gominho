@@ -1,4 +1,4 @@
-import { scanLibrary, type Library, type LibraryWarning } from '@tv-chuvisco/nucleo';
+import { scanLibrary, type Library, type LibraryWarning } from '@tv-gominho/nucleo';
 import { useEffect, useRef, useState } from 'react';
 import { Static } from '../components/Static';
 import { focusFirst, useSpatialNav } from '../nav';
@@ -89,7 +89,7 @@ export function Welcome({ onOpen }: Props) {
       <Static className="welcome-static" />
       <div className="welcome-card">
         <h1 className="logo">
-          TV <span>Chuvisco</span>
+          TV <span>Gominho</span>
         </h1>
         <p className="tagline">Os desenhos das manhãs da sua infância, como na TV.</p>
 

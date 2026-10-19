@@ -13,7 +13,7 @@ export default defineConfig({
     emptyOutDir: true,
     rolldownOptions: {
       output: {
-        entryFileNames: 'tv-chuvisco.mjs',
+        entryFileNames: 'tv-gominho.mjs',
         banner: '#!/usr/bin/env node',
       },
     },

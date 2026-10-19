@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { resolveForWrite } from './node-source';
 
-const base = mkdtempSync(path.join(tmpdir(), 'tv-chuvisco-write-'));
+const base = mkdtempSync(path.join(tmpdir(), 'tv-gominho-write-'));
 const library = path.join(base, 'biblioteca');
 const outside = path.join(base, 'fora');
 mkdirSync(path.join(library, 'programas', 'a'), { recursive: true });

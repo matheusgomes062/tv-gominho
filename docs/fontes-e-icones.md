@@ -48,7 +48,7 @@ Os ícones são do **Lucide** (`lucide-react`), licença **ISC** (https://lucide
 
 ## Como trocar ou acrescentar uma fonte
 
-1. `npm i -w @tv-chuvisco/interface @fontsource/<nome>` (confira que a licença do pacote é OFL ou Apache 2.0; **não** use fontes sem licença clara).
+1. `npm i -w @tv-gominho/interface @fontsource/<nome>` (confira que a licença do pacote é OFL ou Apache 2.0; **não** use fontes sem licença clara).
 2. Importe só o arquivo `latin-<peso>.css` em `pacotes/interface/src/fonts.ts`.
 3. Aponte a fonte nas variáveis de cada estilo em `styles.css` (`--ff-osd` só para dígitos, `--ff-osd-title` para nomes e títulos, `--ff-osd-text`, `--ff-display`, `--ff-body`). Confira que a fonte tem as maiúsculas acentuadas do português (ÁÀÂÃÉÊÍÓÔÕÚÇ) *desenhadas* como maiúsculas, não só presentes no arquivo. Com o tubo WebGL ligado o OSD é desenhado em canvas por `components/osd-painter.ts`, que tem a própria tabela de fontes (`OSD_FONTS`): atualize-a também (um teste confere que as duas batem).
 4. Copie o `LICENSE` do pacote para `pacotes/interface/public/licencas/` e atualize esta página.

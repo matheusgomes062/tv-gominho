@@ -1,4 +1,4 @@
-import { scanLibrary, type LibrarySource, type Library } from '@tv-chuvisco/nucleo';
+import { scanLibrary, type LibrarySource, type Library } from '@tv-gominho/nucleo';
 import { describe, expect, it } from 'vitest';
 import { airingDates, buildRundown, chooseFps, planTimelines, type DurationSource, type RundownSettings } from './rundown';
 

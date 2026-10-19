@@ -20,11 +20,11 @@ export function parseOptions<const T extends OptionsConfig>(argv: string[], opti
     const { code, message } = error as NodeJS.ErrnoException;
     // parseArgs messages quote the option first: "Unknown option '--x'", "Option '--ffmpeg <value>' argument missing".
     const flag = /'(-[^' ]+)/.exec(message)?.[1] ?? 'desconhecida';
-    if (code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION') throw new UsageError(`Opção desconhecida: ${flag}. Veja "tv-chuvisco ajuda".`);
+    if (code === 'ERR_PARSE_ARGS_UNKNOWN_OPTION') throw new UsageError(`Opção desconhecida: ${flag}. Veja "tv-gominho ajuda".`);
     if (code === 'ERR_PARSE_ARGS_INVALID_OPTION_VALUE') {
       throw new UsageError(/missing/.test(message) ? `A opção ${flag} precisa de um valor.` : `A opção ${flag} não aceita um valor.`);
     }
-    throw new UsageError('Argumentos inválidos. Veja "tv-chuvisco ajuda".');
+    throw new UsageError('Argumentos inválidos. Veja "tv-gominho ajuda".');
   }
 }
 

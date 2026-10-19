@@ -1,4 +1,4 @@
-import { formatTimeOfDay, type Resume, type Weekday } from '@tv-chuvisco/nucleo';
+import { formatTimeOfDay, type Resume, type Weekday } from '@tv-gominho/nucleo';
 import { useEffect, useState } from 'react';
 
 const WEEKDAY_NAMES: Record<Weekday, string> = {

@@ -1,4 +1,4 @@
-import type { LibrarySource } from '@tv-chuvisco/nucleo';
+import type { LibrarySource } from '@tv-gominho/nucleo';
 
 /** A library folder opened in the browser. */
 export interface BrowserLibrary extends LibrarySource {

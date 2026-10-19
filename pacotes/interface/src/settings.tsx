@@ -6,14 +6,14 @@ import {
   type Library,
   type PartialSettings,
   type Settings,
-} from '@tv-chuvisco/nucleo';
+} from '@tv-gominho/nucleo';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 // Effective settings = DEFAULT_SETTINGS < the library's configuracoes.yaml
 // (already merged into `library.settings`) < the user's own choices, which are
 // saved in the browser per library name.
 
-const STORAGE_PREFIX = 'tv-chuvisco.config.';
+const STORAGE_PREFIX = 'tv-gominho.config.';
 
 export interface SettingsApi {
   /** What the app should obey right now. */

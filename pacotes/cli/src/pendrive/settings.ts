@@ -1,7 +1,7 @@
 // The settings of a pendrive job: the library's (configuracoes.yaml over the defaults) with the command-line
 // flags on top, the same layering the app uses (docs/configuracoes.md). Pure, so it is tested without ffmpeg.
 
-import { mergeSettings, type AspectMode, type CrtIntensity, type PartialSettings, type Settings } from '@tv-chuvisco/nucleo';
+import { mergeSettings, type AspectMode, type CrtIntensity, type PartialSettings, type Settings } from '@tv-gominho/nucleo';
 import { UsageError } from '../errors';
 import { intOption } from '../options';
 import { estimateBytes } from './parts';

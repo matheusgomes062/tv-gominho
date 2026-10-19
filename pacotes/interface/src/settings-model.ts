@@ -1,4 +1,4 @@
-import { AD_BREAK_LIMITS, applyTheme, type PartialSettings, type Schedule, type Settings, type Theme } from '@tv-chuvisco/nucleo';
+import { AD_BREAK_LIMITS, applyTheme, type PartialSettings, type Schedule, type Settings, type Theme } from '@tv-gominho/nucleo';
 import type { IconName } from './components/Icon';
 
 // One description of every setting the overlays show: the quick bar and the full panel

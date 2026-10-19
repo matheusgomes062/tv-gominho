@@ -1,4 +1,4 @@
-import { applyTheme, type PartialSettings, type Schedule, type Theme } from '@tv-chuvisco/nucleo';
+import { applyTheme, type PartialSettings, type Schedule, type Theme } from '@tv-gominho/nucleo';
 import { useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { Icon } from '../components/Icon';
 import { KeyHints, Overlay } from '../components/Overlay';
@@ -340,7 +340,7 @@ function About({
   return (
     <div className="about">
       <p className="about-lib">
-        <strong>TV Chuvisco</strong>
+        <strong>TV Gominho</strong>
         <span>
           Biblioteca “{libraryName}” · {channelCount} {channelCount === 1 ? 'canal' : 'canais'}
         </span>

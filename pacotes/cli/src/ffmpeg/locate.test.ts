@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { ffmpegCandidates, findOnPath, resolveExecutable, siblingProbe } from './locate';
 
-const bin = mkdtempSync(path.join(tmpdir(), 'tv-chuvisco-bin-'));
+const bin = mkdtempSync(path.join(tmpdir(), 'tv-gominho-bin-'));
 const platform = process.platform;
 const ffmpegName = platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
 writeFileSync(path.join(bin, ffmpegName), '');

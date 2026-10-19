@@ -424,7 +424,7 @@ function musicExpression(ad, finalStart) {
 // ---------------------------------------------------------------------- main
 
 function makeAd(ad, tts) {
-  const work = mkdtempSync(path.join(tmpdir(), 'tv-chuvisco-ad-'));
+  const work = mkdtempSync(path.join(tmpdir(), 'tv-gominho-ad-'));
   try {
     // 1. Narration clips and scene timing.
     const jobs = [];

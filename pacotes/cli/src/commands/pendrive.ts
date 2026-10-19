@@ -1,6 +1,6 @@
 import { mkdir, readdir, stat, statfs, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { AUTO_SCHEDULE_ID, createAutoSchedule, findChannelIndex, localIsoDate, scanLibrary, type Library, type Schedule, type Settings } from '@tv-chuvisco/nucleo';
+import { AUTO_SCHEDULE_ID, createAutoSchedule, findChannelIndex, localIsoDate, scanLibrary, type Library, type Schedule, type Settings } from '@tv-gominho/nucleo';
 import { CliError, UsageError } from '../errors';
 import { locateFfmpeg, probe, type FfmpegTools, type MediaInfo } from '../ffmpeg';
 import { openNodeLibrary, type NodeLibrarySource } from '../node-source';
@@ -50,7 +50,7 @@ const OPTIONS = {
 } as const;
 
 const HELP = `Uso:
-  tv-chuvisco pendrive <biblioteca> --destino <pasta> [opções]
+  tv-gominho pendrive <biblioteca> --destino <pasta> [opções]
 
 Gera arquivos MP4 comuns com a programação já montada, para tocar em qualquer TV pelo
 USB, sem instalar nada. Usa o mesmo motor de grade do app: cada dia começa pelo primeiro
@@ -105,9 +105,9 @@ Vídeo gerado: MP4, H.264 High nível 4.0, 1280x720, 25 ou 30 quadros por segund
 maioria dos vídeos já tem), som AAC estéreo 48 kHz com o volume igualado.
 
 Exemplos:
-  tv-chuvisco pendrive ./biblioteca --destino E:\\ --simular
-  tv-chuvisco pendrive ./biblioteca --destino E:\\ --grade globinho-2003 --dias 5
-  tv-chuvisco pendrive ./biblioteca -d E:\\ --sem-comerciais --crt suave --copiar-biblioteca
+  tv-gominho pendrive ./biblioteca --destino E:\\ --simular
+  tv-gominho pendrive ./biblioteca --destino E:\\ --grade globinho-2003 --dias 5
+  tv-gominho pendrive ./biblioteca -d E:\\ --sem-comerciais --crt suave --copiar-biblioteca
 
 Ctrl+C interrompe com segurança: arquivos pela metade são apagados e o que já foi
 renderizado fica guardado em ${TEMP_FOLDER}/. Rodar de novo continua de onde parou.`;
@@ -123,7 +123,7 @@ export const pendriveCommand: Command = {
       return 0;
     }
     if (positionals.length !== 1) {
-      throw new UsageError('Informe a pasta da biblioteca: tv-chuvisco pendrive <biblioteca> --destino <pasta>. Veja "tv-chuvisco pendrive --ajuda".');
+      throw new UsageError('Informe a pasta da biblioteca: tv-gominho pendrive <biblioteca> --destino <pasta>. Veja "tv-gominho pendrive --ajuda".');
     }
     if (!values.destino && !values.simular) {
       throw new UsageError('Informe onde gravar com --destino <pasta> (ou use --simular para só ver o que seria gerado).');

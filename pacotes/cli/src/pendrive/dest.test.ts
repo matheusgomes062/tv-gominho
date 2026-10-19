@@ -6,7 +6,7 @@ import { openNodeLibrary } from '../node-source';
 import { copyLibrary, filesToCopy, isUpToDate } from './copy';
 import { checkDestination, destPath, isInside } from './dest';
 
-const base = mkdtempSync(path.join(tmpdir(), 'tv-chuvisco-dest-'));
+const base = mkdtempSync(path.join(tmpdir(), 'tv-gominho-dest-'));
 const library = path.join(base, 'biblioteca');
 const stick = path.join(base, 'pendrive');
 const outside = path.join(base, 'fora');

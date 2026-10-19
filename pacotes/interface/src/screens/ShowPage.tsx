@@ -1,4 +1,4 @@
-import type { Show } from '@tv-chuvisco/nucleo';
+import type { Show } from '@tv-gominho/nucleo';
 import { useEffect } from 'react';
 import { useFileUrl } from '../components/useFileUrl';
 import { focusFirst, useSpatialNav } from '../nav';

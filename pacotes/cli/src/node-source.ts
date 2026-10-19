@@ -1,6 +1,6 @@
 import { lstat, readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
-import type { LibrarySource } from '@tv-chuvisco/nucleo';
+import type { LibrarySource } from '@tv-gominho/nucleo';
 import { CliError } from './errors';
 
 // Folders that USB sticks and Windows drives carry and that can't be read (same list as the browser).

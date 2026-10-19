@@ -1,16 +1,16 @@
 {
-  "name": "@tv-chuvisco/cli",
+  "name": "@tv-gominho/cli",
   "private": true,
   "license": "GPL-3.0-only",
   "type": "module",
   "bin": {
-    "tv-chuvisco": "./dist/tv-chuvisco.mjs"
+    "tv-gominho": "./dist/tv-gominho.mjs"
   },
   "scripts": {
     "build": "vite build --logLevel warn"
   },
   "dependencies": {
-    "@tv-chuvisco/nucleo": "*"
+    "@tv-gominho/nucleo": "*"
   },
   "devDependencies": {
     "vite": "^8.3.4"

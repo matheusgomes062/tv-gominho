@@ -5,7 +5,7 @@
 // All geometry is in CSS pixels of the tube (`.tv-screen`), `em` being the root font size, exactly as in the
 // stylesheet; the canvas is scaled by `metrics.scale` to the WebGL drawing buffer.
 
-import type { OsdSkin } from '@tv-chuvisco/nucleo';
+import type { OsdSkin } from '@tv-gominho/nucleo';
 
 export interface OsdState {
   skin: OsdSkin;

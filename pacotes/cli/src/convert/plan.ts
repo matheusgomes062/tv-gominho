@@ -1,4 +1,4 @@
-import { CONVERTIBLE_VIDEO, PLAYABLE_VIDEO, basename, dirname, extension, stripExtension } from '@tv-chuvisco/nucleo';
+import { CONVERTIBLE_VIDEO, PLAYABLE_VIDEO, basename, dirname, extension, stripExtension } from '@tv-gominho/nucleo';
 import type { MediaInfo } from '../ffmpeg/probe';
 
 // Decisions are kept free of I/O (they only read probe data), so they are unit-tested without ffmpeg.

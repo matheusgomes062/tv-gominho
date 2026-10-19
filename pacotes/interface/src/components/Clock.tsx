@@ -1,4 +1,4 @@
-import { formatTimeOfDay, secondsSinceMidnight } from '@tv-chuvisco/nucleo';
+import { formatTimeOfDay, secondsSinceMidnight } from '@tv-gominho/nucleo';
 import { useEffect, useState } from 'react';
 
 /** The current time as HH:MM, refreshed while `enabled`. */

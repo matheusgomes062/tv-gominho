@@ -18,7 +18,7 @@ import {
   type Schedule,
   type Timeline,
   type TimelineEntry,
-} from '@tv-chuvisco/nucleo';
+} from '@tv-gominho/nucleo';
 
 export interface RundownSettings {
   /** Play bumpers (vinhetas), also as gap fillers. */

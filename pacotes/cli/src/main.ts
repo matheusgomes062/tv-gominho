@@ -13,7 +13,7 @@ async function main(argv: string[]): Promise<number> {
   }
 
   const command = commands.find((candidate) => candidate.name === name);
-  if (!command) throw new UsageError(`Comando desconhecido: "${name}". Veja "tv-chuvisco ajuda".`);
+  if (!command) throw new UsageError(`Comando desconhecido: "${name}". Veja "tv-gominho ajuda".`);
 
   // Ctrl+C asks the running command to stop and clean up; a second one quits right away.
   const controller = new AbortController();

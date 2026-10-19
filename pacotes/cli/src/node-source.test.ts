@@ -2,13 +2,13 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { scanLibrary } from '@tv-chuvisco/nucleo';
+import { scanLibrary } from '@tv-gominho/nucleo';
 import { openNodeLibrary, resolveInside } from './node-source';
 
 let dir: string;
 
 beforeAll(async () => {
-  dir = await mkdtemp(path.join(tmpdir(), 'tv-chuvisco-'));
+  dir = await mkdtemp(path.join(tmpdir(), 'tv-gominho-'));
   const files = [
     'biblioteca/programas/show/programa.yaml',
     'biblioteca/programas/show/episodios/001 - Um.mp4',

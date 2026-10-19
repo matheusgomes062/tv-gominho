@@ -7,7 +7,7 @@ const SKIPPED_FOLDERS = new Set(['$recycle.bin', 'system volume information', 'n
 export const canRememberFolder = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
 
 export async function pickFolder(): Promise<FileSystemDirectoryHandle> {
-  return window.showDirectoryPicker!({ id: 'tv-chuvisco-biblioteca', mode: 'read' });
+  return window.showDirectoryPicker!({ id: 'tv-gominho-biblioteca', mode: 'read' });
 }
 
 /** Reads every file path in a folder picked with showDirectoryPicker. */
@@ -65,7 +65,7 @@ export function openFileList(list: FileList): BrowserLibrary | null {
 }
 
 // The last folder handle is kept in IndexedDB so "Abrir de novo" works after a reload.
-const DB_NAME = 'tv-chuvisco';
+const DB_NAME = 'tv-gominho';
 const STORE = 'pastas';
 const KEY = 'biblioteca';
 

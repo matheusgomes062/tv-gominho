@@ -76,7 +76,7 @@ export function buildReadme(input: ReadmeInput): string {
   const totalSeconds = input.days.reduce((sum, day) => sum + day.seconds, 0);
 
   const lines: string[] = [
-    'TV CHUVISCO - PENDRIVE',
+    'TV GOMINHO - PENDRIVE',
     '======================',
     '',
     `Programação: ${input.scheduleName}`,
@@ -110,14 +110,14 @@ export function buildReadme(input: ReadmeInput): string {
     ...settingsSummary(input).map((line) => `${line}.`),
     '',
     'Para mudar qualquer uma dessas opções (por exemplo, tirar o efeito de TV de tubo), é preciso gerar o pendrive de novo,',
-    'com o comando "tv-chuvisco pendrive" (veja docs/pendrive.md no projeto).',
+    'com o comando "tv-gominho pendrive" (veja docs/pendrive.md no projeto).',
     '',
   );
   if (input.libraryCopied) {
     lines.push(
       'TV BOX COM O APLICATIVO',
       '-----------------------',
-      `A pasta "${LIBRARY_FOLDER}" é uma cópia da biblioteca. O aplicativo TV Chuvisco, numa TV Box, usa essa pasta e oferece`,
+      `A pasta "${LIBRARY_FOLDER}" é uma cópia da biblioteca. O aplicativo TV Gominho, numa TV Box, usa essa pasta e oferece`,
       'a experiência completa (relógio, canais, configurações). Numa TV comum, ignore essa pasta.',
       '',
     );
@@ -125,8 +125,8 @@ export function buildReadme(input: ReadmeInput): string {
   lines.push(
     'SOBRE O PROJETO',
     '---------------',
-    `Gerado pelo TV Chuvisco em ${stamp}.`,
-    'O TV Chuvisco é software livre (licença GPL-3.0) e independente: não tem nenhuma ligação com a TV Globo nem com',
+    `Gerado pelo TV Gominho em ${stamp}.`,
+    'O TV Gominho é software livre (licença GPL-3.0) e independente: não tem nenhuma ligação com a TV Globo nem com',
     'qualquer outra emissora. "TV Globinho" é citada apenas para descrever o estilo da programação que ele simula.',
     'Os vídeos que estão neste pendrive vêm da biblioteca de quem o gerou.',
     '',

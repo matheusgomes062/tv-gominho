@@ -1,4 +1,4 @@
-import { createAutoSchedule, createShowChannels, findChannelIndex, type Library } from '@tv-chuvisco/nucleo';
+import { createAutoSchedule, createShowChannels, findChannelIndex, type Library } from '@tv-gominho/nucleo';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Durations } from './media';
 import { LibraryMode } from './screens/LibraryMode';
@@ -31,7 +31,7 @@ type View =
 /** Layers over the live picture (TV or Player), newest last: Back closes the last one. */
 type Overlay = 'menu' | 'quick' | 'settings';
 
-const CHANNEL_KEY = 'tv-chuvisco.canal';
+const CHANNEL_KEY = 'tv-gominho.canal';
 
 function savedChannel(): number | undefined {
   try {

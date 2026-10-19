@@ -49,7 +49,7 @@ describe('buildReadme', () => {
   });
 
   it('credits the tool, the licence and the lack of affiliation', () => {
-    expect(text).toContain('Gerado pelo TV Chuvisco em 14/10/2026 13:05');
+    expect(text).toContain('Gerado pelo TV Gominho em 14/10/2026 13:05');
     expect(text).toContain('GPL-3.0');
     expect(text).toContain('nenhuma ligação com a TV Globo');
   });

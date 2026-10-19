@@ -8,7 +8,7 @@ export const PLAY_FOLDER = 'ASSISTA AQUI';
 export const LIBRARY_FOLDER = 'biblioteca';
 export const README_FILE = 'LEIA-ME.txt';
 /** Work folder inside the destination: rendered pieces, kept until the job ends so a rerun resumes. */
-export const TEMP_FOLDER = '.tv-chuvisco-tmp';
+export const TEMP_FOLDER = '.tv-gominho-tmp';
 
 const FORBIDDEN = /[<>:"/\|?*\u0000-\u001f]/g;
 

@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { mkdir, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { CONVERTIBLE_VIDEO, PLAYABLE_VIDEO, extension, naturalCompare, scanLibrary } from '@tv-chuvisco/nucleo';
+import { CONVERTIBLE_VIDEO, PLAYABLE_VIDEO, extension, naturalCompare, scanLibrary } from '@tv-gominho/nucleo';
 import {
   DEFAULT_LOUDNESS,
   buildConvertArgs,
@@ -46,7 +46,7 @@ const SECTIONS = ['programas', 'vinhetas', 'grades'];
 const PROBE_CONCURRENCY = 4;
 
 const HELP = `Uso:
-  tv-chuvisco converter <biblioteca> [opções]
+  tv-gominho converter <biblioteca> [opções]
 
 Converte para MP4 (H.264 + AAC) os vídeos da biblioteca que o app não toca:
   - formatos antigos (AVI, MKV, WMV, MPG, RMVB, FLV, VOB, TS...);
@@ -81,9 +81,9 @@ Opções:
   --ajuda              mostra esta ajuda
 
 Exemplos:
-  tv-chuvisco converter E:\\biblioteca --simular
-  tv-chuvisco converter ./biblioteca --normalizar-audio
-  tv-chuvisco converter ./biblioteca --preset slow --qualidade 18
+  tv-gominho converter E:\\biblioteca --simular
+  tv-gominho converter ./biblioteca --normalizar-audio
+  tv-gominho converter ./biblioteca --preset slow --qualidade 18
 
 Ctrl+C interrompe com segurança: o arquivo parcial é apagado e nada é movido.
 Rodar de novo continua de onde parou: o que já foi convertido é pulado.`;
@@ -122,7 +122,7 @@ export const converterCommand: Command = {
       return 0;
     }
     if (positionals.length !== 1) {
-      throw new UsageError('Informe a pasta da biblioteca: tv-chuvisco converter <biblioteca>. Veja "tv-chuvisco converter --ajuda".');
+      throw new UsageError('Informe a pasta da biblioteca: tv-gominho converter <biblioteca>. Veja "tv-gominho converter --ajuda".');
     }
     return convert(readSettings(values, positionals[0]!), context);
   },

@@ -17,10 +17,10 @@ const TYPES: Record<string, string> = {
 /**
  * Development only: serves a library folder from disk so the app can be tested
  * without the folder picker. Defaults to exemplo/biblioteca (see `npm run exemplo`);
- * override with TV_CHUVISCO_BIBLIOTECA.
+ * override with TV_GOMINHO_BIBLIOTECA.
  */
 function devLibrary(): Plugin {
-  const dir = path.resolve(process.env.TV_CHUVISCO_BIBLIOTECA ?? path.join(repoRoot, 'exemplo/biblioteca'));
+  const dir = path.resolve(process.env.TV_GOMINHO_BIBLIOTECA ?? path.join(repoRoot, 'exemplo/biblioteca'));
 
   async function walk(base: string, prefix = ''): Promise<string[]> {
     const files: string[] = [];
@@ -34,7 +34,7 @@ function devLibrary(): Plugin {
   }
 
   return {
-    name: 'tv-chuvisco-dev-library',
+    name: 'tv-gominho-dev-library',
     apply: 'serve',
     configureServer(server) {
       // Library files, with Range support. Served here rather than through /@fs: a browser

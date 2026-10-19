@@ -1,4 +1,4 @@
-import type { AspectMode, Settings } from '@tv-chuvisco/nucleo';
+import type { AspectMode, Settings } from '@tv-gominho/nucleo';
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { createCrtRenderer, type CrtRenderer, type CrtView } from './crt-renderer';
 import { loadOsdFonts, OSD_FONTS, paintOsd, readOsdColors, type OsdFade, type OsdState } from './osd-painter';

@@ -1,4 +1,4 @@
-import type { LibraryWarning } from '@tv-chuvisco/nucleo';
+import type { LibraryWarning } from '@tv-gominho/nucleo';
 import { useEffect } from 'react';
 import { focusFirst, useSpatialNav } from '../nav';
 import { Icon } from '../components/Icon';

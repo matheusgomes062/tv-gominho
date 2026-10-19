@@ -1,8 +1,8 @@
-# TV Chuvisco
+# TV Gominho
 
 Um player de vídeo livre (FOSS) para reviver as manhãs de desenho como na **TV Globinho**, numa TV antiga: você liga e o desenho já está passando, com vinhetas, intervalos e aquele chuvisco de tubo.
 
-Você coloca os seus próprios episódios em pastas organizadas, escolhe uma grade de programação (por exemplo, "TV Globinho 2003") e a TV Chuvisco cuida do resto.
+Você coloca os seus próprios episódios em pastas organizadas, escolhe uma grade de programação (por exemplo, "TV Globinho 2003") e a TV Gominho cuida do resto.
 
 > **Status:** primeira versão em desenvolvimento: roda no navegador (Chrome/Edge) lendo a pasta da biblioteca do seu computador. Veja o [roteiro](docs/roteiro.md).
 
@@ -73,10 +73,10 @@ O menu, os ajustes rápidos e as configurações são painéis **por cima da ima
 ## Importante
 
 - Este projeto **não distribui episódios, vinhetas nem marcas da Globo**. Cada pessoa usa os próprios arquivos.
-- TV Chuvisco é um projeto independente de fãs, **sem afiliação com a Globo**. "TV Globinho" é marca de seus respectivos donos e aparece aqui só para descrever o que o projeto recria.
+- TV Gominho é um projeto independente de fãs, **sem afiliação com a Globo**. "TV Globinho" é marca de seus respectivos donos e aparece aqui só para descrever o que o projeto recria.
 
 ---
 
 ## English
 
-TV Chuvisco is a FOSS player that recreates the experience of watching *TV Globinho*, a Brazilian kids' TV block, on an old CRT TV. It is an independent fan project, not affiliated with Globo. Users supply their own episode files; the app plays them following a historical broadcast schedule, with bumpers and a CRT effect, or lets you browse them on demand. Documentation is written in Brazilian Portuguese first; see [`docs/`](docs/).
+TV Gominho is a FOSS player that recreates the experience of watching *TV Globinho*, a Brazilian kids' TV block, on an old CRT TV. It is an independent fan project, not affiliated with Globo. Users supply their own episode files; the app plays them following a historical broadcast schedule, with bumpers and a CRT effect, or lets you browse them on demand. Documentation is written in Brazilian Portuguese first; see [`docs/`](docs/).

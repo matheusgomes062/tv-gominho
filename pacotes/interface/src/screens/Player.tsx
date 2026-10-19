@@ -1,4 +1,4 @@
-import type { Show } from '@tv-chuvisco/nucleo';
+import type { Show } from '@tv-gominho/nucleo';
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
 import { Crt } from '../components/Crt';
 import { useFlash } from '../components/useFlash';

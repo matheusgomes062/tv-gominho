@@ -45,7 +45,7 @@ pacotes/
 - **`nucleo`** recebe a lista de arquivos por um "adaptador" (pasta escolhida no navegador, sistema de arquivos do Node, pendrive no Android). Assim, a mesma lógica roda em todo lugar.
 - **Primeira versão:** a `interface` roda sozinha no navegador e lê a pasta da biblioteca direto do computador, sem servidor.
 - **Efeito CRT:** shader WebGL sobre o vídeo na interface. No pendrive, o efeito é aplicado com filtros do ffmpeg na hora de gerar os arquivos.
-- **Formatos de vídeo:** a interface toca MP4 (H.264 + AAC). Arquivos antigos (AVI, MKV, etc.) são convertidos uma vez pela `cli` (`tv-chuvisco converter`, veja [ferramentas.md](ferramentas.md)). O Raspberry Pi e as TV Boxes não têm força para converter em tempo real.
+- **Formatos de vídeo:** a interface toca MP4 (H.264 + AAC). Arquivos antigos (AVI, MKV, etc.) são convertidos uma vez pela `cli` (`tv-gominho converter`, veja [ferramentas.md](ferramentas.md)). O Raspberry Pi e as TV Boxes não têm força para converter em tempo real.
 
 Pilha: TypeScript, React + Vite, monorepo com npm workspaces. Veja as decisões em [roteiro.md](roteiro.md).
 
@@ -56,4 +56,4 @@ Pilha: TypeScript, React + Vite, monorepo com npm workspaces. Veja as decisões 
 
 ## Projetos parecidos
 
-ErsatzTV, Tunarr e dizqueTV criam canais "ao vivo" a partir de bibliotecas do Plex/Jellyfin. A TV Chuvisco se diferencia por não depender de Plex/Jellyfin, ter grades históricas da TV Globinho, a experiência de TV de tubo e o pendrive para qualquer TV.
+ErsatzTV, Tunarr e dizqueTV criam canais "ao vivo" a partir de bibliotecas do Plex/Jellyfin. A TV Gominho se diferencia por não depender de Plex/Jellyfin, ter grades históricas da TV Globinho, a experiência de TV de tubo e o pendrive para qualquer TV.

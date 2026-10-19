@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, mergeSettings } from '@tv-chuvisco/nucleo';
+import { DEFAULT_SETTINGS, mergeSettings } from '@tv-gominho/nucleo';
 import { describe, expect, it } from 'vitest';
 import { applyFlags, encodeSettings, estimateSize, estimatedVideoBitrate } from './settings';
 

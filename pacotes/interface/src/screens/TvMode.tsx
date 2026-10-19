@@ -16,7 +16,7 @@ import {
   type Timeline,
   type TimelineEntry,
   type TimelineOptions,
-} from '@tv-chuvisco/nucleo';
+} from '@tv-gominho/nucleo';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Clock, useClockText } from '../components/Clock';
 import { OffAir } from '../components/OffAir';

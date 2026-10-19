@@ -1,5 +1,5 @@
 // Doing the work: render every piece of the rundown into a normalised intermediate MP4 in the work folder
-// (`.tv-chuvisco-tmp` inside the destination), then join the pieces of each day, without re-encoding, into
+// (`.tv-gominho-tmp` inside the destination), then join the pieces of each day, without re-encoding, into
 // the parts the TV plays. Everything is cached by what the piece is made of, so running the same command
 // again resumes where it stopped; the work folder goes away only when the job finishes.
 
@@ -90,7 +90,7 @@ const DURATION_TOLERANCE = 1.0;
 /** Prepares the work folder: creates it with a marker file and drops the half-written files of an earlier run. */
 export async function prepareTemp(destination: string): Promise<string> {
   const temp = await destFolder(destination, TEMP_FOLDER);
-  await writeFile(path.join(temp, '.tv-chuvisco'), 'Pasta de trabalho do TV Chuvisco. Pode apagar quando o comando terminar.\n');
+  await writeFile(path.join(temp, '.tv-gominho'), 'Pasta de trabalho do TV Gominho. Pode apagar quando o comando terminar.\n');
   for (const entry of await readdir(temp).catch(() => [])) {
     if (entry.endsWith('.parcial') || entry.startsWith('list-')) await rm(path.join(temp, entry), { force: true });
   }
@@ -100,7 +100,7 @@ export async function prepareTemp(destination: string): Promise<string> {
 /** Deletes the work folder, but only if it is the one this tool made. */
 export async function removeTemp(destination: string): Promise<void> {
   const temp = await destPath(destination, TEMP_FOLDER);
-  if (existsSync(path.join(temp, '.tv-chuvisco'))) await rm(temp, { recursive: true, force: true });
+  if (existsSync(path.join(temp, '.tv-gominho'))) await rm(temp, { recursive: true, force: true });
 }
 
 async function identityOf(source: NodeLibrarySource, file: string): Promise<FileIdentity> {

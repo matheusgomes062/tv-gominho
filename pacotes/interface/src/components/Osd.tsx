@@ -1,4 +1,4 @@
-import type { OsdSkin } from '@tv-chuvisco/nucleo';
+import type { OsdSkin } from '@tv-gominho/nucleo';
 import { useEffect, useState, type RefObject } from 'react';
 
 // The TV's on-screen display for the channel, in the look of the chosen theme's skin

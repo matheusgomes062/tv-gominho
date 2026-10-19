@@ -1,6 +1,6 @@
 import type { BrowserLibrary } from './sources/types';
 
-const CACHE_PREFIX = 'tv-chuvisco.duracao.';
+const CACHE_PREFIX = 'tv-gominho.duracao.';
 const PROBE_TIMEOUT_MS = 15_000;
 const PARALLEL_PROBES = 4;
 

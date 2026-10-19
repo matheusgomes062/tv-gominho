@@ -1,4 +1,4 @@
-import type { Schedule } from '@tv-chuvisco/nucleo';
+import type { Schedule } from '@tv-gominho/nucleo';
 import { Icon, type IconName } from '../components/Icon';
 import { KeyHints, Overlay } from '../components/Overlay';
 
@@ -34,7 +34,7 @@ export function Menu({ channels, channel, warningCount, libraryName, onWatch, on
     <Overlay edge="bottom" label="Menu" onBack={onBack} className="menu-overlay">
       <header className="sheet-header">
         <h1 className="logo small">
-          TV <span>Chuvisco</span>
+          TV <span>Gominho</span>
         </h1>
         <span className="sheet-library">Pasta: {libraryName}</span>
       </header>

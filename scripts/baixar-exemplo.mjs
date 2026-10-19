@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const out = path.join(root, 'exemplo', 'dominio-publico', 'biblioteca');
-const marker = path.join(out, '.gerado-pelo-tv-chuvisco');
+const marker = path.join(out, '.gerado-pelo-tv-gominho');
 const ffmpeg = process.env.FFMPEG ?? 'ffmpeg';
 
 /**
@@ -261,7 +261,7 @@ if (existsSync(out) && !existsSync(marker)) {
   console.error(`${out} já existe e não foi criada por este script. Apague ou renomeie a pasta antes.`);
   process.exit(1);
 }
-file('.gerado-pelo-tv-chuvisco', 'Biblioteca de domínio público baixada por scripts/baixar-exemplo.mjs. Pode apagar.\n');
+file('.gerado-pelo-tv-gominho', 'Biblioteca de domínio público baixada por scripts/baixar-exemplo.mjs. Pode apagar.\n');
 
 const totalBytes = PROGRAMAS.flatMap((p) => p.episodios).reduce((sum, e) => sum + e.tamanho, 0);
 console.log(`Biblioteca de domínio público em ${out}`);

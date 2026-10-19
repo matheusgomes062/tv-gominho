@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Generates a small sample library in exemplo/biblioteca with test-pattern
-// videos, so anyone can try TV Chuvisco without real episodes.
+// videos, so anyone can try TV Gominho without real episodes.
 //
 //   npm run exemplo
 //
@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const out = path.join(root, 'exemplo', 'biblioteca');
-const marker = path.join(out, '.gerado-pelo-tv-chuvisco');
+const marker = path.join(out, '.gerado-pelo-tv-gominho');
 const ffmpeg = process.env.FFMPEG ?? 'ffmpeg';
 
 const FONTS = [
@@ -96,7 +96,7 @@ if (existsSync(out)) {
   }
   rmSync(out, { recursive: true, force: true });
 }
-file('.gerado-pelo-tv-chuvisco', 'Biblioteca de exemplo gerada por scripts/gerar-exemplo.mjs. Pode apagar.\n');
+file('.gerado-pelo-tv-gominho', 'Biblioteca de exemplo gerada por scripts/gerar-exemplo.mjs. Pode apagar.\n');
 console.log(`Gerando biblioteca de exemplo em ${out}`);
 if (!font) console.log('Aviso: nenhuma fonte encontrada; os vídeos ficarão sem texto.');
 
@@ -150,7 +150,7 @@ video('programas/desenho-sem-capa/episodios/001.mp4', { title: 'Desenho Sem Capa
 video('programas/desenho-sem-capa/episodios/002.mp4', { title: 'Desenho Sem Capa', subtitle: 'Episódio 2', seconds: EPISODE_SECONDS, source: '0x7a2a5a', tone: 700 });
 
 // Bumpers and commercials.
-video('vinhetas/aberturas/abertura.mp4', { title: 'TV Chuvisco', subtitle: 'Abertura', seconds: 4, source: 'smpte', tone: 880 });
+video('vinhetas/aberturas/abertura.mp4', { title: 'TV Gominho', subtitle: 'Abertura', seconds: 4, source: 'smpte', tone: 880 });
 video('vinhetas/encerramentos/encerramento.mp4', { title: 'Até amanhã!', subtitle: 'Encerramento', seconds: 4, source: 'smpte', tone: 784 });
 video('vinhetas/intervalos/voltamos-ja.mp4', { title: 'Voltamos já!', seconds: 3, source: '0xc9a000', tone: 988 });
 video('vinhetas/intervalos/a-seguir.mp4', { title: 'A seguir...', seconds: 3, source: '0x00a0c9', tone: 932 });

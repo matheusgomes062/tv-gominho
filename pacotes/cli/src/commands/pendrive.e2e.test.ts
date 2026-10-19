@@ -39,7 +39,7 @@ function listParts(destination: string): string[] {
 
 describe.skipIf(tools === null)('pendrive (real ffmpeg)', { timeout: 180_000 }, () => {
   beforeAll(async () => {
-    root = await mkdtemp(path.join(tmpdir(), 'tv-chuvisco-pendrive-'));
+    root = await mkdtemp(path.join(tmpdir(), 'tv-gominho-pendrive-'));
     library = path.join(root, 'biblioteca');
     for (let i = 1; i <= 3; i++) {
       await video(`programas/turma/episodios/00${i}.mp4`, 6, { tone: 300 + i * 50 });
@@ -131,7 +131,7 @@ describe.skipIf(tools === null)('pendrive (real ffmpeg)', { timeout: 180_000 }, 
     // The cap is a constant of the module; drive the renderer directly with a tiny one.
     const { renderRundown } = await import('../pendrive/render');
     const { openNodeLibrary } = await import('../node-source');
-    const { scanLibrary } = await import('@tv-chuvisco/nucleo');
+    const { scanLibrary } = await import('@tv-gominho/nucleo');
     const { airingDates, buildRundown, planTimelines } = await import('../pendrive/rundown');
     const { partNaming } = await import('../pendrive/names');
     const { applyFlags, encodeSettings } = await import('../pendrive/settings');
@@ -182,7 +182,7 @@ describe.skipIf(tools === null)('pendrive (real ffmpeg)', { timeout: 180_000 }, 
     const controller = new AbortController();
     const pending = run([library, '--destino', destination, '--dias', '2', '--sem-comerciais', '--paralelo', '1', '--preset', 'veryslow'], controller.signal);
     // Let the first piece or two render, then interrupt.
-    const work = path.join(destination, '.tv-chuvisco-tmp');
+    const work = path.join(destination, '.tv-gominho-tmp');
     for (let i = 0; i < 600 && !(existsSync(work) && readdirSync(work).some((name) => name.startsWith('seg-'))); i++) await new Promise((resolve) => setTimeout(resolve, 50));
     controller.abort();
     expect(await pending).toBe(130);

@@ -30,7 +30,7 @@ Sem servidor e sem instalação: uma página que lê a pasta `biblioteca` direto
 
 ### Fase 3: Ferramentas e pendrive
 - Ferramenta `converter` (ffmpeg) ✅ (pacote `cli`; detecta formatos antigos e codecs incompatíveis, só troca o contêiner quando dá, originais vão para `.originais`, normalização de áudio opcional; veja [ferramentas.md](ferramentas.md))
-- Ferramenta `pendrive` na linha de comando ✅ (`tv-chuvisco pendrive`: dias da grade no estilo `do_inicio`, intervalos comerciais, partes de menos de 4 GB, `--simular`, cópia da biblioteca, retomada; veja [pendrive.md](pendrive.md)). Falta a tela "Criar pendrive" na interface
+- Ferramenta `pendrive` na linha de comando ✅ (`tv-gominho pendrive`: dias da grade no estilo `do_inicio`, intervalos comerciais, partes de menos de 4 GB, `--simular`, cópia da biblioteca, retomada; veja [pendrive.md](pendrive.md)). Falta a tela "Criar pendrive" na interface
 - Efeito CRT em ffmpeg, divisão em partes < 4 GB, normalização de áudio ✅
 - Teste em pelo menos 3 modelos de TV
 
@@ -45,7 +45,7 @@ Sem servidor e sem instalação: uma página que lê a pasta `biblioteca` direto
 
 ## Decisões
 
-1. ~~**Nome do projeto.**~~ Decidido: **TV Chuvisco** (`tv-chuvisco`). "TV Globinho" aparece só de forma descritiva, com o aviso de que o projeto não tem afiliação com a Globo.
+1. ~~**Nome do projeto.**~~ Decidido: **TV Gominho** (`tv-gominho`). "TV Globinho" aparece só de forma descritiva, com o aviso de que o projeto não tem afiliação com a Globo.
 2. ~~**Licença.**~~ Decidido: **GPL-3.0** (veja [`LICENSE`](../LICENSE)). Versões modificadas e distribuídas precisam continuar livres.
 3. ~~**Pilha técnica.**~~ Decidido: **TypeScript** em todo o projeto. React + Vite na interface, monorepo com npm workspaces. Mais tarde: Node no servidor, Capacitor no Android TV, ffmpeg nas ferramentas. Rust foi considerado e descartado: o trabalho pesado (vídeo) é do navegador e do ffmpeg, e uma linguagem só facilita as contribuições.
 

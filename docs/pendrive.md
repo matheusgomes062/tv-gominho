@@ -2,23 +2,23 @@
 
 O objetivo: qualquer pessoa coloca o pendrive na TV, aperta play e assiste à TV Globinho, sem instalar nada.
 
-O player embutido das TVs só toca arquivos de vídeo. Ele não roda o app, então a programação é **pré-renderizada**: a ferramenta `tv-chuvisco pendrive` monta a grade e grava o resultado como arquivos MP4 comuns. Ela usa o [ffmpeg](https://ffmpeg.org) (veja [ferramentas.md](ferramentas.md) para instalar).
+O player embutido das TVs só toca arquivos de vídeo. Ele não roda o app, então a programação é **pré-renderizada**: a ferramenta `tv-gominho pendrive` monta a grade e grava o resultado como arquivos MP4 comuns. Ela usa o [ffmpeg](https://ffmpeg.org) (veja [ferramentas.md](ferramentas.md) para instalar).
 
 ## Como gerar
 
 No computador, pela linha de comando (a tela "Criar pendrive" no app vem depois):
 
 ```sh
-tv-chuvisco pendrive <biblioteca> --destino <pasta> [opções]
+tv-gominho pendrive <biblioteca> --destino <pasta> [opções]
 ```
 
 Por exemplo, 5 dias da grade `globinho-2003`, sem comerciais, no pendrive que o Windows chama de `E:`:
 
 ```sh
-tv-chuvisco pendrive ./biblioteca --destino E:\ --grade globinho-2003 --dias 5 --sem-comerciais
+tv-gominho pendrive ./biblioteca --destino E:\ --grade globinho-2003 --dias 5 --sem-comerciais
 ```
 
-Dentro do projeto, troque `tv-chuvisco` por `npm run cli --` (por exemplo, `npm run cli -- pendrive ./biblioteca --destino E:\ --simular`).
+Dentro do projeto, troque `tv-gominho` por `npm run cli --` (por exemplo, `npm run cli -- pendrive ./biblioteca --destino E:\ --simular`).
 
 Dica: rode primeiro com `--simular`. Ele mostra, dia por dia, os horários, os itens, os intervalos comerciais e o tamanho estimado de cada arquivo, sem renderizar nada e sem gravar nada.
 
@@ -96,7 +96,7 @@ O mesmo pendrive funciona nos dois casos:
 - **TV comum:** abra `ASSISTA AQUI` e toque o primeiro arquivo.
 - **TV Box com o app:** o app encontra a pasta `biblioteca` e oferece a experiência completa, com configurações.
 
-O `LEIA-ME.txt` explica em português como tocar na TV, o que tem em cada dia e com quais configurações o pendrive foi gerado. Também diz que o TV Chuvisco é software livre (GPL-3.0) e não tem ligação com a TV Globo nem com nenhuma emissora.
+O `LEIA-ME.txt` explica em português como tocar na TV, o que tem em cada dia e com quais configurações o pendrive foi gerado. Também diz que o TV Gominho é software livre (GPL-3.0) e não tem ligação com a TV Globo nem com nenhuma emissora.
 
 ### `--copiar-biblioteca`
 
@@ -124,7 +124,7 @@ A divisão é feita **depois** de renderizar, pelo tamanho real de cada item, n�
 
 1. **Grade do dia.** `planDay` (que episódio e que vinhetas) e `buildTimeline`, com as durações reais lidas pelo `ffprobe`, as configurações `intervalos` e `maxGapFill: 0`. Cada trecho de episódio cortado por um intervalo tem o ponto do arquivo em que começa (`fileOffset`) e a duração.
 2. **Itens.** Cada item da linha do tempo vira um "item" a renderizar: um arquivo inteiro, ou um trecho (do quadro X ao quadro Y) de um episódio. Os pontos de corte são arredondados para quadros inteiros, assim os trechos de um episódio se juntam sem falha nem sobreposição.
-3. **Itens intermediários.** O ffmpeg renderiza cada item em um MP4 já normalizado (mesmos codecs, tamanho, quadros, áudio), numa pasta de trabalho `.tv-chuvisco-tmp` dentro do destino. O nome do arquivo vem de uma chave: arquivo de origem (caminho, tamanho, data), trecho e todas as configurações que mudam a imagem ou o som. Itens iguais (o mesmo comercial em vários dias) são renderizados uma vez.
+3. **Itens intermediários.** O ffmpeg renderiza cada item em um MP4 já normalizado (mesmos codecs, tamanho, quadros, áudio), numa pasta de trabalho `.tv-gominho-tmp` dentro do destino. O nome do arquivo vem de uma chave: arquivo de origem (caminho, tamanho, data), trecho e todas as configurações que mudam a imagem ou o som. Itens iguais (o mesmo comercial em vários dias) são renderizados uma vez.
 4. **Partes.** Os itens do dia são divididos como descrito acima e juntados com o *concat demuxer* do ffmpeg, sem recodificar (`-c copy`). Cada parte é conferida (H.264, áudio, duração) antes de receber o nome final.
 5. **Limpeza.** Os itens que nenhum dia seguinte usa são apagados a cada dia; no fim, a pasta de trabalho inteira some.
 
@@ -139,7 +139,7 @@ Renderizar é o trabalho pesado. Num PC de 12 núcleos, com o efeito CRT complet
 
 ## Interrupção, repetição e espaço em disco
 
-- **Ctrl+C** interrompe com segurança: arquivos pela metade são apagados e o que já foi renderizado fica na pasta `.tv-chuvisco-tmp`. Rodar o mesmo comando de novo continua de onde parou. Dias já terminados (e com os arquivos ainda no pendrive) são pulados.
+- **Ctrl+C** interrompe com segurança: arquivos pela metade são apagados e o que já foi renderizado fica na pasta `.tv-gominho-tmp`. Rodar o mesmo comando de novo continua de onde parou. Dias já terminados (e com os arquivos ainda no pendrive) são pulados.
 - Mudar qualquer configuração que altere a imagem ou o som gera os itens de novo; o que não mudou é reaproveitado enquanto a pasta de trabalho existir.
 - Se algo falhar (um vídeo que o ffmpeg não consegue ler, por exemplo), o item é pulado com um aviso, a pasta de trabalho é mantida e o código de saída é diferente de zero.
 - **Espaço:** antes de começar, o comando estima o espaço necessário (o resultado, os itens de um dia e a cópia da biblioteca) e **avisa** se o pendrive parece pequeno. O aviso não impede de continuar: se o espaço acabar, o comando para com erro e o que já foi gerado fica guardado.

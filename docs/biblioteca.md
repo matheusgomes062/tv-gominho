@@ -111,7 +111,7 @@ O episódio passa até 7:32, vêm os comerciais, e ele continua de 7:32 até 14:
 
 | Tipo | Formato recomendado | Observação |
 |---|---|---|
-| Vídeo | MP4 com H.264 + AAC | Outros formatos (AVI, MKV, WMV, RMVB...) devem ser convertidos com `tv-chuvisco converter` |
+| Vídeo | MP4 com H.264 + AAC | Outros formatos (AVI, MKV, WMV, RMVB...) devem ser convertidos com `tv-gominho converter` |
 | Imagens | JPG ou PNG | `capa.jpg` na proporção 2:3; `fundo.jpg` na proporção 16:9 |
 | Texto | YAML em UTF-8 | |
 

@@ -2,7 +2,7 @@
 
 A **TV Globinho** foi o bloco de desenhos, animes e séries infantis da Rede Globo, no ar de **3 de julho de 2000 a 1º de agosto de 2015**. Começou como quadro do programa *Bambuluá* (Angélica), virou programa próprio por volta de 2002 e, em junho de 2012, saiu dos dias de semana e ficou só aos sábados. Em maio–agosto de 2015 exibiu sessões de filmes. Houve ainda uma edição especial única em **10 de outubro de 2026** (Criança Esperança) com *Dragon Ball Z*, *Digimon* e *Três Espiãs Demais*.
 
-Esta lista alimenta a busca de programas do TV Chuvisco (veja também `docs/programas-tv-globinho.json`).
+Esta lista alimenta a busca de programas do TV Gominho (veja também `docs/programas-tv-globinho.json`).
 
 ## Apresentadores por período (Wikipédia)
 

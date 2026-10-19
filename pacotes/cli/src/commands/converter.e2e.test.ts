@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { scanLibrary } from '@tv-chuvisco/nucleo';
+import { scanLibrary } from '@tv-gominho/nucleo';
 import { locateFfmpeg, probe } from '../ffmpeg';
 import { openNodeLibrary } from '../node-source';
 import { converterCommand } from './converter';
@@ -46,7 +46,7 @@ async function listAll(dir: string, prefix = ''): Promise<string[]> {
 
 describe.skipIf(!hasFfmpeg)('converter (real ffmpeg)', { timeout: 60_000 }, () => {
   beforeAll(async () => {
-    root = await mkdtemp(path.join(tmpdir(), 'tv-chuvisco-e2e-'));
+    root = await mkdtemp(path.join(tmpdir(), 'tv-gominho-e2e-'));
   });
   afterAll(() => rm(root, { recursive: true, force: true }));
   afterEach(() => vi.restoreAllMocks());

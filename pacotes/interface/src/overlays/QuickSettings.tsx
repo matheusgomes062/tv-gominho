@@ -1,4 +1,4 @@
-import type { Schedule } from '@tv-chuvisco/nucleo';
+import type { Schedule } from '@tv-gominho/nucleo';
 import { useMemo, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { Icon } from '../components/Icon';
 import { KeyHints, Overlay } from '../components/Overlay';

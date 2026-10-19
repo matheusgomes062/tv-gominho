@@ -1,6 +1,6 @@
 # Ferramentas de linha de comando
 
-A TV Chuvisco tem uma ferramenta de linha de comando, o `tv-chuvisco`, para o trabalho pesado de vídeo, que o navegador não faz: converter arquivos antigos e gerar o [pendrive](pendrive.md). Ela usa o [ffmpeg](https://ffmpeg.org).
+A TV Gominho tem uma ferramenta de linha de comando, o `tv-gominho`, para o trabalho pesado de vídeo, que o navegador não faz: converter arquivos antigos e gerar o [pendrive](pendrive.md). Ela usa o [ffmpeg](https://ffmpeg.org).
 
 | Comando | O que faz | Status |
 |---|---|---|
@@ -30,11 +30,11 @@ npm run cli -- ajuda
 npm run cli -- converter ./biblioteca --simular
 ```
 
-O `npm run cli` compila a ferramenta para `pacotes/cli/dist/tv-chuvisco.mjs` (um arquivo só, que não precisa de `node_modules`) e a executa. Depois de compilada, também dá para rodar direto:
+O `npm run cli` compila a ferramenta para `pacotes/cli/dist/tv-gominho.mjs` (um arquivo só, que não precisa de `node_modules`) e a executa. Depois de compilada, também dá para rodar direto:
 
 ```sh
-npm run build -w @tv-chuvisco/cli
-node pacotes/cli/dist/tv-chuvisco.mjs converter ./biblioteca
+npm run build -w @tv-gominho/cli
+node pacotes/cli/dist/tv-gominho.mjs converter ./biblioteca
 ```
 
 Em todos os comandos, `--ajuda` mostra as opções, e **Ctrl+C** interrompe com segurança (o arquivo parcial é apagado).
@@ -42,7 +42,7 @@ Em todos os comandos, `--ajuda` mostra as opções, e **Ctrl+C** interrompe com 
 ## `converter`
 
 ```
-tv-chuvisco converter <biblioteca> [opções]
+tv-gominho converter <biblioteca> [opções]
 ```
 
 Procura em `programas/` e `vinhetas/` os vídeos que o app não toca e converte cada um para MP4:
@@ -78,7 +78,7 @@ biblioteca/programas/dragon-ball/episodios/001.avi
 biblioteca/.originais/programas/dragon-ball/episodios/001.avi
 ```
 
-A TV Chuvisco ignora pastas que começam com ponto, então os originais não atrapalham. Quando conferir que está tudo certo, apague a pasta `.originais` para liberar espaço. Se já existir um arquivo com o mesmo nome lá, o novo ganha um sufixo (`001 (2).avi`).
+A TV Gominho ignora pastas que começam com ponto, então os originais não atrapalham. Quando conferir que está tudo certo, apague a pasta `.originais` para liberar espaço. Se já existir um arquivo com o mesmo nome lá, o novo ganha um sufixo (`001 (2).avi`).
 
 | Opção | Efeito nos originais |
 |---|---|
@@ -150,7 +150,7 @@ Pode interromper com **Ctrl+C** a qualquer momento: o arquivo parcial é apagado
 ## `pendrive`
 
 ```
-tv-chuvisco pendrive <biblioteca> --destino <pasta> [opções]
+tv-gominho pendrive <biblioteca> --destino <pasta> [opções]
 ```
 
 Monta a programação de alguns dias da grade e grava arquivos MP4 comuns (`ASSISTA AQUI/Dia 01 - Parte 1.mp4`...) que qualquer TV toca pelo USB, com o efeito CRT feito em filtros do ffmpeg, volume igualado e partes de menos de 4 GB. Tudo sobre as opções, o que é gerado, a velocidade e as limitações está em [pendrive.md](pendrive.md). Para ver o que seria gerado sem renderizar nada:
