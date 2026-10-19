@@ -59,12 +59,21 @@ const PRESETS: Record<CrtIntensity, Preset> = {
   strong: { scan: 0.82, mask: 0.22, vignette: 0.62, aberr: 0.0016, bloom: 0.6, noise: 0.05, flicker: 0.03, jitter: 0.002, glitch: 1, glass: 1.1 },
 };
 
-/** Never render more pixels than this (a 960x720 tube at 1.5x DPR is 1.55M; this keeps Pi-class GPUs happy). */
 /** Barrel distortion at curvature 100 (50 gives 0.075, the old fixed 'medium' look). */
 const MAX_CURV = 0.15;
 
+/** Never render more pixels than this (a 960x720 tube at 1.5x DPR is 1.55M; this keeps Pi-class GPUs happy). */
 const MAX_PIXELS = 1_300_000;
 const MAX_DPR = 1.5;
+/**
+ * Adaptive quality: every CHECK_MS of playback, if the video dropped more than
+ * DROP_LIMIT of its frames, the tube renders at the next smaller scale. It never
+ * goes back up while the page is open, so it can't oscillate. Slow GPUs (Raspberry
+ * Pi, TV boxes) settle on a scale they keep up with, without a setting.
+ */
+const AUTO_SCALES = [1, 0.75, 0.5];
+const CHECK_MS = 3000;
+const DROP_LIMIT = 0.05;
 /** Min ms between renders when nothing but the CRT's own animation changes. */
 const GAP_STATIC = 30;
 const GAP_IDLE = 60;
@@ -284,6 +293,26 @@ export function createCrtRenderer(canvas: HTMLCanvasElement, videoElement: HTMLV
   let lost = false;
   let destroyed = false;
   let needResize = true;
+  let autoStep = 0;
+  let lastCheck = 0;
+  let lastQuality = { dropped: 0, total: 0 };
+
+  /** Steps the internal resolution down when the video can't keep up (see AUTO_SCALES). */
+  function checkQuality(now: number) {
+    if (now - lastCheck < CHECK_MS || !video.getVideoPlaybackQuality) return;
+    lastCheck = now;
+    const quality = video.getVideoPlaybackQuality();
+    const dropped = quality.droppedVideoFrames - lastQuality.dropped;
+    const total = quality.totalVideoFrames - lastQuality.total;
+    lastQuality = { dropped: quality.droppedVideoFrames, total: quality.totalVideoFrames };
+    // Counters restart with each new file: a negative delta is a new video, not a measurement.
+    if (total < 30 || dropped < 0) return;
+    if (dropped / total > DROP_LIMIT && autoStep < AUTO_SCALES.length - 1) {
+      autoStep++;
+      needResize = true;
+      canvas.dataset.autoScale = String(AUTO_SCALES[autoStep]);
+    }
+  }
 
   function init(): boolean {
     const vs = compile(gl!, gl!.VERTEX_SHADER, VERTEX);
@@ -343,7 +372,7 @@ export function createCrtRenderer(canvas: HTMLCanvasElement, videoElement: HTMLV
     const cssW = canvas.clientWidth;
     const cssH = canvas.clientHeight;
     if (cssW === 0 || cssH === 0) return;
-    let scale = Math.min(window.devicePixelRatio || 1, MAX_DPR) * Math.max(0.25, params.resolution);
+    let scale = Math.min(window.devicePixelRatio || 1, MAX_DPR) * Math.max(0.25, params.resolution * AUTO_SCALES[autoStep]!);
     scale = Math.min(scale, Math.sqrt(MAX_PIXELS / (cssW * cssH)));
     const w = Math.max(2, Math.round(cssW * scale));
     const h = Math.max(2, Math.round(cssH * scale));
@@ -460,6 +489,7 @@ export function createCrtRenderer(canvas: HTMLCanvasElement, videoElement: HTMLV
   function loop(now: number) {
     rafId = requestAnimationFrame(loop);
     const playing = params.view === 'picture' && !video.paused && !video.ended && video.readyState >= 2;
+    if (playing) checkQuality(now);
     // Playing with rVFC: the video drives the rendering; this only keeps flicker alive if frames are rare.
     const gap = playing ? (callbacks.requestVideoFrameCallback ? 120 : GAP_PLAYING_NO_RVFC) : params.view === 'static' ? GAP_STATIC : GAP_IDLE;
     if (now - lastRender >= gap - 2) draw(now, false);

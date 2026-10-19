@@ -2,7 +2,7 @@ import { scanLibrary, type Library, type LibraryWarning } from '@tv-gominho/nucl
 import { useEffect, useRef, useState } from 'react';
 import { Static } from '../components/Static';
 import { focusFirst, useSpatialNav } from '../nav';
-import { openDevLibrary } from '../sources/dev';
+import { hasServerLibrary, openServerLibrary } from '../sources/server';
 import {
   canRememberFolder,
   openFileList,
@@ -25,9 +25,13 @@ type State =
   | { name: 'loading' }
   | { name: 'error'; message: string; warnings?: LibraryWarning[] };
 
+/** The server's library opens by itself only on the first visit to this screen. */
+let serverTried = false;
+
 export function Welcome({ onOpen }: Props) {
   const [state, setState] = useState<State>({ name: 'idle' });
   const [saved, setSaved] = useState<FileSystemDirectoryHandle>();
+  const [server, setServer] = useState(import.meta.env.DEV);
   const input = useRef<HTMLInputElement>(null);
   useSpatialNav();
 
@@ -79,9 +83,20 @@ export function Welcome({ onOpen }: Props) {
   const reopen = (handle: FileSystemDirectoryHandle) =>
     load(async () => ((await regainAccess(handle)) ? openFolder(handle) : null));
 
-  // Dev shortcut: ?exemplo opens the sample library directly.
+  // Served by `tv-gominho servir`: open its library right away, once per page load (a TV Box or
+  // Raspberry Pi turns on straight into the channel). Dev shortcut: ?exemplo does the same.
   useEffect(() => {
-    if (import.meta.env.DEV && new URLSearchParams(location.search).has('exemplo')) void load(openDevLibrary);
+    if (import.meta.env.DEV) {
+      if (new URLSearchParams(location.search).has('exemplo')) void load(openServerLibrary);
+      return;
+    }
+    void hasServerLibrary().then((available) => {
+      setServer(available);
+      if (available && !serverTried) {
+        serverTried = true;
+        void load(openServerLibrary);
+      }
+    });
   }, []);
 
   return (
@@ -105,9 +120,9 @@ export function Welcome({ onOpen }: Props) {
             <button data-nav className={`button ${saved ? '' : 'primary'}`} onClick={choose}>
               <Icon name="folder" /> {saved ? 'Escolher outra pasta' : 'Escolher biblioteca'}
             </button>
-            {import.meta.env.DEV && (
-              <button data-nav className="button" onClick={() => load(openDevLibrary)}>
-                Usar biblioteca de exemplo
+            {server && (
+              <button data-nav className="button" onClick={() => load(openServerLibrary)}>
+                {import.meta.env.DEV ? 'Usar biblioteca de exemplo' : 'Usar a biblioteca do servidor'}
               </button>
             )}
           </div>

@@ -8,7 +8,8 @@ export default defineConfig({
   build: {
     ssr: 'src/main.ts',
     target: 'node22',
-    minify: false,
+    // Minified: the whole tool is one ~210 KB file that fits anywhere, a USB stick included.
+    minify: true,
     outDir: 'dist',
     emptyOutDir: true,
     rolldownOptions: {
