@@ -16,8 +16,8 @@ describe('parseProbe', () => {
     expect(info.size).toBe(1048576);
     expect(info.video).toMatchObject({ codec: 'hevc', pixFmt: 'yuv420p10le', width: 1280 });
     expect(info.audio).toEqual([
-      { index: 1, codec: 'ac3', channels: 6, sampleRate: 48000, language: 'por' },
-      { index: 2, codec: 'aac', channels: 2, sampleRate: 44100, language: null },
+      { index: 1, codec: 'ac3', channels: 6, sampleRate: 48000, language: 'por', profile: null },
+      { index: 2, codec: 'aac', channels: 2, sampleRate: 44100, language: null, profile: null },
     ]);
   });
 

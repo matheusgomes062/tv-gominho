@@ -16,6 +16,10 @@ export interface VideoStream {
   sampleAspectRatio: number;
   /** ffprobe's `color_space` ("bt709", "bt470bg", "smpte170m"...), or null when the file doesn't say. */
   colorSpace: string | null;
+  /** H.264/HEVC level times ten (31 = level 3.1), when known. */
+  level?: number | null;
+  /** Average bits per second of the stream, when the container says. */
+  bitRate?: number | null;
 }
 
 export interface AudioStream {
@@ -24,6 +28,8 @@ export interface AudioStream {
   channels: number;
   sampleRate: number | null;
   language: string | null;
+  /** "LC", "HE-AAC"... for AAC, when known. */
+  profile?: string | null;
 }
 
 export interface MediaInfo {
@@ -32,6 +38,8 @@ export interface MediaInfo {
   /** ffprobe's container name, e.g. "matroska,webm" or "mov,mp4,m4a,3gp,3g2,mj2". */
   container: string;
   size: number | null;
+  /** Average bits per second of the whole file, when known. */
+  bitRate?: number | null;
   /** First real video stream (cover art is ignored); null for audio-only files. */
   video: VideoStream | null;
   audio: AudioStream[];
@@ -49,6 +57,8 @@ interface RawStream {
   r_frame_rate?: string;
   sample_aspect_ratio?: string;
   color_space?: string;
+  level?: number;
+  bit_rate?: string;
   channels?: number;
   sample_rate?: string;
   tags?: { language?: string };
@@ -70,7 +80,7 @@ export function parseRatio(text: string | undefined): number | null {
 
 /** Turns the JSON printed by `ffprobe -show_format -show_streams` into a MediaInfo. */
 export function parseProbe(json: unknown): MediaInfo {
-  const data = (json ?? {}) as { streams?: RawStream[]; format?: { format_name?: string; duration?: string; size?: string } };
+  const data = (json ?? {}) as { streams?: RawStream[]; format?: { format_name?: string; duration?: string; size?: string; bit_rate?: string } };
   const streams = data.streams ?? [];
 
   const rawVideo = streams.find((stream) => stream.codec_type === 'video' && !stream.disposition?.attached_pic);
@@ -85,6 +95,8 @@ export function parseProbe(json: unknown): MediaInfo {
         frameRate: parseRatio(rawVideo.avg_frame_rate) ?? parseRatio(rawVideo.r_frame_rate),
         sampleAspectRatio: parseRatio(rawVideo.sample_aspect_ratio) ?? 1,
         colorSpace: rawVideo.color_space && rawVideo.color_space !== 'unknown' ? rawVideo.color_space : null,
+        level: rawVideo.level !== undefined && rawVideo.level > 0 ? rawVideo.level : null,
+        bitRate: toNumber(rawVideo.bit_rate),
       }
     : null;
 
@@ -97,6 +109,7 @@ export function parseProbe(json: unknown): MediaInfo {
         channels: stream.channels ?? 0,
         sampleRate: toNumber(stream.sample_rate),
         language: stream.tags?.language ?? null,
+        profile: stream.profile ?? null,
       }),
     );
 
@@ -105,6 +118,7 @@ export function parseProbe(json: unknown): MediaInfo {
     duration: duration !== null && duration > 0 ? duration : null,
     container: data.format?.format_name ?? '',
     size: toNumber(data.format?.size),
+    bitRate: toNumber(data.format?.bit_rate),
     video,
     audio,
   };
