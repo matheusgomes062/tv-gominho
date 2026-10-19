@@ -30,17 +30,20 @@ Sem servidor e sem instalação: uma página que lê a pasta `biblioteca` direto
 
 ### Fase 3: Ferramentas e pendrive
 - Ferramenta `converter` (ffmpeg) ✅ (pacote `cli`; detecta formatos antigos e codecs incompatíveis, só troca o contêiner quando dá, originais vão para `.originais`, normalização de áudio opcional; veja [ferramentas.md](ferramentas.md))
-- Ferramenta `pendrive` na linha de comando ✅ (`tv-gominho pendrive`: dias da grade no estilo `do_inicio`, intervalos comerciais, partes de menos de 4 GB, `--simular`, cópia da biblioteca, retomada; veja [pendrive.md](pendrive.md)). Falta a tela "Criar pendrive" na interface
+- Ferramenta `pendrive` na linha de comando ✅ (`tv-gominho pendrive`: dias da grade no estilo `do_inicio`, intervalos comerciais, partes de menos de 4 GB, `--simular`, cópia da biblioteca, retomada, `--resolucao 480`; veja [pendrive.md](pendrive.md)). Falta a tela "Criar pendrive" na interface
+- Ferramenta `grade` ✅: monta o canal TV Globinho (aberturas, chamadas, encerramentos e vinhetas de intervalo da época) com os programas da biblioteca; o Canal Automático usa o mesmo motor
+- Ferramenta `verificar` ✅: confere um pendrive como o player USB da TV (codecs, níveis, FAT32, nomes)
 - Efeito CRT em ffmpeg, divisão em partes < 4 GB, normalização de áudio ✅
-- Teste em pelo menos 3 modelos de TV
+- Teste em pelo menos 3 modelos de TV (até lá, o `verificar` compara com os limites publicados pelos fabricantes)
 
 ### Fase 4: App Android TV
 - Empacotamento com Capacitor
 - Leitura da biblioteca a partir do pendrive na TV Box
 
 ### Fase 5: Servidor caseiro e Raspberry Pi
-- Servidor Node que entrega a interface e os vídeos para qualquer navegador da rede
-- Imagem/script para Raspberry Pi em modo quiosque
+- Servidor Node que entrega a interface e os vídeos para qualquer navegador da rede ✅ (`tv-gominho servir`)
+- Script para Raspberry Pi em modo quiosque ✅ ([raspberry-pi.md](raspberry-pi.md); simulado no PC, falta testar num Pi de verdade)
+- Pacote portátil (`npm run pacote`, ~1,2 MB) ✅
 - Docker
 
 ## Decisões

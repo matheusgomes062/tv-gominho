@@ -14,7 +14,8 @@
     "typecheck": "tsc -p pacotes/nucleo && tsc -p pacotes/interface && tsc -p pacotes/cli",
     "exemplo": "node scripts/gerar-exemplo.mjs",
     "exemplo:real": "node scripts/baixar-exemplo.mjs",
-    "comerciais": "node scripts/gerar-comerciais.mjs"
+    "comerciais": "node scripts/gerar-comerciais.mjs",
+    "pacote": "node scripts/empacotar.mjs"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

@@ -1,0 +1,36 @@
+TV GOMINHO NO RASPBERRY PI
+==========================
+
+O Pi ligado na TV pelo HDMI vira a TV Gominho: liga direto no canal, em tela cheia.
+
+Precisa de:
+- Raspberry Pi 4 ou 5 (o 3 funciona, com o efeito CRT mais leve), com o
+  Raspberry Pi OS com desktop (Bookworm ou mais novo);
+- a pasta "biblioteca" num pendrive ou no cartão;
+- um teclado (ou mini teclado sem fio / air mouse) para trocar de canal.
+
+Instalar (no terminal do Pi, dentro desta pasta do pacote):
+
+  bash raspberry-pi/instalar.sh /media/SEU_USUARIO/PENDRIVE/biblioteca
+
+Sem a pasta, a biblioteca é procurada a cada vez que o Pi liga: ~/biblioteca, ou
+um pendrive com a pasta "biblioteca" (ou com programas/ na raiz).
+
+O script:
+- instala o Node.js 20+ e o Chromium, se faltarem;
+- copia o pacote para ~/tv-gominho;
+- faz o desktop abrir a TV Gominho ao ligar (~/.config/labwc/autostart);
+- liga o login automático e desliga o descanso de tela (raspi-config).
+
+Depois: sudo reboot.
+
+Dicas:
+- Vídeos em H.264 até 1080p tocam bem. No Pi 5 o H.264 é decodificado pelo
+  processador (o chip só acelera HEVC); 720p ou 480p deixam tudo mais leve. Para
+  converter a biblioteca: node tv-gominho.mjs converter <biblioteca>.
+- Se a imagem engasgar, o efeito CRT baixa a própria resolução sozinho. Ainda
+  assim pesado? Menu, Ajustes, CRT: intensidade suave ou desligado.
+- Outros aparelhos da casa podem assistir pelo navegador: rode o servidor com
+  --rede (veja node tv-gominho.mjs servir --ajuda).
+- Registro do servidor: ~/.cache/tv-gominho.log
+- Desfazer: bash ~/tv-gominho/raspberry-pi/desinstalar.sh

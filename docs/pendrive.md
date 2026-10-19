@@ -45,6 +45,7 @@ Dica: rode primeiro com `--simular`. Ele mostra, dia por dia, os horários, os i
 | `--copiar-biblioteca` | Copia a biblioteca para `<destino>/biblioteca` (veja abaixo) |
 | `--qualidade <n>` | Qualidade do vídeo (CRF do x264, de 0 a 51; menor = melhor e maior). Padrão: 22 |
 | `--preset <nome>` | Velocidade do x264, de `ultrafast` a `veryslow`. Padrão: `veryfast`. Mais lento = arquivos menores |
+| `--resolucao`, `-r 720\|480` | Linhas da imagem. `720` (padrão): 1280×720. `480`: 854×480, com cerca de metade do tamanho e mais compatível com TVs antigas. A TV Globinho era em definição padrão, então quase não se nota |
 | `--paralelo <n>` | Quantos vídeos renderizar ao mesmo tempo (1 a 8). Padrão: automático (um para cada 4 núcleos do processador, de 1 a 3) |
 | `--simular` | Só mostra o que seria gerado |
 | `--ffmpeg <caminho>` | O ffmpeg a usar |
@@ -107,11 +108,11 @@ Copia tudo que o app enxerga da biblioteca (programas, vinhetas, grades, `config
 | Item | Valor | Motivo |
 |---|---|---|
 | Contêiner | MP4, com `faststart` | O mais aceito pelas TVs |
-| Vídeo | H.264, perfil High, nível 4.0, `yuv420p`, cores BT.709 | Compatível com TVs desde ~2012. (Com `--preset ultrafast`, o x264 escolhe o perfil Constrained Baseline, que toca em tudo, mas é menos eficiente) |
-| Resolução | 1280×720, imagem 4:3 com barras pretas nas laterais | Evita que a TV estique a imagem; resolução suficiente para o efeito CRT |
+| Vídeo | H.264, perfil High, nível 4.0, `yuv420p`, cores BT.709. Com `--resolucao 480`: perfil Main, nível 3.1 | Compatível com TVs desde ~2012; o 480 também com as de antes. (Com `--preset ultrafast`, o x264 escolhe o perfil Constrained Baseline, que toca em tudo, mas é menos eficiente) |
+| Resolução | 1280×720 (ou 854×480), imagem 4:3 com barras pretas nas laterais | Evita que a TV estique a imagem; resolução suficiente para o efeito CRT |
 | Quadros | 25 ou 30 por segundo, constante | O que a maioria dos vídeos do dia já tem (todos são convertidos para esse; 50 e 60 contam como 25 e 30) |
 | Taxa do vídeo | CRF 22 com teto de 6 Mb/s (`-maxrate`) | Qualidade constante, sem picos que as TVs não aguentam |
-| Áudio | AAC estéreo, 48 kHz, 160 kb/s | Compatível com tudo |
+| Áudio | AAC-LC estéreo, 48 kHz, 160 kb/s (128 kb/s em 480) | Compatível com tudo |
 | Volume | Normalizado (EBU R128, -16 LUFS) por arquivo, medido no arquivo inteiro | Episódios, vinhetas e comerciais tocam no mesmo volume; as partes de um episódio cortado pelos comerciais recebem o mesmo ganho |
 | Tamanho máximo por arquivo | Menos de 4 GB (alvo: 3,5 GB) | Pendrives costumam vir em FAT32, que não aceita arquivos maiores. Cada dia é dividido em partes |
 | Nomes | `Dia 01 - Parte 1.mp4` (números com zeros à esquerda) | A TV toca na ordem alfabética. Sem caracteres que o FAT32 não aceita |
@@ -136,6 +137,34 @@ Renderizar é o trabalho pesado. Num PC de 12 núcleos, com o efeito CRT complet
 - `--sem-crt` e `--preset ultrafast` são as maneiras mais rápidas (o arquivo fica maior).
 - `--paralelo` aumenta quantos itens são renderizados juntos; ajuda quando o processador tem núcleos sobrando.
 - Os volumes são medidos uma vez por arquivo (isso é bem rápido).
+
+## Simular a TV: `tv-gominho verificar`
+
+Sem uma TV por perto, dá para conferir o pendrive do jeito que o player USB da TV olharia:
+
+```sh
+tv-gominho verificar E:\
+```
+
+O comando lê cada vídeo de `ASSISTA AQUI` (ou de qualquer pasta, ou um vídeo solto) com o `ffprobe` e compara com o que as TVs aceitam. Os limites vêm do que os fabricantes publicam (a LG, por exemplo, lista H.264 até o nível 4.2 e 20 Mb/s em Full HD), apertados para servir em TVs a partir de ~2010:
+
+| Confere | Erro (não toca) | Aviso (pode falhar em TVs antigas) |
+|---|---|---|
+| Formato | o que não é MP4, MKV, AVI, TS ou WMV | MKV, AVI, TS, WMV (MP4 é o que todas tocam) |
+| Vídeo | perfil H.264 10 bits ou 4:2:2, cores fora de `yuv420p`, codecs que TV não toca (RealVideo...) | H.264 acima do nível 4.1, HEVC, DivX/Xvid, VP9, AV1, acima de 1080p ou de 30 quadros, mais de 20 Mb/s |
+| Som | DTS, Opus, FLAC e outros | AC3/E-AC3, AAC que não é LC, mais de 2 canais ou de 48 kHz, vídeo sem som |
+| Arquivo | 4 GB ou mais num pendrive FAT32, caracteres que o FAT32 não aceita, nome que começa com ponto | 4 GB ou mais em exFAT, índice (`moov`) no fim do arquivo, acentos no nome |
+| Pendrive | | exFAT (TVs de antes de ~2012 não leem), NTFS (muitas TVs não leem) |
+
+Termina com código 1 se algum vídeo tem erro. O que o `tv-gominho pendrive` gera passa sem avisos; serve também para conferir vídeos baixados antes de copiá-los para a TV.
+
+## Formatar o pendrive
+
+Toda TV com USB lê **FAT32**; as de 2012 em diante costumam ler também **exFAT**. **NTFS** (o padrão de HDs externos no Windows) muitas TVs não leem. O FAT32 não aceita arquivos de 4 GB ou mais, por isso o `pendrive` divide cada dia em partes.
+
+- Pendrives de até 32 GB: no Windows, clique com o botão direito na unidade, **Formatar**, sistema de arquivos **FAT32**.
+- Maiores que 32 GB: o Windows não oferece FAT32 para eles. Use **exFAT** (se a TV for de 2012 em diante) ou um programa de formatação FAT32.
+- Formatar **apaga tudo** o que está no pendrive.
 
 ## Interrupção, repetição e espaço em disco
 

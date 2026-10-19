@@ -7,6 +7,8 @@ A TV Gominho tem uma ferramenta de linha de comando, o `tv-gominho`, para o trab
 | `converter` | Converte vídeos antigos ou incompatíveis da biblioteca para MP4 (H.264 + AAC) | Pronto |
 | `grade` | Monta o canal TV Globinho (a grade) com os programas da biblioteca | Pronto |
 | `pendrive` | Gera o pendrive com a programação pré-renderizada em MP4, para tocar em qualquer TV | Pronto |
+| `verificar` | Confere se uma TV deve tocar os vídeos de um pendrive (simula o player USB da TV) | Pronto |
+| `servir` | Abre o app no navegador, ou em outros aparelhos da rede e no Raspberry Pi, já com a biblioteca | Pronto |
 | `ajuda` | Mostra os comandos e as opções | Pronto |
 
 ## Requisitos
@@ -194,6 +196,31 @@ Monta a programação de alguns dias da grade e grava arquivos MP4 comuns (`ASSI
 ```sh
 npm run cli -- pendrive ./biblioteca --destino E:\ --dias 3 --simular
 ```
+
+## `verificar`
+
+```
+tv-gominho verificar <pendrive, pasta ou vídeo>
+```
+
+Confere cada vídeo como o player USB de uma TV faria: formato, codecs, perfil e nível do H.264, som, tamanho (FAT32), nomes e o sistema de arquivos do pendrive. Os detalhes estão em [pendrive.md](pendrive.md#simular-a-tv-tv-gominho-verificar).
+
+## `servir`
+
+```
+tv-gominho servir <biblioteca> [--porta 8080] [--rede] [--abrir]
+```
+
+Entrega o app e a biblioteca por HTTP: abra `http://localhost:8080` em qualquer navegador e a TV já começa, sem escolher pasta. É o que o [Raspberry Pi](raspberry-pi.md) usa.
+
+- Sem `--rede`, só o próprio computador abre o endereço. Com `--rede`, outros aparelhos da casa também (o comando mostra os endereços).
+- Só leitura: nada é gravado na biblioteca. Arquivos e pastas ocultos (`.originais`) não são servidos, e arquivos da biblioteca que não são vídeo, imagem ou texto vão como download, nunca como página.
+- Só responde a endereços IP, `localhost` e o nome do próprio aparelho (como `raspberrypi.local`), contra páginas que tentam ler a rede de casa por outro nome (*DNS rebinding*).
+- Leve: o app vai comprimido (o JavaScript, de ~430 KB, viaja como ~120 KB em Brotli, já comprimido na hora do build), e a lista da biblioteca vai em gzip. Vídeos e fontes não são comprimidos de novo: já são.
+
+## Pacote portátil
+
+`npm run pacote` monta `pacote/tv-gominho/` (~1,2 MB): a ferramenta (um arquivo só, `tv-gominho.mjs`), o app compilado, atalhos para abrir (`Abrir TV Gominho.cmd` no Windows, `abrir-tv-gominho.sh`) e o instalador do Raspberry Pi. Coloque a pasta ao lado da `biblioteca` (num pendrive, por exemplo). O `interface/index.html` também abre direto do pendrive no Chrome ou no Edge, sem Node.js nem servidor.
 
 ## Para quem contribui
 

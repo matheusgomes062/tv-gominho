@@ -37,13 +37,15 @@ Um núcleo único em TypeScript, usado por todos os alvos:
 pacotes/
   nucleo/        # leitura da biblioteca + motor da grade (sem dependência de plataforma)   [Fase 1]
   interface/     # interface web (React + Vite), navegável por controle remoto              [Fase 1]
-  cli/           # ferramenta de linha de comando: converter vídeos ✅, gerar pendrive (ffmpeg) ✅
+  cli/           # ferramenta de linha de comando: converter vídeos ✅, montar a grade ✅, gerar
+                 # e verificar o pendrive (ffmpeg) ✅, servir o app e a biblioteca na rede ✅
   android-tv/    # empacotamento da interface com Capacitor                                 [Fase 4]
-  servidor/      # servidor Node: entrega a interface e os vídeos pela rede                 [Fase 5]
+scripts/raspberry-pi/  # instalador do modo quiosque (usa o `tv-gominho servir`)          [Fase 5]
 ```
 
 - **`nucleo`** recebe a lista de arquivos por um "adaptador" (pasta escolhida no navegador, sistema de arquivos do Node, pendrive no Android). Assim, a mesma lógica roda em todo lugar.
-- **Primeira versão:** a `interface` roda sozinha no navegador e lê a pasta da biblioteca direto do computador, sem servidor.
+- **Primeira versão:** a `interface` roda sozinha no navegador e lê a pasta da biblioteca direto do computador, sem servidor (também abrindo o `index.html` direto de um pendrive). Com o `tv-gominho servir`, o mesmo app recebe a biblioteca pela rede e abre sozinho no canal.
+- **Leve:** o app inteiro tem ~1 MB (o JavaScript viaja comprimido, ~120 KB); a ferramenta é um arquivo de ~220 KB. No efeito CRT, o quadro só é redesenhado quando o vídeo tem quadro novo, e a resolução interna do tubo cai sozinha (100%, 75%, 50%) se o vídeo começar a perder quadros, para aparelhos fracos como o Raspberry Pi.
 - **Efeito CRT:** shader WebGL sobre o vídeo na interface. No pendrive, o efeito é aplicado com filtros do ffmpeg na hora de gerar os arquivos.
 - **Formatos de vídeo:** a interface toca MP4 (H.264 + AAC). Arquivos antigos (AVI, MKV, etc.) são convertidos uma vez pela `cli` (`tv-gominho converter`, veja [ferramentas.md](ferramentas.md)). O Raspberry Pi e as TV Boxes não têm força para converter em tempo real.
 

@@ -2,9 +2,9 @@
 
 Um player de vídeo livre (FOSS) para reviver as manhãs de desenho como na **TV Globinho**, numa TV antiga: você liga e o desenho já está passando, com vinhetas, intervalos e aquele chuvisco de tubo.
 
-Você coloca os seus próprios episódios em pastas organizadas, escolhe uma grade de programação (por exemplo, "TV Globinho 2003") e a TV Gominho cuida do resto.
+Você coloca os seus próprios episódios em pastas organizadas e a TV Gominho monta o canal: `tv-gominho grade` cria a programação no estilo da TV Globinho (abertura, desenhos, chamadas, intervalos com comerciais e vinhetas da época, encerramento), e o app passa tudo como uma TV ao vivo.
 
-> **Status:** primeira versão em desenvolvimento: roda no navegador (Chrome/Edge) lendo a pasta da biblioteca do seu computador. Veja o [roteiro](docs/roteiro.md).
+> **Status:** em desenvolvimento. Roda no navegador (Chrome/Edge), num Raspberry Pi ligado na TV e em qualquer TV com USB (pendrive com a programação pronta). Veja o [roteiro](docs/roteiro.md).
 
 ## Duas formas de assistir
 
@@ -15,10 +15,13 @@ Você coloca os seus próprios episódios em pastas organizadas, escolhe uma gra
 
 | Onde | Como |
 |---|---|
-| PC / notebook | Direto no navegador (Chrome/Edge), escolhendo a pasta da biblioteca. Primeira versão |
-| Raspberry Pi | Servidor local, ou modo quiosque ligado direto na TV |
-| TV Box (Android TV) | App para Android TV lendo os episódios de um pendrive |
-| Qualquer TV com USB | Pendrive com a programação já pronta em MP4 |
+| PC / notebook | No navegador (Chrome/Edge), escolhendo a pasta da biblioteca; ou `tv-gominho servir`, que já abre com ela |
+| Raspberry Pi | Modo quiosque: liga direto no canal, em tela cheia ([raspberry-pi.md](docs/raspberry-pi.md)) |
+| Outros aparelhos da casa | `tv-gominho servir --rede` e o navegador do celular, da TV ou de outro PC |
+| Qualquer TV com USB | Pendrive com a programação já pronta em MP4 ([pendrive.md](docs/pendrive.md)), conferido com `tv-gominho verificar` |
+| TV Box (Android TV) | App para Android TV lendo os episódios de um pendrive (planejado) |
+
+Leve: o app tem ~1 MB e a ferramenta é um arquivo de ~220 KB. `npm run pacote` junta tudo numa pasta de ~1,2 MB que cabe no pendrive ao lado da biblioteca.
 
 ## Documentação
 
@@ -27,9 +30,10 @@ Você coloca os seus próprios episódios em pastas organizadas, escolhe uma gra
 3. [Formato da grade de programação](docs/grade.md)
 4. [Configurações](docs/configuracoes.md)
 5. [Pendrive para qualquer TV](docs/pendrive.md)
-6. [Ferramentas de linha de comando (converter vídeos)](docs/ferramentas.md)
-7. [Roteiro e decisões em aberto](docs/roteiro.md)
-8. [Programas exibidos pela TV Globinho (lista para busca)](docs/programas-tv-globinho.md)
+6. [Raspberry Pi](docs/raspberry-pi.md)
+7. [Ferramentas de linha de comando (converter, grade, pendrive, verificar, servir)](docs/ferramentas.md)
+8. [Roteiro e decisões em aberto](docs/roteiro.md)
+9. [Programas exibidos pela TV Globinho (lista para busca)](docs/programas-tv-globinho.md)
 
 ## Rodando o projeto
 
@@ -47,6 +51,10 @@ No navegador, clique em **Escolher biblioteca** e selecione a sua pasta `bibliot
 |---|---|
 | `npm run exemplo:real` | Baixa desenhos clássicos em domínio público (~570 MB) para `exemplo/dominio-publico/biblioteca` |
 | `npm run cli -- converter <biblioteca>` | Converte AVI, MKV e outros vídeos que o app não toca para MP4 (precisa do ffmpeg). Veja [ferramentas](docs/ferramentas.md) |
+| `npm run cli -- grade <biblioteca> --epoca 2004` | Monta o canal TV Globinho com os programas da biblioteca (`grades/tv-globinho.yaml`) |
+| `npm run cli -- servir <biblioteca> --abrir` | Abre o app já com a biblioteca (`--rede` para outros aparelhos da casa) |
+| `npm run cli -- pendrive <biblioteca> -d E:\ -r 480` | Grava a programação em MP4 para tocar em qualquer TV; `verificar E:\` confere o resultado |
+| `npm run pacote` | Monta o pacote portátil em `pacote/tv-gominho` (app, ferramenta, atalhos e instalador do Raspberry Pi) |
 | `npm run cli -- ajuda` | Lista os comandos da linha de comando |
 | `npm run comerciais` | Gera comerciais fictícios (anos 90/2000) em `vinhetas/comerciais` da biblioteca de domínio público; narração opcional via Piper (`-- --instalar-voz`) |
 | `npm test` | Testes do núcleo (leitura da biblioteca e motor da grade) e da linha de comando |
