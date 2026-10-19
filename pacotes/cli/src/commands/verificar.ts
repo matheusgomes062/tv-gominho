@@ -110,11 +110,15 @@ async function fileSystemOf(target: string): Promise<string | null> {
   if (process.platform === 'win32') {
     const drive = /^([a-z]):/i.exec(target)?.[1];
     if (!drive) return null;
+    // An absolute path, run from the system folder: a bare "powershell.exe" would also be looked
+    // up in the current folder, where a stick or a download could plant one.
+    const system = process.env.SystemRoot ?? 'C:\\Windows';
+    const powershell = path.join(system, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
     return new Promise((resolve) => {
       execFile(
-        'powershell.exe',
+        powershell,
         ['-NoProfile', '-NonInteractive', '-Command', `(Get-Volume -DriveLetter ${drive.toUpperCase()}).FileSystem`],
-        { timeout: 15_000, windowsHide: true },
+        { timeout: 15_000, windowsHide: true, cwd: system },
         (error, stdout) => resolve(error ? null : stdout.trim() || null),
       );
     });

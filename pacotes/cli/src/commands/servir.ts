@@ -155,10 +155,17 @@ function lanAddresses(): string[] {
 }
 
 function openBrowser(url: string) {
+  // On Windows, cmd.exe by its full path and run from the system folder: a bare "cmd" would also be
+  // looked up in the current folder, where a stick or a download could plant one.
+  const system = process.env.SystemRoot ?? 'C:\\Windows';
   const [command, args] =
-    process.platform === 'win32' ? ['cmd', ['/c', 'start', '""', url]] : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
+    process.platform === 'win32'
+      ? [path.join(system, 'System32', 'cmd.exe'), ['/c', 'start', '""', url]]
+      : process.platform === 'darwin'
+        ? ['/usr/bin/open', [url]]
+        : ['xdg-open', [url]];
   try {
-    spawn(command, args as string[], { stdio: 'ignore', detached: true }).on('error', () => {}).unref();
+    spawn(command, args as string[], { stdio: 'ignore', detached: true, cwd: process.platform === 'win32' ? system : '/' }).on('error', () => {}).unref();
   } catch {
     // no browser to open: the address is on screen
   }
