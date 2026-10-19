@@ -4,7 +4,7 @@ import { formatBytes, formatDuration } from '../ui';
 import { formatDate, weekdayName } from './calendar';
 import type { CrtLook } from './crt';
 import { LIBRARY_FOLDER, PLAY_FOLDER } from './names';
-import type { Aspect } from './segment';
+import { frameSize, type OutputHeight, type Aspect } from './segment';
 
 export interface ReadmePart {
   name: string;
@@ -30,6 +30,8 @@ export interface ReadmeInput {
   adBreaks: { every: number; ads: number; afterEpisode: boolean; bumpers: boolean };
   aspect: Aspect;
   fps: number;
+  /** Lines of the frame (720 or 480). Default 720. */
+  height?: OutputHeight;
   /** `--copiar-biblioteca` was used. */
   libraryCopied: boolean;
 }
@@ -65,7 +67,8 @@ export function settingsSummary(input: Omit<ReadmeInput, 'generatedAt' | 'schedu
     lines.push('Comerciais: não');
   }
   lines.push(`Proporção: ${ASPECT[input.aspect]}`);
-  lines.push(`Vídeo: 1280x720, ${input.fps} quadros por segundo; som estéreo com volume igualado entre episódios, vinhetas e comerciais`);
+  const frame = frameSize(input.height ?? 720);
+  lines.push(`Vídeo: ${frame.width}x${frame.height}, ${input.fps} quadros por segundo; som estéreo com volume igualado entre episódios, vinhetas e comerciais`);
   return lines;
 }
 

@@ -21,7 +21,18 @@ export const CONTENT_TYPES: Record<string, string> = {
   '.woff2': 'font/woff2', '.woff': 'font/woff', '.ico': 'image/x-icon',
 };
 
-const typeOf = (file: string) => CONTENT_TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream';
+/**
+ * What library files may be served as. Library folders hold whatever people downloaded:
+ * an .html or .svg among the episodes would otherwise run as a page on the app's own
+ * origin. Media, plain images and text only; everything else is a download.
+ */
+export const LIBRARY_TYPES: Record<string, string> = {
+  '.mp4': 'video/mp4', '.m4v': 'video/mp4', '.mov': 'video/quicktime', '.webm': 'video/webm',
+  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif',
+  '.yaml': 'text/plain; charset=utf-8', '.yml': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8',
+};
+
+const typeOf = (file: string, types: Record<string, string> = CONTENT_TYPES) => types[path.extname(file).toLowerCase()] ?? 'application/octet-stream';
 
 /** A path under `root` from a URL path, or null when it is malformed or leaves `root`. */
 export function resolveInside(root: string, urlPath: string): string | null {
@@ -48,10 +59,11 @@ function finish(res: ServerResponse, status: number) {
  * aborted request closes its read stream: a browser seeking through many videos
  * aborts a lot of them, and leaked handles end in EMFILE.
  */
-export async function sendFile(req: IncomingMessage, res: ServerResponse, file: string, cache = 'no-cache'): Promise<void> {
+export async function sendFile(req: IncomingMessage, res: ServerResponse, file: string, cache = 'no-cache', types = CONTENT_TYPES): Promise<void> {
   const info = await stat(file).catch(() => null);
   if (!info?.isFile()) return finish(res, 404);
-  res.setHeader('Content-Type', typeOf(file));
+  res.setHeader('Content-Type', typeOf(file, types));
+  res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Accept-Ranges', 'bytes');
   res.setHeader('Cache-Control', cache);
   let start = 0;
@@ -103,6 +115,13 @@ export async function listFiles(dir: string, prefix = ''): Promise<string[]> {
 
 const acceptsGzip = (req: IncomingMessage) => /\bgzip\b/.test(String(req.headers['accept-encoding'] ?? ''));
 
+/** A library file: only LIBRARY_TYPES, never rendered as a page (sandboxed even if a browser tried). */
+export function sendLibraryFile(req: IncomingMessage, res: ServerResponse, file: string): Promise<void> {
+  res.setHeader('Content-Security-Policy', 'sandbox');
+  if (!LIBRARY_TYPES[path.extname(file).toLowerCase()]) res.setHeader('Content-Disposition', 'attachment');
+  return sendFile(req, res, file, 'no-cache', LIBRARY_TYPES);
+}
+
 /** JSON, gzipped when the client takes it and it is worth it (a big library lists thousands of paths). */
 export function sendJson(req: IncomingMessage, res: ServerResponse, value: unknown, status = 200): void {
   const body = Buffer.from(JSON.stringify(value), 'utf8');
@@ -148,6 +167,7 @@ export async function sendStatic(req: IncomingMessage, res: ServerResponse, root
     res.statusCode = 200;
     res.setHeader('Content-Type', typeOf(file));
     res.setHeader('Content-Encoding', encoding);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Length', variant.size);
     res.setHeader('Cache-Control', cache);
     res.setHeader('Vary', 'Accept-Encoding');

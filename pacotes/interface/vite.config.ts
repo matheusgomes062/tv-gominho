@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { brotliCompressSync, constants, gzipSync } from 'node:zlib';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vite';
-import { LIBRARY_FILE_PATH, LIBRARY_LIST_PATH, libraryListing, resolveInside, sendFile, sendJson } from '../cli/src/serve/http.ts';
+import { LIBRARY_FILE_PATH, LIBRARY_LIST_PATH, libraryListing, resolveInside, sendJson, sendLibraryFile } from '../cli/src/serve/http.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, '../..');
@@ -33,7 +33,7 @@ function devLibrary(): Plugin {
           return;
         }
         // A throw here would be an unhandled rejection and stop the server.
-        sendFile(req, res, file).catch(() => res.destroy());
+        sendLibraryFile(req, res, file).catch(() => res.destroy());
       });
 
       server.middlewares.use(LIBRARY_LIST_PATH, (req, res) => {

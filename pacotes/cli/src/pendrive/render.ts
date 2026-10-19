@@ -182,7 +182,7 @@ export async function renderRundown(options: RenderOptions): Promise<RenderResul
   // ---- the mask of the CRT look, made once
   let maskFile: string | null = null;
   if (encode.crt && pending.size > 0) {
-    const box = pictureBox(encode.aspect);
+    const box = pictureBox(encode.aspect, encode.height);
     const hash = createHash('sha1').update(settingsFingerprint(encode)).update(`${box.width}x${box.height}`).digest('hex').slice(0, 12);
     maskFile = path.join(temp, `mask-${hash}.ppm`);
     if (!existsSync(maskFile)) {

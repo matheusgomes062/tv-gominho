@@ -15,7 +15,7 @@ import { PART_TARGET_BYTES, splitParts } from '../pendrive/parts';
 import { buildReadme, settingsSummary } from '../pendrive/readme';
 import { describe, removeTemp, renderRundown } from '../pendrive/render';
 import { airingDates, buildRundown, chooseFps, planTimelines, type DurationSource, type Rundown, type RundownDay } from '../pendrive/rundown';
-import type { EncodeSettings } from '../pendrive/segment';
+import { DEFAULT_OUTPUT_HEIGHT, OUTPUT_HEIGHTS, type EncodeSettings, type OutputHeight } from '../pendrive/segment';
 import {
   DEFAULT_CRF,
   DEFAULT_DAYS,
@@ -46,6 +46,7 @@ const OPTIONS = {
   'copiar-biblioteca': { type: 'boolean' },
   qualidade: { type: 'string' },
   preset: { type: 'string' },
+  resolucao: { type: 'string', short: 'r' },
   paralelo: { type: 'string' },
   simular: { type: 'boolean' },
 } as const;
@@ -87,6 +88,9 @@ Configurações (valem no lugar das da biblioteca):
                               tela. A configuração "original" do yaml também vale
 
 Qualidade e velocidade:
+  --resolucao, -r 720|480     linhas da imagem. 720 (padrão): 1280x720. 480: 854x480, arquivos com
+                              cerca de metade do tamanho, e tocam em TVs e aparelhos mais antigos
+                              (a TV Globinho era em definição padrão, então quase não se nota)
   --qualidade <n>             qualidade do vídeo (CRF do x264, 0-51; menor = melhor e maior).
                               Padrão: ${DEFAULT_CRF}
   --preset <nome>             velocidade do x264: ${PRESETS.join(', ')}.
@@ -102,7 +106,8 @@ Outras:
   --ffmpeg <caminho>          ffmpeg a usar (arquivo ou pasta). Também vale a variável FFMPEG
   --ajuda                     mostra esta ajuda
 
-Vídeo gerado: MP4, H.264 High nível 4.0, 1280x720, 25 ou 30 quadros por segundo (o que a
+Vídeo gerado: MP4, H.264 High nível 4.0, 1280x720 (com --resolucao 480: Main nível 3.1,
+854x480), 25 ou 30 quadros por segundo (o que a
 maioria dos vídeos já tem), som AAC estéreo 48 kHz com o volume igualado.
 
 Exemplos:
@@ -131,6 +136,9 @@ export const pendriveCommand: Command = {
     }
     const preset = values.preset ?? DEFAULT_PRESET;
     if (!PRESETS.includes(preset)) throw new UsageError(`--preset "${preset}" não existe. Use: ${PRESETS.join(', ')}.`);
+    const resolution = values.resolucao?.toLowerCase().replace(/p$/, '');
+    const height = resolution === undefined ? DEFAULT_OUTPUT_HEIGHT : (OUTPUT_HEIGHTS.find((h) => String(h) === resolution) ?? null);
+    if (height === null) throw new UsageError(`--resolucao "${values.resolucao}" não existe. Use: ${OUTPUT_HEIGHTS.join(' ou ')}.`);
     const from = values['a-partir-de'];
     if (from !== undefined && !isIsoDate(from)) throw new UsageError(`--a-partir-de precisa ser uma data no formato AAAA-MM-DD (recebi "${from}").`);
 
@@ -144,6 +152,7 @@ export const pendriveCommand: Command = {
         flags: values as SettingsFlags,
         crf: intOption('--qualidade', values.qualidade, 0, 51) ?? DEFAULT_CRF,
         preset,
+        height,
         concurrency: intOption('--paralelo', values.paralelo, 1, 8),
         copyLibrary: Boolean(values['copiar-biblioteca']),
         simulate: Boolean(values.simular),
@@ -163,6 +172,7 @@ interface Job {
   flags: SettingsFlags;
   crf: number;
   preset: string;
+  height: OutputHeight;
   concurrency: number | undefined;
   copyLibrary: boolean;
   simulate: boolean;
@@ -222,7 +232,7 @@ async function pendrive(job: Job, { signal }: CommandContext): Promise<number> {
   }
   if (rundown.skipped.length > 0) console.log(`Aviso: ${plural(rundown.skipped.length, 'arquivo')} sem duração conhecida foram pulados.`);
 
-  const encode = encodeSettings(settings, fps, job.crf, job.preset);
+  const encode = encodeSettings(settings, fps, job.crf, job.preset, job.height);
   const estimates = estimate(rundown, encode);
   report(rundown, estimates, settings, encode, job.simulate);
 
@@ -273,6 +283,7 @@ async function pendrive(job: Job, { signal }: CommandContext): Promise<number> {
     adBreaks: settings.adBreaks,
     aspect: settings.aspect,
     fps,
+    height: encode.height,
     libraryCopied: copied !== null && copied.failures.length === 0,
   });
   await writeFile(await destPath(target, README_FILE), readme, 'utf8');
@@ -312,7 +323,7 @@ const clock = (seconds: number) => {
 };
 
 function report(rundown: Rundown, estimates: DayEstimate[], settings: Settings, encode: EncodeSettings, detailed: boolean) {
-  for (const line of settingsSummary({ crt: encode.crt, interstitials: settings.interstitials, commercials: settings.commercials, adBreaks: settings.adBreaks, aspect: settings.aspect, fps: rundown.fps })) {
+  for (const line of settingsSummary({ crt: encode.crt, interstitials: settings.interstitials, commercials: settings.commercials, adBreaks: settings.adBreaks, aspect: settings.aspect, fps: rundown.fps, height: encode.height })) {
     console.log(`  ${line}`);
   }
   console.log('');

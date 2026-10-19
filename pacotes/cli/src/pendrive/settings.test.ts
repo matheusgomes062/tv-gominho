@@ -59,7 +59,14 @@ describe('encodeSettings', () => {
       crt: { intensity: 'medium', curvature: 50, scanlines: true },
       crf: 20,
       preset: 'slow',
+      height: 720,
     });
+  });
+
+  it('halves the estimated size at 480 lines', () => {
+    const hd = estimateSize(3600, encodeSettings(DEFAULT_SETTINGS, 30, 22, 'veryfast'));
+    const sd = estimateSize(3600, encodeSettings(DEFAULT_SETTINGS, 30, 22, 'veryfast', 480));
+    expect(sd / hd).toBeCloseTo(0.5, 1);
   });
 
   it('follows what a theme sets: the modern theme is a flat screen in the original shape', () => {

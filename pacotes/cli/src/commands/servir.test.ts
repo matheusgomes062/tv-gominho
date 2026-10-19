@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { gunzipSync } from 'node:zlib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createLibraryServer } from './servir';
+import { allowedHost, createLibraryServer } from './servir';
 
 let root: string;
 let base: string;
@@ -33,6 +33,9 @@ beforeAll(async () => {
   await mkdir(path.join(app, 'assets'), { recursive: true });
   for (let i = 0; i < 80; i++) await writeFile(path.join(library, `programas/dbz/episodios/${String(i).padStart(3, '0')} - Episódio.mp4`), Buffer.alloc(1000, i));
   await writeFile(path.join(library, '.originais/escondido.mp4'), 'x');
+  await writeFile(path.join(library, 'pagina.html'), '<script>alert(1)</script>');
+  await writeFile(path.join(library, 'capa.svg'), '<svg onload="alert(1)"/>');
+  await writeFile(path.join(library, 'programas/dbz/programa.yaml'), 'titulo: DBZ');
   await writeFile(path.join(root, 'segredo.txt'), 'fora da biblioteca');
   await writeFile(path.join(app, 'index.html'), '<!doctype html><title>TV</title>');
   await writeFile(path.join(app, 'assets/app.js'), 'console.log(1)');
@@ -56,7 +59,7 @@ describe('createLibraryServer', () => {
     expect(res.headers['content-encoding']).toBe('gzip');
     const listing = JSON.parse(gunzipSync(res.body).toString('utf8'));
     expect(listing.base).toBe('/__biblioteca/arquivo/');
-    expect(listing.files).toHaveLength(80);
+    expect(listing.files).toHaveLength(83);
     expect(listing.files.some((file: string) => file.includes('.originais'))).toBe(false);
   });
 
@@ -84,6 +87,39 @@ describe('createLibraryServer', () => {
     const plain = await get('/assets/app.js');
     expect(plain.headers['content-encoding']).toBeUndefined();
     expect(plain.body.toString()).toBe('console.log(1)');
+  });
+
+  it('never serves a library file as a page', async () => {
+    const html = await get('/__biblioteca/arquivo/pagina.html');
+    expect(html.status).toBe(200);
+    expect(html.headers['content-type']).toBe('application/octet-stream');
+    expect(html.headers['content-disposition']).toBe('attachment');
+    expect(html.headers['content-security-policy']).toBe('sandbox');
+    expect(html.headers['x-content-type-options']).toBe('nosniff');
+    const svg = await get('/__biblioteca/arquivo/capa.svg');
+    expect(svg.headers['content-type']).toBe('application/octet-stream');
+    const yaml = await get('/__biblioteca/arquivo/programas/dbz/programa.yaml');
+    expect(yaml.headers['content-type']).toBe('text/plain; charset=utf-8');
+    expect(yaml.headers['content-disposition']).toBeUndefined();
+  });
+
+  it('refuses host names other than addresses, localhost and this machine (DNS rebinding)', async () => {
+    expect((await get('/__biblioteca/lista', { host: 'malicioso.example.com' })).status).toBe(421);
+    expect((await get('/', { host: 'malicioso.example.com:8080' })).status).toBe(421);
+    expect((await get('/__biblioteca/lista', { host: 'localhost:8080' })).status).toBe(200);
+    expect((await get('/__biblioteca/lista', { host: '192.168.0.10:8080' })).status).toBe(200);
+    expect((await get('/__biblioteca/lista', { host: '[::1]:8080' })).status).toBe(200);
+  });
+
+  it.each([
+    ['raspberrypi.local:8080', true],
+    ['RaspberryPi', true],
+    ['tv.localhost', true],
+    ['raspberrypi.example.com', false],
+    ['10.0.0.5.nip.io', false],
+    [undefined, false],
+  ])('allowedHost(%s) on a machine named raspberrypi', (host, allowed) => {
+    expect(allowedHost(host, 'raspberrypi')).toBe(allowed);
   });
 
   it('answers app routes with index.html and missing assets with 404', async () => {

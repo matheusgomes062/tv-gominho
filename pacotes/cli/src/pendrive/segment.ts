@@ -6,8 +6,22 @@ import { createHash } from 'node:crypto';
 import { loudnormFilter, DEFAULT_LOUDNESS, type LoudnormStats } from '../convert/plan';
 import { crtGraph, type CrtLook } from './crt';
 
-export const OUTPUT_WIDTH = 1280;
-export const OUTPUT_HEIGHT = 720;
+/** Lines of the output frame: 720 (1280x720, the default) or 480 (854x480: about half the size, and plays on older TVs). */
+export type OutputHeight = 720 | 480;
+export const OUTPUT_HEIGHTS: readonly OutputHeight[] = [720, 480];
+export const DEFAULT_OUTPUT_HEIGHT: OutputHeight = 720;
+
+/** The 16:9 frame of an output height (widths rounded to even numbers, as H.264 needs). */
+export function frameSize(height: OutputHeight): { width: number; height: number } {
+  return { width: height === 720 ? 1280 : 854, height };
+}
+
+/** H.264 profile and level: High 4.0 for 720p; Main 3.1 for 480p, which even early 2010s TVs and players take. */
+export function videoProfile(height: OutputHeight): { profile: string; level: string; maxRate: string; buffer: string; audioRate: string } {
+  return height === 720
+    ? { profile: 'high', level: '4.0', maxRate: MAX_VIDEO_RATE, buffer: VIDEO_BUFFER, audioRate: '160k' }
+    : { profile: 'main', level: '3.1', maxRate: '3M', buffer: '6M', audioRate: '128k' };
+}
 export const AUDIO_RATE = 48_000;
 /** Bump when anything that changes the rendered pixels or sound changes: it invalidates the cached pieces. */
 export const RENDER_VERSION = 1;
@@ -23,15 +37,17 @@ export interface EncodeSettings {
   /** x264 quality (lower = better and bigger). */
   crf: number;
   preset: string;
+  height: OutputHeight;
 }
 
 /** Peak bitrate of the video: a cap that keeps the size predictable and inside what a TV's decoder takes. */
 export const MAX_VIDEO_RATE = '6M';
 export const VIDEO_BUFFER = '12M';
 
-/** The area the picture occupies inside the 1280x720 frame: 4:3 is pillarboxed, the others fill it. */
-export function pictureBox(aspect: Aspect): { width: number; height: number } {
-  return aspect === '4:3' ? { width: 960, height: OUTPUT_HEIGHT } : { width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT };
+/** The area the picture occupies inside the frame (1280x720 or 854x480): 4:3 is pillarboxed, the others fill it. */
+export function pictureBox(aspect: Aspect, height: OutputHeight = DEFAULT_OUTPUT_HEIGHT): { width: number; height: number } {
+  const frame = frameSize(height);
+  return aspect === '4:3' ? { width: (height * 4) / 3, height } : frame;
 }
 
 /** What the renderer needs to know about the source of a piece. */
@@ -65,7 +81,8 @@ export const secondsOf = (frames: number, fps: number) => frames / fps;
 
 /** The filter graph (video and audio) of one piece. `maskInput` / `silenceInput` are the ffmpeg input indexes, or null when unused. */
 export function segmentGraph(source: SegmentSource, settings: EncodeSettings, maskInput: number | null): { graph: string; video: string; audio: string } {
-  const box = pictureBox(settings.aspect);
+  const box = pictureBox(settings.aspect, settings.height);
+  const frameBox = frameSize(settings.height);
   const matrix = sourceMatrix(source);
   const chains: string[] = [];
 
@@ -90,10 +107,10 @@ export function segmentGraph(source: SegmentSource, settings: EncodeSettings, ma
     chains.push(`[0:v:0]${head.join(',')},${fit}:${inColour},format=gbrp,${padTo(box.width, box.height)}[pic]`);
     chains.push(`[${maskInput}:v]format=gbrp[mask]`);
     chains.push(...crtGraph(settings.crt, box.width, box.height, { input: '[pic]', mask: '[mask]', output: '[crt]' }));
-    const frame = box.width < OUTPUT_WIDTH ? `,${padTo(OUTPUT_WIDTH, OUTPUT_HEIGHT)}` : '';
+    const frame = box.width < frameBox.width ? `,${padTo(frameBox.width, frameBox.height)}` : '';
     chains.push(`[crt]scale=${outColour},format=yuv420p${frame},setsar=1[v]`);
   } else {
-    chains.push(`[0:v:0]${head.join(',')},${fit}:${inColour}:${outColour},${padTo(OUTPUT_WIDTH, OUTPUT_HEIGHT)},format=yuv420p,setsar=1[v]`);
+    chains.push(`[0:v:0]${head.join(',')},${fit}:${inColour}:${outColour},${padTo(frameBox.width, frameBox.height)},format=yuv420p,setsar=1[v]`);
   }
 
   // ---- audio: stereo, 48 kHz, loudness matched to the other pieces, padded so it never ends before the picture.
@@ -112,6 +129,7 @@ export function buildSegmentArgs(source: SegmentSource, settings: EncodeSettings
   const maskInput = settings.crt ? 1 : null;
   const { graph, video, audio } = segmentGraph(source, settings, maskInput);
   const seconds = secondsOf(source.frames, settings.fps);
+  const profile = videoProfile(settings.height);
   const args = ['-ss', trim(secondsOf(source.startFrame, settings.fps)), '-i', source.file];
   if (settings.crt) {
     if (!maskFile) throw new Error('The CRT look needs the mask image.');
@@ -130,10 +148,10 @@ export function buildSegmentArgs(source: SegmentSource, settings: EncodeSettings
     '-c:v', 'libx264',
     '-preset', settings.preset,
     '-crf', String(settings.crf),
-    '-maxrate', MAX_VIDEO_RATE,
-    '-bufsize', VIDEO_BUFFER,
-    '-profile:v', 'high',
-    '-level:v', '4.0',
+    '-maxrate', profile.maxRate,
+    '-bufsize', profile.buffer,
+    '-profile:v', profile.profile,
+    '-level:v', profile.level,
     '-pix_fmt', 'yuv420p',
     // A keyframe at least every two seconds (every piece starts with one), so skipping in the TV's player is quick.
     '-g', String(settings.fps * 2),
@@ -142,7 +160,7 @@ export function buildSegmentArgs(source: SegmentSource, settings: EncodeSettings
     '-color_trc', 'bt709',
     '-color_range', 'tv',
     '-c:a', 'aac',
-    '-b:a', '160k',
+    '-b:a', profile.audioRate,
     '-ar', String(AUDIO_RATE),
     '-ac', '2',
     '-sn', '-dn',
@@ -189,6 +207,8 @@ export function settingsFingerprint(settings: EncodeSettings): string {
     crt: settings.crt && { i: settings.crt.intensity, c: Math.round(settings.crt.curvature), s: settings.crt.scanlines },
     crf: settings.crf,
     preset: settings.preset,
+    // Absent for 720 so the pieces cached before 480 existed stay valid.
+    ...(settings.height !== 720 ? { h: settings.height } : {}),
     loudness: DEFAULT_LOUDNESS.integrated,
   });
 }

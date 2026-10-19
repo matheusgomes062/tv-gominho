@@ -2,12 +2,13 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
-import { networkInterfaces } from 'node:os';
+import { isIP } from 'node:net';
+import { hostname, networkInterfaces } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CliError, UsageError } from '../errors';
 import { helpOptions, intOption, parseOptions } from '../options';
-import { LIBRARY_FILE_PATH, LIBRARY_LIST_PATH, libraryListing, resolveInside, sendFile, sendJson, sendStatic } from '../serve/http';
+import { LIBRARY_FILE_PATH, LIBRARY_LIST_PATH, libraryListing, resolveInside, sendJson, sendLibraryFile, sendStatic } from '../serve/http';
 import type { Command } from './types';
 
 const OPTIONS = {
@@ -81,10 +82,29 @@ export const servirCommand: Command = {
   },
 };
 
+/**
+ * Host names the server answers to. A web page elsewhere can point a domain of its own
+ * at 127.0.0.1 or a LAN address (DNS rebinding) and read the library through it; such
+ * requests carry that domain in Host. IP addresses, localhost and this machine's own
+ * names (raspberrypi, raspberrypi.local) are what people type.
+ */
+export function allowedHost(host: string | undefined, machineName = hostname()): boolean {
+  if (!host) return false;
+  const name = host.replace(/:\d+$/, '').replace(/^\[|\]$/g, '').toLowerCase();
+  if (isIP(name)) return true;
+  const machine = machineName.toLowerCase();
+  return name === 'localhost' || name.endsWith('.localhost') || name === machine || name === `${machine}.local`;
+}
+
 /** The server: the app at /, the library under /__biblioteca/. Read-only. */
 export function createLibraryServer(library: string, app: string): Server {
   return createServer((req, res) => {
     const url = (req.url ?? '/').split('?')[0]!;
+    if (!allowedHost(req.headers.host)) {
+      res.statusCode = 421;
+      res.end('Use o endereço que o tv-gominho servir mostrou (IP ou localhost).');
+      return;
+    }
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.statusCode = 405;
       res.end();
@@ -101,7 +121,7 @@ export function createLibraryServer(library: string, app: string): Server {
           res.end();
           return;
         }
-        return sendFile(req, res, file);
+        return sendLibraryFile(req, res, file);
       }
       return sendStatic(req, res, app, url);
     };

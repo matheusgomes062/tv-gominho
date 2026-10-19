@@ -17,7 +17,7 @@ import {
 } from './segment';
 
 const crtLook: CrtLook = { intensity: 'medium', curvature: 50, scanlines: true };
-const encode = (overrides: Partial<EncodeSettings> = {}): EncodeSettings => ({ fps: 30, aspect: '4:3', crt: crtLook, crf: 22, preset: 'veryfast', ...overrides });
+const encode = (overrides: Partial<EncodeSettings> = {}): EncodeSettings => ({ fps: 30, aspect: '4:3', crt: crtLook, crf: 22, preset: 'veryfast', height: 720, ...overrides });
 const source = (overrides: Partial<SegmentSource> = {}): SegmentSource => ({
   file: 'C:\\biblioteca\\programas\\a\\001.mp4',
   startFrame: 0,
@@ -90,6 +90,18 @@ describe('picture', () => {
     expect(pictureBox('4:3')).toEqual({ width: 960, height: 720 });
     expect(pictureBox('stretch')).toEqual({ width: 1280, height: 720 });
     expect(pictureBox('original')).toEqual({ width: 1280, height: 720 });
+  });
+
+  it('renders 854x480 in H.264 Main 3.1 with --resolucao 480', () => {
+    expect(pictureBox('4:3', 480)).toEqual({ width: 640, height: 480 });
+    expect(pictureBox('stretch', 480)).toEqual({ width: 854, height: 480 });
+    const args = argsOf(source(), encode({ height: 480 }));
+    const graph = after(args, '-filter_complex')!;
+    expect(graph).toContain('format=gbrp,pad=640:480');
+    expect(graph).toContain('pad=854:480:(ow-iw)/2:(oh-ih)/2:black,setsar=1[v]');
+    expect(after(args, '-profile:v')).toBe('main');
+    expect(after(args, '-level:v')).toBe('3.1');
+    expect(after(args, '-b:a')).toBe('128k');
   });
 
   it('without the CRT it is plain scaling: no effect filters, no mask input', () => {

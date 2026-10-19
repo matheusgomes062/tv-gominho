@@ -5,7 +5,7 @@ import { mergeSettings, type AspectMode, type CrtIntensity, type PartialSettings
 import { UsageError } from '../errors';
 import { intOption } from '../options';
 import { estimateBytes } from './parts';
-import type { EncodeSettings } from './segment';
+import { DEFAULT_OUTPUT_HEIGHT, type EncodeSettings, type OutputHeight } from './segment';
 
 export const DEFAULT_DAYS = 5;
 export const MAX_DAYS = 366;
@@ -62,7 +62,7 @@ export function applyFlags(base: Settings, flags: SettingsFlags): Settings {
 }
 
 /** What the renderer needs from the settings. */
-export function encodeSettings(settings: Settings, fps: number, crf: number, preset: string): EncodeSettings {
+export function encodeSettings(settings: Settings, fps: number, crf: number, preset: string, height: OutputHeight = DEFAULT_OUTPUT_HEIGHT): EncodeSettings {
   return {
     fps,
     aspect: settings.aspect,
@@ -71,6 +71,7 @@ export function encodeSettings(settings: Settings, fps: number, crf: number, pre
       : null,
     crf,
     preset,
+    height,
   };
 }
 
@@ -83,7 +84,9 @@ export function estimatedVideoBitrate(encode: EncodeSettings): number {
   // Every step of CRF changes the size by about 12%.
   const crf = Math.pow(0.88, encode.crf - DEFAULT_CRF);
   const base = encode.crt ? 1_800_000 : 1_100_000;
-  return Math.min(6_000_000, Math.round(base * crf));
+  // 854x480 has 44% of the pixels of 1280x720; bits don't fall quite as fast.
+  const lines = encode.height === 720 ? 1 : 0.5;
+  return Math.min(6_000_000, Math.round(base * crf * lines));
 }
 
 /** Estimated size in bytes of `seconds` of rendered video. */
