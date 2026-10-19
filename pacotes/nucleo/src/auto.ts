@@ -1,34 +1,28 @@
 import { WEEKDAYS } from './dates';
-import { resolveInterstitials } from './library';
+import { generateSchedule } from './generate';
 import type { Library, Schedule, ScheduleItem } from './types';
 
 export const AUTO_SCHEDULE_ID = '__automatico';
 
 /**
  * A channel built from whatever is in the library, used when there is no
- * schedule file yet: opening, then one episode of each show, then the closing.
- * What goes between the episodes is up to the commercial breaks (`intervalos`
- * in configuracoes.yaml): no "a seguir" bumpers.
+ * schedule file yet: a TV Globinho-style block (see `generateSchedule`) with
+ * every show once, opening and closing bumpers and promos between the shows.
+ * What goes inside and after the episodes is up to the commercial breaks.
  */
 export function createAutoSchedule(library: Library): Schedule | null {
-  if (library.shows.length === 0) return null;
-  const has = (category: string) => resolveInterstitials(library, category).length > 0;
-
-  const items: ScheduleItem[] = [];
-  if (has('aberturas')) items.push({ type: 'interstitial', ref: 'aberturas' });
-  library.shows.forEach((show) => {
-    items.push({ type: 'show', show: show.id, count: 1 });
-  });
-  if (has('encerramentos')) items.push({ type: 'interstitial', ref: 'encerramentos' });
-
-  return {
-    id: AUTO_SCHEDULE_ID,
-    path: '',
-    name: 'Canal Automático',
-    description: 'Todos os programas da biblioteca, em sequência.',
+  if (!library.shows.some((show) => show.episodes.length > 0)) return null;
+  const { schedule } = generateSchedule(library, () => undefined, {
     startDate: '2000-01-01',
     days: [...WEEKDAYS],
-    blocks: [{ start: 0, items }],
+    blocks: [{ start: 0, length: 0 }],
+    oneRound: true,
+  });
+  return {
+    ...schedule,
+    id: AUTO_SCHEDULE_ID,
+    name: 'Canal Automático',
+    description: 'Todos os programas da biblioteca, em sequência.',
   };
 }
 

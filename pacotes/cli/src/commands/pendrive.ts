@@ -2,7 +2,8 @@ import { mkdir, readdir, stat, statfs, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { AUTO_SCHEDULE_ID, createAutoSchedule, findChannelIndex, localIsoDate, scanLibrary, type Library, type Schedule, type Settings } from '@tv-gominho/nucleo';
 import { CliError, UsageError } from '../errors';
-import { locateFfmpeg, probe, type FfmpegTools, type MediaInfo } from '../ffmpeg';
+import { Durations } from '../durations';
+import { locateFfmpeg } from '../ffmpeg';
 import { openNodeLibrary, type NodeLibrarySource } from '../node-source';
 import { ffmpegOptions, helpOptions, intOption, parseOptions } from '../options';
 import { formatBytes, formatDuration, plural } from '../ui';
@@ -169,7 +170,6 @@ interface Job {
 }
 
 const SECTIONS = ['programas', 'vinhetas', 'grades'];
-const PROBE_CONCURRENCY = 4;
 
 /** Which schedule to export: the one asked for, else the first, else the automatic channel. */
 export function chooseSchedule(library: Library, reference: string | undefined): Schedule {
@@ -186,40 +186,6 @@ export function chooseSchedule(library: Library, reference: string | undefined):
   return schedule;
 }
 
-/** ffprobe of the library's files, once each, a few at a time. */
-class Durations implements DurationSource {
-  readonly infos = new Map<string, MediaInfo>();
-  private readonly failed = new Set<string>();
-
-  constructor(
-    private readonly tools: FfmpegTools,
-    private readonly source: NodeLibrarySource,
-    private readonly signal: AbortSignal,
-    private readonly warn: (message: string) => void,
-  ) {}
-
-  async load(paths: string[]): Promise<void> {
-    const todo = paths.filter((file) => !this.infos.has(file) && !this.failed.has(file));
-    let next = 0;
-    const worker = async () => {
-      while (!this.signal.aborted) {
-        const file = todo[next++];
-        if (file === undefined) return;
-        try {
-          const info = await probe(this.tools, this.source.resolve(file));
-          if (info.video && info.duration) this.infos.set(file, info);
-          else throw new Error(info.video ? 'o arquivo não informa a duração' : 'o arquivo não tem vídeo');
-        } catch (error) {
-          this.failed.add(file);
-          this.warn(`Não consegui ler "${file}": ${(error as Error).message}. O item será pulado.`);
-        }
-      }
-    };
-    await Promise.all(Array.from({ length: Math.min(PROBE_CONCURRENCY, todo.length) }, worker));
-  }
-
-  get = (file: string) => this.infos.get(file)?.duration ?? undefined;
-}
 
 async function pendrive(job: Job, { signal }: CommandContext): Promise<number> {
   const source = await openNodeLibrary(job.folder);

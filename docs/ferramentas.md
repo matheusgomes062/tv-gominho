@@ -1,10 +1,11 @@
 # Ferramentas de linha de comando
 
-A TV Gominho tem uma ferramenta de linha de comando, o `tv-gominho`, para o trabalho pesado de vídeo, que o navegador não faz: converter arquivos antigos e gerar o [pendrive](pendrive.md). Ela usa o [ffmpeg](https://ffmpeg.org).
+A TV Gominho tem uma ferramenta de linha de comando, o `tv-gominho`, para o trabalho que o navegador não faz: converter arquivos antigos, montar a grade e gerar o [pendrive](pendrive.md). Ela usa o [ffmpeg](https://ffmpeg.org).
 
 | Comando | O que faz | Status |
 |---|---|---|
 | `converter` | Converte vídeos antigos ou incompatíveis da biblioteca para MP4 (H.264 + AAC) | Pronto |
+| `grade` | Monta o canal TV Globinho (a grade) com os programas da biblioteca | Pronto |
 | `pendrive` | Gera o pendrive com a programação pré-renderizada em MP4, para tocar em qualquer TV | Pronto |
 | `ajuda` | Mostra os comandos e as opções | Pronto |
 
@@ -146,6 +147,41 @@ npm run cli -- converter ./biblioteca --ffmpeg "C:\ffmpeg\bin\ffmpeg.exe"
 ### Interrupções e repetição
 
 Pode interromper com **Ctrl+C** a qualquer momento: o arquivo parcial é apagado e nenhum original é movido pela conversão em andamento. Rodar o mesmo comando de novo continua de onde parou, porque o que já foi convertido é reconhecido e pulado. O comando termina com um resumo (convertidos, falhas, espaço, tempo) e código de saída diferente de zero se algum arquivo falhou.
+
+## `grade`
+
+```
+tv-gominho grade <biblioteca> [opções]
+```
+
+Monta o canal TV Globinho com o que está na biblioteca e grava `grades/tv-globinho.yaml`. Você só coloca os episódios em `programas/` e as vinhetas em `vinhetas/`; a grade sai pronta:
+
+- Cada bloco começa com uma **abertura**, passa os programas em **rodízio**, com uma **chamada** de `vinhetas/chamadas/` entre eles, e termina com um **encerramento**.
+- O tamanho do bloco já conta os **intervalos comerciais** e as **vinhetas de intervalo** (as configurações `intervalos` da biblioteca). A duração de cada vídeo vem do ffprobe; sem ffmpeg, valem durações típicas.
+- Desenhos curtos (menos de 13 minutos, como Bob Esponja) passam **dois episódios seguidos**.
+- Com `--epoca <ano>`, a abertura, o encerramento e as vinhetas de intervalo são os daquele ano, pelo ano no nome da pasta ou do arquivo (`tv-globinho-2003-2009/`, `Abertura (2009-2014).mp4`). Programas com `ano` (no `programa.yaml`) depois da época ficam de fora.
+- Vinhetas com `globinho` no caminho têm preferência (`--marca` troca a palavra).
+
+```sh
+tv-gominho grade ./biblioteca --epoca 2004 --simular      # só mostra
+tv-gominho grade ./biblioteca --epoca 2004                # grava grades/tv-globinho.yaml
+tv-gominho grade ./biblioteca -p dragon-ball-z,pokemon,digimon -b 08:00-10:00,10:30-12:00 --arquivo manha
+```
+
+| Opção | O que faz |
+|---|---|
+| `--nome <texto>` | Nome do canal. Padrão: `TV Globinho` |
+| `--programas`, `-p a,b,c` | Pastas dos programas, na ordem do rodízio. Padrão: todos com episódios, numa ordem embaralhada fixa |
+| `--blocos`, `-b` | Blocos com início e fim: `08:00-12:00` (padrão) ou `08:00-10:00,14:00-17:30` |
+| `--epoca`, `-e <ano>` | Vinhetas e programas daquele ano |
+| `--marca <palavra>` | Prefere vinhetas com essa palavra no caminho. Padrão: `globinho` |
+| `--dias seg,ter,...` | Dias da semana. Padrão: segunda a sexta |
+| `--a-partir-de AAAA-MM-DD` | Estreia da grade: o primeiro episódio de cada programa passa nesse dia. Padrão: hoje |
+| `--arquivo <nome>` | Nome do arquivo em `grades/`. Padrão: `tv-globinho` |
+| `--substituir` | Grava por cima de uma grade que já existe |
+| `--simular` | Mostra a grade sem gravar |
+
+A grade gerada é um arquivo comum, com o horário estimado de cada programa em comentários: dá para editar à vontade (veja [grade.md](grade.md)). Sem nenhuma grade na biblioteca, o app monta sozinho um **Canal Automático** do mesmo jeito, com cada programa uma vez.
 
 ## `pendrive`
 

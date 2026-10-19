@@ -83,7 +83,7 @@ export const DEFAULT_CURVATURE = 50;
 export const DEFAULT_SETTINGS: Settings = {
   startMode: 'tv',
   startChannel: null,
-  channelsPerShow: true,
+  channelsPerShow: false,
   schedule: 'continuous',
   crt: { enabled: true, intensity: 'medium', curvature: DEFAULT_CURVATURE, scanlines: true },
   channelChangeStatic: true,

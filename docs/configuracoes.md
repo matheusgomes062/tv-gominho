@@ -54,7 +54,7 @@ Como o tema se combina com as outras opções:
 |---|---|---|
 | `modo_inicial` | `tv`, `biblioteca` | `tv` |
 | `canal_inicial` | nome de uma grade | a primeira grade |
-| `canais_por_programa` | sim/não | sim |
+| `canais_por_programa` | sim/não | não |
 | `horario` | `continuo`, `real`, `do_inicio` | `continuo` |
 | `crt.ligado` | sim/não | sim |
 | `crt.intensidade` | `suave`, `media`, `forte` | `media` |
@@ -79,7 +79,7 @@ O canal que abre na primeira vez, indicado pelo nome da grade (ou pelo nome do a
 
 ### `canais_por_programa`
 
-Cria um canal extra para cada programa da biblioteca, que passa só os episódios dele, um atrás do outro, com os intervalos comerciais (veja `intervalos`) entre eles. Ficam depois dos canais das grades.
+Cria um canal extra para cada programa da biblioteca, que passa só os episódios dele, um atrás do outro, com os intervalos comerciais (veja `intervalos`) entre eles. Ficam depois dos canais das grades. Vem desligado: a TV mostra só os canais das grades (por exemplo, só a TV Globinho que o `tv-gominho grade` monta).
 
 ### `horario`
 

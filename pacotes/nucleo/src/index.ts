@@ -62,6 +62,7 @@ export {
   localIsoDate,
   secondsSinceMidnight,
   formatTimeOfDay,
+  parseTimeOfDay,
   WEEKDAYS,
   type Weekday,
 } from './dates';
@@ -77,3 +78,13 @@ export {
   PLAYABLE_VIDEO,
   CONVERTIBLE_VIDEO,
 } from './paths';
+export {
+  generateSchedule,
+  scheduleToYaml,
+  pickInterstitialRef,
+  yearRange,
+  DEFAULT_GENERATE_BLOCK,
+  type GenerateOptions,
+  type GenerateBlock,
+  type GeneratedSchedule,
+} from './generate';
