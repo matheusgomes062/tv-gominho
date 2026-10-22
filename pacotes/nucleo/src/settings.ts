@@ -104,6 +104,15 @@ export const DEFAULT_SETTINGS: Settings = {
   watermarkEnabled: true,
 };
 
+/**
+ * The break rules a channel plays with: its own `intervalos` (grade) over the general ones. Only the rules
+ * come from the channel; whether commercials play at all stays with `settings.commercials`, so the general
+ * switch wins and a channel cannot turn them on.
+ */
+export function channelAdBreaks(settings: Pick<Settings, 'adBreaks'>, schedule: Pick<Schedule, 'adBreaks'>): AdBreakSettings {
+  return schedule.adBreaks ? { ...settings.adBreaks, ...definedOnly(schedule.adBreaks) } : settings.adBreaks;
+}
+
 /** Layers `partial` on top of `base`; fields missing from `partial` keep the base value. */
 export function mergeSettings(base: Settings, partial: PartialSettings | undefined): Settings {
   if (!partial) return base;
@@ -292,7 +301,8 @@ function watermarkPath(key: string, value: unknown, warn: (message: string) => v
   return text;
 }
 
-function parseAdBreaks(value: unknown, warn: (message: string) => void): Partial<AdBreakSettings> {
+/** The `intervalos` block, in the settings file and in a grade: only the valid keys, bad values warn and are left out. */
+export function parseAdBreaks(value: unknown, warn: (message: string) => void): Partial<AdBreakSettings> {
   const adBreaks: Partial<AdBreakSettings> = {};
   if (value === null || value === undefined) return adBreaks;
   if (!isRecord(value)) {

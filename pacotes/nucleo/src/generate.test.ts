@@ -111,6 +111,22 @@ describe('generateSchedule', () => {
     expect(parsed!.days).toEqual(generated.schedule.days);
   });
 
+  it('writes the channel break rules and reads them back', async () => {
+    const library = await scanLibrary(memorySource(FILES));
+    const generated = generateSchedule(library, durationOf, { startDate: '2010-03-01', era: 2010 });
+    generated.schedule.adBreaks = { every: 5, ads: 2, afterEpisode: false, bumpers: true };
+    const yaml = scheduleToYaml(generated);
+    expect(yaml).toContain('intervalos:\n  a_cada: 5\n  comerciais: 2\n  apos_episodio: nao\n  vinhetas: sim\n');
+    const warnings: LibraryWarning[] = [];
+    expect(parseSchedule('grades/x.yaml', yaml, warnings)!.adBreaks).toEqual(generated.schedule.adBreaks);
+    expect(warnings).toEqual([]);
+
+    generated.schedule.adBreaks = { ads: 4 };
+    expect(parseSchedule('grades/x.yaml', scheduleToYaml(generated), warnings)!.adBreaks).toEqual({ ads: 4 });
+    delete generated.schedule.adBreaks;
+    expect(scheduleToYaml(generated)).not.toContain('intervalos:');
+  });
+
   it('leaves out shows made after the era', async () => {
     const files = { ...FILES, 'programas/pinguins/programa.yaml': 'titulo: Pinguins\nano: 2008' };
     const library = await scanLibrary(memorySource(files));

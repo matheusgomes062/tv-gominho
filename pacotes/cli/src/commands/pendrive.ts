@@ -1,6 +1,6 @@
 import { mkdir, readdir, stat, statfs, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { AUTO_SCHEDULE_ID, createAutoSchedule, findChannelIndex, localIsoDate, scanLibrary, type Library, type Schedule, type Settings } from '@tv-gominho/nucleo';
+import { AUTO_SCHEDULE_ID, channelAdBreaks, createAutoSchedule, findChannelIndex, localIsoDate, scanLibrary, type Library, type Schedule, type Settings } from '@tv-gominho/nucleo';
 import { CliError, UsageError } from '../errors';
 import { Durations } from '../durations';
 import { locateFfmpeg } from '../ffmpeg';
@@ -234,7 +234,7 @@ async function pendrive(job: Job, { signal }: CommandContext): Promise<number> {
 
   const encode = encodeSettings(settings, fps, job.crf, job.preset, job.height);
   const estimates = estimate(rundown, encode);
-  report(rundown, estimates, settings, encode, job.simulate);
+  report(rundown, estimates, settings, schedule, encode, job.simulate);
 
   if (job.simulate) {
     console.log('\nModo --simular: nada foi renderizado nem gravado. Os tamanhos são estimativas.');
@@ -280,7 +280,7 @@ async function pendrive(job: Job, { signal }: CommandContext): Promise<number> {
     crt: encode.crt,
     interstitials: settings.interstitials,
     commercials: settings.commercials,
-    adBreaks: settings.adBreaks,
+    adBreaks: channelAdBreaks(settings, schedule),
     aspect: settings.aspect,
     fps,
     height: encode.height,
@@ -322,8 +322,8 @@ const clock = (seconds: number) => {
   return `${pad(Math.floor(total / 3600))}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`;
 };
 
-function report(rundown: Rundown, estimates: DayEstimate[], settings: Settings, encode: EncodeSettings, detailed: boolean) {
-  for (const line of settingsSummary({ crt: encode.crt, interstitials: settings.interstitials, commercials: settings.commercials, adBreaks: settings.adBreaks, aspect: settings.aspect, fps: rundown.fps, height: encode.height })) {
+function report(rundown: Rundown, estimates: DayEstimate[], settings: Settings, schedule: Schedule, encode: EncodeSettings, detailed: boolean) {
+  for (const line of settingsSummary({ crt: encode.crt, interstitials: settings.interstitials, commercials: settings.commercials, adBreaks: channelAdBreaks(settings, schedule), aspect: settings.aspect, fps: rundown.fps, height: encode.height })) {
     console.log(`  ${line}`);
   }
   console.log('');
