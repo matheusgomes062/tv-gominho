@@ -89,6 +89,15 @@ describe('rundown', () => {
     expect(turma[1]).not.toBe(turma[0]);
   });
 
+  it('airs the episode picked in the agenda and continues from it', async () => {
+    const agenda = '\nagenda:\n  2026-10-13:\n    - bloco: "08:00"\n      item: 2\n      episodio: 2\n';
+    const library = await load({ ...FILES, 'grades/teste.yaml': DAYS + agenda });
+    const rundown = await rundownOf('2026-10-12', 3, SETTINGS, 30, library); // Monday to Wednesday
+    const turma = rundown.days.map((day) => day.pieces.find((piece) => piece.path.includes('turma'))!.path.slice(-7));
+    // Without the pick it would be 003, 001, 002: the Tuesday is 002 and the Wednesday goes on from it.
+    expect(turma).toEqual(['003.mp4', '002.mp4', '003.mp4']);
+  });
+
   it('starts every day with its first block and skips the gap to the next block (do_inicio)', async () => {
     const { days } = await rundownOf('2026-10-12', 1);
     const paths = days[0]!.pieces.map((piece) => piece.path);

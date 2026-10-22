@@ -48,13 +48,14 @@ blocos:
 | `data_inicio` | Dia da estreia; define qual episódio passa em cada dia. |
 | `dias` | Dias da semana em que a grade passa (padrão: todos). |
 | `vinhetas_intervalo` | Opcional. De onde vêm as vinhetas que abrem e fecham os intervalos comerciais (veja "Intervalos comerciais" abaixo). |
+| `agenda` | Opcional. Episódios escolhidos à mão para datas específicas (veja "Agenda" abaixo). |
 | `blocos` | Os blocos de horário, com seus itens. |
 
 ## Regras do motor
 
 1. **Os blocos começam no horário definido.** Se os itens de um bloco terminam até 10 minutos antes do próximo bloco, o espaço é preenchido com vinhetas de `intervalos` e `comerciais` (se estiverem ligados); o que sobrar vira chuvisco. Espaços maiores são pulados e o próximo bloco começa logo em seguida, para o canal estar sempre no ar (`horario: continuo`, o padrão, e `do_inicio`, que pula todos os espaços). Só com `horario: real` os espaços grandes são respeitados: o canal fica fora do ar até o próximo bloco.
 2. **Atrasos:** se um bloco passa do horário do próximo, o episódio não é cortado e o próximo bloco começa atrasado, como na TV de verdade. Isso vale em todos os modos de `horario`, inclusive no `real`: o bloco seguinte entra assim que o atrasado termina, sem tela de fora do ar no meio.
-3. **Qual episódio passa:** cada exibição de um programa avança um episódio. O motor conta quantas vezes o programa já foi exibido desde `data_inicio` e escolhe o episódio por essa conta. Ao chegar ao fim, volta ao primeiro. Isso não depende de estado salvo, então dois aparelhos mostram o mesmo episódio.
+3. **Qual episódio passa:** cada exibição de um programa avança um episódio. O motor conta quantas vezes o programa já foi exibido desde `data_inicio` e escolhe o episódio por essa conta. Ao chegar ao fim, volta ao primeiro. Isso não depende de estado salvo, então dois aparelhos mostram o mesmo episódio. Um episódio escolhido na [agenda](#agenda) muda o ponto de partida dessa conta.
 4. **Sorteios** (vinhetas, comerciais, programas com `ordem: aleatoria`) usam uma semente baseada na data. São variados, mas reproduzíveis.
 5. **Dias fora de `dias`** (por exemplo, sábado e domingo numa grade de segunda a sexta). O comportamento depende da configuração `horario` (veja [configuracoes.md](configuracoes.md)):
    - `continuo` (padrão): o canal reprisa o último dia de exibição (a sexta-feira), então sempre há algo no ar.
@@ -64,6 +65,32 @@ blocos:
    Só os dias de `dias` avançam a contagem de episódios (regra 3); os dias de folga não gastam episódios.
 6. **Itens que faltam:** se um programa ou uma vinheta não existe na biblioteca, o item é pulado e um aviso aparece nas configurações. A grade nunca trava.
 7. **Blocos que passam da meia-noite** (só importa em `horario: real`): um bloco nunca é cortado à meia-noite. Se a programação de um dia ainda está passando depois das 00:00 (por exemplo, um bloco que começa às 23:00 e termina à 01:00), ela continua até acabar, mesmo que o dia novo seja folga, e só então vale a grade do dia novo. Essa sobra é considerada até 6 horas depois da meia-noite.
+
+## Agenda
+
+Por padrão o motor escolhe os episódios sozinho (regra 3). Com a seção opcional `agenda`, você escolhe **o episódio de um programa numa data**; todo o resto continua automático.
+
+```yaml
+agenda:
+  2003-03-05:                  # a data (AAAA-MM-DD), entre os dias da grade
+    - bloco: "08:00"           # o "horario" do bloco, entre aspas
+      item: 2                  # a posição do item no bloco, contando de 1: o 2º item do bloco das 08:00
+      episodio: 12             # o episódio que passa
+    - bloco: "10:30"
+      item: 2                  # o digimon (o item 1 desse bloco é a vinheta)
+      episodio: temporada-02/3 # com temporadas repetindo números, a pasta da temporada antes do número
+  2003-03-10:
+    - bloco: "08:00"
+      item: 2
+      episodio: 1
+```
+
+- **Qual item:** o bloco é identificado pelo `horario` e o item pela posição dele na lista `itens` (a vinheta de abertura conta como item 1, por exemplo). O item precisa ser um `programa`. Se ele tem `episodios: 2`, o episódio escolhido é o primeiro dos dois e o outro vem logo depois dele.
+- **Qual episódio:** o número que está no começo do nome do arquivo (`012 - Título.mp4` é o `12`), o mesmo das chaves de `episodios.yaml` (veja [biblioteca.md](biblioteca.md)). Se o programa tem temporadas e o número se repete (`temporada-01/001` e `temporada-02/001`), escreva também a temporada: `temporada-02/1`.- **Continuação:** depois do episódio escolhido, as próximas exibições do programa seguem a partir do episódio **seguinte** a ele, e voltam ao primeiro no fim, como sempre. No exemplo, se o `dragon-ball-z` passa uma vez por dia, a quinta-feira 2003-03-06 passa o episódio 13. Com mais de uma escolha para o mesmo programa, vale sempre a mais recente que já passou. Escolhas não mudam o que passou *antes* da data delas.
+- **Programas com `ordem: aleatoria`** passam o episódio escolhido na data dele; nos outros dias continuam sorteando.
+- **Dias fora da grade:** a data tem que ser um dos `dias` da grade. Num dia de folga que repete o último dia de exibição (`horario: continuo`), a repetição traz também a escolha.
+- **Tudo vale em todos os aparelhos e no `tv-gominho pendrive`**, em todos os modos de `horario`, porque só depende do arquivo.
+- **Erros não travam a grade:** data inválida, bloco ou item que não existe, item que não é um programa, episódio que o programa não tem (ou que existe em mais de uma temporada) geram um aviso e a escolha é ignorada. A grade sem `agenda` passa exatamente como antes.
 
 ## Intervalos comerciais
 

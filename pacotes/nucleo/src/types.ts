@@ -61,6 +61,20 @@ export interface ScheduleBlock {
   items: ScheduleItem[];
 }
 
+/**
+ * An episode picked by hand for a date (`agenda` in the grade file). `item` is the 1-based position among
+ * the block's items, which must be a show.
+ */
+export interface AgendaPick {
+  /** "YYYY-MM-DD": an airing day of the schedule. */
+  date: string;
+  /** `ScheduleBlock.start` of the block. */
+  blockStart: number;
+  item: number;
+  /** The number in the episode's file name ("12"), or "temporada-02/12" when seasons repeat numbers. */
+  episode: string;
+}
+
 export interface Schedule {
   /** File name without extension; also the channel identifier. */
   id: string;
@@ -76,6 +90,8 @@ export interface Schedule {
    * ("intervalos/tv-globinho"). Absent: the engine draws one brand from vinhetas/intervalos/ for each day.
    */
   breakBumpersRef?: string;
+  /** Episodes picked by hand for a date, in date order. Absent: every episode follows the count from `startDate`. */
+  agenda?: AgendaPick[];
 }
 
 export interface LibraryWarning {

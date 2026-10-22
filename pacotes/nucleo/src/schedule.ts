@@ -1,7 +1,8 @@
 import { parse } from 'yaml';
-import { WEEKDAYS, isIsoDate, parseTimeOfDay, type Weekday } from './dates';
+import { normalizeEpisodeRef } from './agenda';
+import { WEEKDAYS, isIsoDate, isoToDayNumber, parseTimeOfDay, weekdayOf, type Weekday } from './dates';
 import { basename, fold, stripExtension } from './paths';
-import type { LibraryWarning, Schedule, ScheduleBlock, ScheduleItem } from './types';
+import type { AgendaPick, LibraryWarning, Schedule, ScheduleBlock, ScheduleItem } from './types';
 
 const DEFAULT_START_DATE = '2000-01-01';
 
@@ -44,16 +45,19 @@ export function parseSchedule(path: string, text: string, warnings: LibraryWarni
     warn('A grade não tem "blocos".');
     return null;
   }
-  const blocks: ScheduleBlock[] = [];
+  const parsed: ParsedBlock[] = [];
   raw.blocos.forEach((rawBlock, i) => {
     const block = parseBlock(rawBlock, i + 1, warn);
-    if (block) blocks.push(block);
+    if (block) parsed.push(block);
   });
-  if (blocks.length === 0) {
+  if (parsed.length === 0) {
     warn('Nenhum bloco válido na grade.');
     return null;
   }
-  blocks.sort((a, b) => a.start - b.start);
+  parsed.sort((a, b) => a.block.start - b.block.start);
+  const blocks = parsed.map((entry) => entry.block);
+
+  const agenda = raw.agenda === undefined || raw.agenda === null ? [] : parseAgenda(raw.agenda, parsed, days, warn);
 
   return {
     id,
@@ -64,6 +68,7 @@ export function parseSchedule(path: string, text: string, warnings: LibraryWarni
     days,
     blocks,
     ...(breakBumpersRef !== undefined ? { breakBumpersRef } : {}),
+    ...(agenda.length > 0 ? { agenda } : {}),
   };
 }
 
@@ -86,7 +91,13 @@ function parseDays(value: unknown, warn: (message: string) => void): Weekday[] {
   return WEEKDAYS.filter((day) => days.has(day));
 }
 
-function parseBlock(raw: unknown, position: number, warn: (message: string) => void): ScheduleBlock | null {
+/** A block and, for each of its items that survived parsing, the 1-based position it had in the file. */
+interface ParsedBlock {
+  block: ScheduleBlock;
+  filePositions: number[];
+}
+
+function parseBlock(raw: unknown, position: number, warn: (message: string) => void): ParsedBlock | null {
   const label = `Bloco ${position}`;
   if (!isRecord(raw)) {
     warn(`${label}: formato inválido.`);
@@ -102,11 +113,85 @@ function parseBlock(raw: unknown, position: number, warn: (message: string) => v
     return null;
   }
   const items: ScheduleItem[] = [];
+  const filePositions: number[] = [];
   raw.itens.forEach((rawItem, i) => {
     const item = parseItem(rawItem, `${label}, item ${i + 1}`, warn);
-    if (item) items.push(item);
+    if (item) {
+      items.push(item);
+      filePositions.push(i + 1);
+    }
   });
-  return items.length > 0 ? { start, items } : null;
+  return items.length > 0 ? { block: { start, items }, filePositions } : null;
+}
+
+/**
+ * `agenda`: { "2003-03-05": [{ bloco: "08:00", item: 2, episodio: 12 }] }. Entries are checked here against the
+ * schedule itself (date, block, item); whether the episode exists is checked when the library is scanned.
+ * `item` counts the items of the block as written in the file, so a bad item above it does not shift it.
+ */
+function parseAgenda(raw: unknown, blocks: ParsedBlock[], days: Weekday[], warn: (message: string) => void): AgendaPick[] {
+  if (!isRecord(raw)) {
+    warn('"agenda" deve ser uma lista de datas, cada uma com suas escolhas. Ela foi ignorada.');
+    return [];
+  }
+  const picks: AgendaPick[] = [];
+  for (const [key, entries] of Object.entries(raw)) {
+    const date = String(key);
+    const label = `Agenda de ${date}`;
+    if (!isIsoDate(date)) {
+      warn(`${label}: data inválida. Use o formato AAAA-MM-DD, por exemplo 2003-03-05. Ela foi ignorada.`);
+      continue;
+    }
+    const weekday = weekdayOf(isoToDayNumber(date));
+    if (!days.includes(weekday)) {
+      warn(`${label}: cai num dia (${weekday}) que não está em "dias" da grade. Ela foi ignorada.`);
+      continue;
+    }
+    if (!Array.isArray(entries)) {
+      warn(`${label}: deve ser uma lista de escolhas, cada uma com "bloco", "item" e "episodio". Ela foi ignorada.`);
+      continue;
+    }
+    entries.forEach((entry, i) => {
+      const pick = parsePick(entry, date, `${label}, escolha ${i + 1}`, blocks, warn);
+      if (!pick) return;
+      if (picks.some((other) => other.date === pick.date && other.blockStart === pick.blockStart && other.item === pick.item)) {
+        warn(`${label}, escolha ${i + 1}: esse item já tem um episódio escolhido nessa data. Vale o primeiro.`);
+        return;
+      }
+      picks.push(pick);
+    });
+  }
+  return picks.sort((a, b) => a.date.localeCompare(b.date) || a.blockStart - b.blockStart || a.item - b.item);
+}
+
+function parsePick(raw: unknown, date: string, label: string, blocks: ParsedBlock[], warn: (message: string) => void): AgendaPick | null {
+  if (!isRecord(raw)) {
+    warn(`${label}: formato inválido. Use "bloco", "item" e "episodio". Ela foi ignorada.`);
+    return null;
+  }
+  const blockStart = parseTimeOfDay(String(raw.bloco ?? ''));
+  const block = blockStart === null ? undefined : blocks.find((entry) => entry.block.start === blockStart);
+  if (!block) {
+    warn(`${label}: não há bloco "${String(raw.bloco)}" na grade. Use o "horario" de um bloco, entre aspas. Ela foi ignorada.`);
+    return null;
+  }
+  const item = Number(raw.item);
+  if (!Number.isInteger(item) || item < 1) {
+    warn(`${label}: "item" deve ser a posição do item no bloco, contando de 1. Ela foi ignorada.`);
+    return null;
+  }
+  const parsedAt = block.filePositions.indexOf(item);
+  const target = parsedAt >= 0 ? block.block.items[parsedAt] : undefined;
+  if (target?.type !== 'show') {
+    warn(`${label}: o item ${item} do bloco ${String(raw.bloco)} ${target ? 'não é um "programa"' : 'não existe'}. Ela foi ignorada.`);
+    return null;
+  }
+  const episode = normalizeEpisodeRef(raw.episodio);
+  if (episode === null) {
+    warn(`${label}: "episodio" deve ser o número do episódio (12) ou "temporada-02/12". Ela foi ignorada.`);
+    return null;
+  }
+  return { date, blockStart: block.block.start, item: parsedAt + 1, episode };
 }
 
 function parseItem(raw: unknown, label: string, warn: (message: string) => void): ScheduleItem | null {
