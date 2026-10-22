@@ -1,10 +1,12 @@
 import { scanLibrary, type Library } from '@tv-gominho/nucleo';
 import { gradePath, uniqueFileName } from '../wizard-model';
 import { openFolder } from './folder';
-import type { BrowserLibrary } from './types';
+import { openServerLibrary } from './server';
+import type { BrowserLibrary, ServerEditing } from './types';
 
 // Saving a new channel (a grade file in grades/): straight into the library folder when the browser
-// allows it (Chrome/Edge with a remembered folder, write permission asked only now), or as a download.
+// allows it (Chrome/Edge with a remembered folder, write permission asked only now), through
+// `tv-gominho servir --editar` after pairing with its PIN, or as a download.
 
 export type WriteAccess = 'granted' | 'denied' | 'unavailable';
 
@@ -85,6 +87,34 @@ async function writeIntoFolder(
   return { kind: 'written', fileName, path: gradePath(root, fileName) };
 }
 
+/** How many taken names saving through the server steps over before it gives up and downloads. */
+const MAX_NAME_TRIES = 20;
+
+/**
+ * Saves the grade through `tv-gominho servir --editar`, as a new file of grades/ named after `name`.
+ * 'needs-pin' when this device has to pair first (then call again); a download when the server fails.
+ */
+export async function saveThroughServer(
+  editing: ServerEditing,
+  library: Library,
+  name: string,
+  yaml: string,
+  taken: readonly string[],
+): Promise<SaveResult | 'needs-pin'> {
+  // The server refuses to overwrite (409): a file added since the library was read gets the next name.
+  const avoid = [...taken];
+  for (let attempt = 0; attempt < MAX_NAME_TRIES; attempt++) {
+    const fileName = uniqueFileName(name, avoid);
+    const path = gradePath(library.root, fileName);
+    const outcome = await editing.write(path, yaml);
+    if (outcome === 'written') return { kind: 'written', fileName, path };
+    if (outcome === 'needs-pin') return 'needs-pin';
+    if (outcome === 'failed') break;
+    avoid.push(fileName);
+  }
+  return download(library.root, uniqueFileName(name, avoid), yaml, 'failed');
+}
+
 function download(root: string, fileName: string, yaml: string, reason: DownloadReason): SaveResult {
   downloadText(`${fileName}.yaml`, yaml);
   return { kind: 'downloaded', fileName, path: gradePath(root, fileName), reason, yaml };
@@ -105,8 +135,8 @@ export function downloadText(filename: string, text: string): void {
 
 /** Reads the library again after a channel was written: the folder is walked and scanned from scratch. */
 export async function rereadLibrary(source: BrowserLibrary): Promise<Library | null> {
-  if (!source.handle) return null;
-  const fresh = await openFolder(source.handle);
+  if (!source.handle && !source.editing) return null;
+  const fresh = source.handle ? await openFolder(source.handle) : await openServerLibrary();
   try {
     return await scanLibrary(fresh);
   } finally {

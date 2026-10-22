@@ -2697,6 +2697,49 @@ h2 {
   border-top: var(--bw) solid var(--ov-line);
 }
 
+.wizard-pin {
+  display: grid;
+  gap: calc(0.8 * var(--u));
+}
+
+.wizard-pin h2 {
+  margin: 0;
+}
+
+.wizard-pin-digits {
+  display: flex;
+  gap: calc(0.5 * var(--u));
+  margin: 0;
+}
+
+.wizard-pin-digits span {
+  display: grid;
+  place-items: center;
+  width: calc(2.4 * var(--u));
+  height: calc(2.8 * var(--u));
+  font-size: calc(var(--fs-label) * 1.4);
+  color: var(--ov-text);
+  background: var(--ov-tile);
+  border: var(--bw) solid var(--ov-line);
+  border-radius: calc(var(--k-md) * var(--u));
+}
+
+.wizard-pin-digits span[data-on='true'] {
+  border-color: var(--ov-accent);
+}
+
+.wizard-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, calc(4.2 * var(--u)));
+  gap: calc(0.5 * var(--u));
+}
+
+.wizard-keypad .action-tile {
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.wizard-pin .wizard-footer,
 .wizard-done .wizard-footer {
   justify-content: flex-start;
   padding: calc(0.4 * var(--u)) 0 0;
