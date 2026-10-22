@@ -1350,6 +1350,20 @@ h2 {
   animation: ov-slide 0.34s var(--ease) both;
 }
 
+/* The guide wants the whole width, like the cable guides did: the panel grows (the picture stays dimmed behind it). */
+.overlay-left.overlay-wide .overlay-surface {
+  width: calc(100vw - 2.4vw);
+}
+
+.overlay-left .overlay-surface {
+  transition: width 0.25s var(--ease);
+}
+
+.overlay-wide .wizard-body > :not(.guide),
+.overlay-wide .agenda > :not(.guide) {
+  max-width: calc(62 * var(--u));
+}
+
 .overlay-bottom.menu-overlay .overlay-surface {
   left: 1.2vw;
   right: 1.2vw;
@@ -2333,37 +2347,32 @@ h2 {
   background: var(--ov-tile-hover);
 }
 
+/* The same meaning as a choice (see "Choices" below): chosen = radio mark, tint and accent edge; focus = a ring. */
 .theme-card[aria-checked='true'] {
+  background: color-mix(in srgb, var(--ov-accent) 22%, var(--ov-tile));
   border-color: var(--ov-accent);
-  box-shadow: inset 0 0 0 calc(0.1 * var(--u)) var(--ov-accent);
 }
 
-.theme-card:focus-visible {
-  color: var(--ov-on-focus);
-  background: var(--ov-focus);
-  border-color: var(--ov-focus);
-  box-shadow: var(--shadow-focus);
+.overlay .theme-card:focus-visible {
   z-index: 1;
+  outline: calc(var(--bw) * 2 + 0.08 * var(--u)) solid var(--ov-text);
+  outline-offset: calc(0.14 * var(--u));
 }
 
 .theme-name {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: calc(0.5 * var(--u));
   padding: 0 calc(0.3 * var(--u));
   font-size: var(--fs-label);
   font-weight: var(--fw-display);
   text-transform: var(--tt);
 }
 
-.theme-check {
-  width: calc(1.25 * var(--u));
-  height: calc(1.25 * var(--u));
-  color: var(--ov-accent);
-}
-
-.theme-card:focus-visible .theme-check {
-  color: var(--ov-on-focus);
+.theme-name .choice-mark {
+  width: calc(1.2 * var(--u));
+  height: calc(1.2 * var(--u));
 }
 
 .theme-description {
@@ -2665,37 +2674,6 @@ h2 {
   font-variant-numeric: tabular-nums;
 }
 
-.wizard-mark {
-  display: grid;
-  place-items: center;
-  width: calc(1.5 * var(--u));
-  height: calc(1.5 * var(--u));
-  border: calc(var(--bw) * 2) solid var(--ov-dim);
-  border-radius: var(--r-pill);
-}
-
-.wizard-mark[data-on='true'] {
-  background: var(--ov-accent);
-  border-color: var(--ov-accent);
-  color: var(--ov-on-accent);
-}
-
-.wizard-mark .icon {
-  width: 1em;
-  height: 1em;
-}
-
-.wizard-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-3);
-}
-
-.action-tile[aria-pressed='true'],
-.action-tile[role='checkbox'][aria-checked='true'] {
-  border-color: var(--ov-accent);
-}
-
 .action-tile.primary {
   background: var(--ov-accent);
   color: var(--ov-on-accent);
@@ -2937,46 +2915,10 @@ h2 {
   color: var(--ov-text);
 }
 
-/* The preview of the week: rows that take focus so the remote can scroll through them. */
-.preview-list {
-  display: grid;
-  gap: calc(0.35 * var(--u));
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.preview-row,
+/* The warnings of a week: rows that take focus so the remote can scroll through them. */
 .wizard-warning {
   border: var(--bw) solid transparent;
   border-radius: calc(var(--k-md) * var(--u));
-}
-
-.preview-row {
-  display: grid;
-  grid-template-columns: calc(4.4 * var(--u)) minmax(0, 1fr);
-  align-items: center;
-  gap: calc(0.1 * var(--u)) calc(0.8 * var(--u));
-  padding: calc(0.55 * var(--u)) calc(0.9 * var(--u));
-  background: var(--ov-tile);
-}
-
-.preview-block {
-  grid-column: 1 / -1;
-  font-family: var(--ff-body);
-  font-size: var(--fs-meta);
-  letter-spacing: var(--ls-section);
-  text-transform: uppercase;
-  color: var(--ov-dim);
-}
-
-.preview-time {
-  font-weight: var(--fw-display);
-  font-size: var(--fs-label);
-  font-variant-numeric: tabular-nums;
-}
-
-.wizard-warning {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
@@ -2995,7 +2937,6 @@ h2 {
   color: var(--ov-dim);
 }
 
-.preview-row:focus-visible,
 .wizard-warning:focus-visible {
   outline: none;
   color: var(--ov-on-focus);
@@ -3004,8 +2945,6 @@ h2 {
   box-shadow: var(--shadow-focus);
 }
 
-.preview-row:focus-visible .row-meta,
-.preview-row:focus-visible .preview-block,
 .wizard-warning:focus-visible em {
   color: var(--ov-on-focus-dim);
 }
@@ -3021,13 +2960,6 @@ h2 {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: calc(0.45 * var(--u));
   align-items: stretch;
-}
-
-.wizard-mark[data-partial="true"] {
-  border-color: var(--ov-accent);
-  color: var(--ov-accent);
-  font-weight: 700;
-  line-height: 1;
 }
 
 /* --- Programação hub and channel editor ------------------------------------------------------------------ */
@@ -3379,151 +3311,485 @@ h2 {
   color: var(--danger);
 }
 
-.week-airing:focus-visible .agenda-tag[data-tag],
 .agenda-choice:focus-visible .agenda-tag[data-tag] {
   color: inherit;
 }
 
-/* --- The week of a channel: a line per day, the airings at the time they start. The preview of the wizard and the
-   week of "Mudar uma programação" both draw it (components/WeekView.tsx). ---------------------------------------- */
-.week {
+/* --- The guide: the week as a cable TV guide (GUIA). Time across in half hour slots, a row per day, every episode a
+   block as wide as it plays, a line for "now" on today's row, and a strip on top about the block in focus. The preview
+   of the wizard and the week of "Mudar uma programação" both draw it (components/Guide.tsx, guide-model.ts).
+   The window shows 2h30; the track of the day is wider and slides under it. Each skin gives it its own colours. ---- */
+.guide {
+  /* --- modern: flat panels in the colours of the overlay --- */
+  --g-grid: transparent;
+  --g-line: var(--ov-line);
+  --g-lane: rgb(255 255 255 / 0.05);
+  --g-head: rgb(255 255 255 / 0.1);
+  --g-day: rgb(255 255 255 / 0.12);
+  --g-sat: 42%;
+  --g-light: 34%;
+  --g-cell-line: rgb(255 255 255 / 0.3);
+  --g-grid-line: rgb(255 255 255 / 0.08);
+  --g-text: var(--ov-text);
+  --g-dim: var(--ov-dim);
+  --g-time: var(--ov-dim);
+  --g-hour: var(--ov-text);
+  --g-focus: #f6f7fb;
+  --g-on-focus: #12141d;
+  --g-on-focus-dim: rgb(18 20 29 / 0.7);
+  --g-ring: #f6f7fb;
+  --g-now: #ff6b5e;
+  --g-pin: var(--ov-accent);
+  --g-details: #1b1f2e;
+  --g-details-title: var(--ov-text);
+  --g-hatch: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.09) 0 0.35em, transparent 0.35em 0.7em);
+  --g-day-w: calc(5.4 * var(--u));
+  --g-row-h: calc(2.15 * var(--u));
+  --g-head-h: calc(1.5 * var(--u));
   display: grid;
-  gap: calc(0.35 * var(--u));
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  gap: calc(0.5 * var(--u));
+  min-width: 0;
 }
 
-.week-day {
+:root[data-skin='classic'] .guide {
+  /* The 90s guide: deep blue grid, mid-blue blocks with a pale edge, yellow times, a yellow highlight. */
+  --g-grid: #020a2e;
+  --g-line: #8fb3ff;
+  --g-lane: #06165a;
+  --g-head: #020a2e;
+  --g-day: #0b2290;
+  --g-sat: 62%;
+  --g-light: 36%;
+  --g-cell-line: #9ec0ff;
+  --g-grid-line: rgb(143 179 255 / 0.3);
+  --g-text: #ffffff;
+  --g-dim: #bcd0ff;
+  --g-time: #ffe14d;
+  --g-hour: #ffe14d;
+  --g-focus: #ffe14d;
+  --g-on-focus: #1c1600;
+  --g-on-focus-dim: rgb(28 22 0 / 0.75);
+  --g-ring: #ffffff;
+  --g-now: #ff4d4d;
+  --g-pin: #5dff6a;
+  --g-details: #0b2290;
+  --g-details-title: #ffe14d;
+  --g-hatch: repeating-linear-gradient(135deg, rgb(143 179 255 / 0.2) 0 0.3em, transparent 0.3em 0.6em);
+}
+
+:root[data-skin='vhs'] .guide {
+  /* The VCR guide: blue screen, white capitals, blocks drawn with a white outline, inverse video for the focus. */
+  --g-grid: #02053f;
+  --g-line: #ffffff;
+  --g-lane: #04085e;
+  --g-head: #02053f;
+  --g-day: #04085e;
+  --g-sat: 72%;
+  --g-light: 32%;
+  --g-cell-line: #ffffff;
+  --g-grid-line: rgb(255 255 255 / 0.25);
+  --g-text: #ffffff;
+  --g-dim: rgb(255 255 255 / 0.78);
+  --g-time: #ffffff;
+  --g-hour: #ffe14d;
+  --g-focus: #ffffff;
+  --g-on-focus: #04085e;
+  --g-on-focus-dim: rgb(4 8 94 / 0.8);
+  --g-ring: #ffe14d;
+  --g-now: #ffe14d;
+  --g-pin: #ffe14d;
+  --g-details: #04085e;
+  --g-details-title: #ffe14d;
+  --g-hatch: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.18) 0 0.25em, transparent 0.25em 0.5em);
+}
+
+/* What the focused block is, and the time axis: always in view while the days scroll under them. */
+.guide-top {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: calc(0.3 * var(--u)) calc(0.8 * var(--u));
-  padding: calc(0.55 * var(--u)) calc(0.7 * var(--u));
-  background: var(--ov-tile);
-  border: var(--bw) solid transparent;
+  gap: calc(0.3 * var(--u));
+  padding-bottom: calc(0.2 * var(--u));
+  background: var(--ov-solid);
+}
+
+.guide-top .guide-head {
+  padding: calc(0.15 * var(--u));
+  background: var(--g-grid);
+  border: var(--bw) solid var(--g-line);
   border-radius: calc(var(--k-md) * var(--u));
 }
 
-.week-day[data-off] {
-  background: transparent;
-  border-color: var(--ov-line);
+.guide-details {
+  display: grid;
+  gap: calc(0.12 * var(--u));
+  min-height: calc(4 * var(--u));
+  padding: calc(0.35 * var(--u)) calc(0.9 * var(--u));
+  color: var(--g-text);
+  background: var(--g-details);
+  border: var(--bw) solid var(--g-line);
+  border-radius: calc(var(--k-md) * var(--u));
 }
 
-.week-day[data-today] {
-  box-shadow: inset calc(var(--u) * 0.25) 0 0 var(--ov-accent);
-}
-
-.week-day[data-off] {
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: baseline;
-}
-
-.week-day-name {
+.guide-details-top,
+.guide-details-line {
   display: flex;
   align-items: baseline;
-  gap: 0.7em;
-  font-family: var(--ff-body);
-  font-size: var(--fs-meta);
-  font-weight: var(--fw-display);
-  font-variant-numeric: tabular-nums;
-}
-
-.week-today {
-  font-size: 0.85em;
-  letter-spacing: var(--ls-section);
-  text-transform: uppercase;
-  color: var(--ov-accent);
-}
-
-.week-airings {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(calc(11 * var(--u)), 1fr));
-  gap: calc(0.15 * var(--u)) calc(0.5 * var(--u));
+  justify-content: space-between;
+  gap: 0 calc(0.8 * var(--u));
   min-width: 0;
 }
 
-.week-airing {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: 0 0.5em;
-  min-width: 0;
-  padding: 0.2em 0.45em;
-  text-align: left;
-  color: var(--ov-text);
-  background: transparent;
-  border: var(--bw) solid transparent;
-  border-radius: calc(var(--k-md) * var(--u) * 0.8);
-  font-family: var(--ff-body);
-  font-size: var(--fs-meta);
-  line-height: 1.3;
+.guide-details-top {
+  justify-content: flex-start;
+  gap: 0 calc(0.6 * var(--u));
 }
 
-button.week-airing {
-  cursor: pointer;
-  touch-action: manipulation;
-  transition: background 0.15s ease-out, color 0.15s ease-out, box-shadow 0.15s ease-out;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  button.week-airing:hover {
-    background: var(--ov-tile-hover);
-  }
-}
-
-button.week-airing:focus-visible {
-  outline: none;
-  color: var(--ov-on-focus);
-  background: var(--ov-focus);
-  border-color: var(--ov-focus);
-  box-shadow: var(--shadow-focus);
-}
-
-.week-airing[data-pinned] {
-  box-shadow: inset calc(var(--u) * 0.2) 0 0 var(--ov-accent);
-}
-
-button.week-airing[data-pinned]:focus-visible {
-  box-shadow: var(--shadow-focus);
-}
-
-.week-time {
+.guide-details-show {
+  font-size: var(--fs-tile-value);
   font-weight: var(--fw-display);
-  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  color: var(--g-details-title);
+  text-transform: var(--tt);
 }
 
-.week-show {
+.guide-details-ep {
+  font-family: var(--ff-body);
+  font-size: calc(var(--fs-label) * 0.85);
+  line-height: 1.25;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
-.week-ep {
-  color: var(--ov-dim);
+.guide-details-when,
+.guide-details-hint {
+  flex: none;
+  font-family: var(--ff-body);
+  font-size: var(--fs-meta);
+  font-variant-numeric: tabular-nums;
+  color: var(--g-dim);
+}
+
+.guide-details-hint {
+  color: var(--g-details-title);
+}
+
+.guide-details[data-empty] {
+  align-content: center;
+}
+
+.guide-grid {
+  display: grid;
+  gap: calc(0.15 * var(--u));
+  padding: calc(0.15 * var(--u));
+  background: var(--g-grid);
+  border: var(--bw) solid var(--g-line);
+  border-radius: calc(var(--k-md) * var(--u));
+  overflow: clip;
+  color: var(--g-text);
+  cursor: default;
+  outline: none;
+  transition: border-color 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+
+/* The guide itself has the focus: the frame lights up, and the block in focus is the highlighted one. */
+.guide-grid:focus-visible {
+  border-color: var(--g-ring);
+  box-shadow: 0 0 0 calc(0.18 * var(--u)) var(--g-ring);
+}
+
+.guide-head,
+.guide-row {
+  display: grid;
+  grid-template-columns: var(--g-day-w) minmax(0, 1fr);
+  gap: calc(0.15 * var(--u));
+}
+
+.guide-corner,
+.guide-day {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 calc(0.5 * var(--u));
+  font-family: var(--ff-body);
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-display);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  text-transform: var(--tt);
+  background: var(--g-day);
+}
+
+.guide-corner {
+  height: var(--g-head-h);
+  color: var(--g-time);
+  background: var(--g-head);
+}
+
+.guide-day {
+  height: var(--g-row-h);
+}
+
+.guide-today {
+  font-style: normal;
+  font-size: 0.85em;
+  letter-spacing: var(--ls-section);
+  text-transform: uppercase;
+  color: var(--g-hour);
+}
+
+.guide-row[data-today] .guide-day {
+  box-shadow: inset calc(0.25 * var(--u)) 0 0 var(--g-hour);
+}
+
+/* The window onto the day: the track under it slides with the focus (--guide-x, in the share of the track). */
+.guide-lane {
+  position: relative;
+  min-width: 0;
+  height: var(--g-row-h);
+  overflow: clip;
+  background: var(--g-lane);
+}
+
+.guide-head .guide-lane {
+  height: var(--g-head-h);
+  background: var(--g-head);
+}
+
+.guide-track {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--guide-span);
+  transform: translateX(var(--guide-x));
+  transition: transform 0.28s var(--ease);
+}
+
+.guide-slot {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding-left: 0.4em;
+  font-family: var(--ff-body);
+  font-size: var(--fs-meta);
+  font-variant-numeric: tabular-nums;
+  color: var(--g-time);
+  border-left: calc(var(--bw) * 1.5) solid var(--g-line);
+}
+
+.guide-slot[data-tick='hour'] {
+  color: var(--g-hour);
+  font-weight: var(--fw-display);
+}
+
+/* The 15 minute marks: a short tick at the foot of the axis. */
+.guide-slot[data-tick='quarter'] {
+  top: auto;
+  height: 30%;
+  padding: 0;
+  opacity: 0.7;
+}
+
+/* Lines at every half hour behind the blocks. */
+.guide-row .guide-track {
+  background-image: linear-gradient(to right, var(--g-grid-line) var(--bw), transparent var(--bw));
+  background-size: calc(100% / 48) 100%;
+}
+
+.guide-block {
+  position: absolute;
+  top: calc(0.12 * var(--u));
+  bottom: calc(0.12 * var(--u));
+  display: grid;
+  align-content: center;
+  gap: calc(0.05 * var(--u));
+  min-width: 0;
+  padding: 0 calc(0.45 * var(--u));
+  overflow: hidden;
+  color: var(--g-text);
+  background-color: hsl(var(--hue, 220) var(--g-sat) var(--g-light));
+  border: var(--bw) solid var(--g-cell-line);
+  border-radius: calc(var(--k-sm) * var(--u));
+  /* Its own width decides what it can say (see the container queries below). */
+  container-type: inline-size;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s ease-out, color 0.15s ease-out;
+}
+
+.guide-block-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: calc(var(--fs-label) * 0.74);
+  font-weight: var(--fw-display);
+  line-height: 1.15;
+  text-transform: var(--tt);
 }
 
-.week-tags {
+.guide-block-ep {
+  display: flex;
+  gap: 0.5em;
+  overflow: hidden;
+  white-space: nowrap;
+  font-family: var(--ff-body);
+  font-size: calc(var(--fs-meta) * 0.82);
+  line-height: 1.1;
+  color: var(--g-dim);
+}
+
+.guide-mark {
+  font-weight: 700;
+  color: var(--g-pin);
+  text-transform: uppercase;
+}
+
+/* What a block can say depends on its width: a name needs about 4 characters, the episode a little more. Narrower than
+   that it is only its colour (the key below the guide and the strip above say which show it is). */
+@container (max-width: 3.4em) {
+  .guide-block-title,
+  .guide-block-ep {
+    display: none;
+  }
+}
+
+@container (max-width: 5.6em) {
+  .guide-block-ep {
+    display: none;
+  }
+}
+
+/* A block that began before the window: its words would be cut in the middle, so it only points back. */
+.guide-block[data-cut] {
+  align-content: center;
+  justify-items: start;
+}
+
+.guide-block[data-cut] > * {
+  display: none;
+}
+
+.guide-block[data-cut]::before {
+  content: '◂';
+  position: sticky;
+  left: 0;
+  font-size: var(--fs-meta);
+  line-height: 1;
+  color: var(--g-dim);
+}
+
+.guide-grid:focus-visible .guide-block[data-focus][data-cut]::before {
+  color: var(--g-on-focus-dim);
+}
+
+/* Picked by hand: a bar on the top edge. Held by "não passar": hatched. */
+.guide-block[data-pinned] {
+  box-shadow: inset 0 calc(0.2 * var(--u)) 0 var(--g-pin);
+}
+
+.guide-block[data-blocked] {
+  background-image: var(--g-hatch);
+}
+
+/* The commercial break between two blocks. */
+.guide-break {
+  position: absolute;
+  top: calc(0.12 * var(--u));
+  bottom: calc(0.12 * var(--u));
+  background: var(--g-hatch);
+  opacity: 0.8;
+}
+
+/* The block the keys are on, when the guide does not have the focus (the strip still tells about it)... */
+.guide-block[data-focus] {
+  outline: calc(var(--bw) * 1.5) dashed var(--g-ring);
+  outline-offset: calc(-0.2 * var(--u));
+}
+
+/* ...and when it does: highlighted like the cell of the old guides. */
+.guide-grid:focus-visible .guide-block[data-focus] {
+  z-index: 1;
+  color: var(--g-on-focus);
+  background-color: var(--g-focus);
+  border-color: var(--g-focus);
+  outline: calc(var(--bw) * 2) solid var(--g-ring);
+  outline-offset: calc(-0.1 * var(--u));
+}
+
+.guide-grid:focus-visible .guide-block[data-focus] .guide-block-ep {
+  color: var(--g-on-focus-dim);
+}
+
+.guide-grid:focus-visible .guide-block[data-focus][data-pinned] .guide-mark {
+  color: inherit;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .guide-block:hover {
+    filter: brightness(1.18);
+  }
+}
+
+.guide-key {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3em;
-  grid-column: 2 / -1;
-  font-size: 0.9em;
+  gap: calc(0.2 * var(--u)) calc(1 * var(--u));
+  margin: 0;
+  /* The foot is clear of the fade at the bottom of the panel. */
+  padding: 0 calc(0.3 * var(--u)) calc(1.4 * var(--u));
+  list-style: none;
+  font-family: var(--ff-body);
+  font-size: var(--fs-meta);
+  color: var(--g-dim);
 }
 
-.week-day:focus-visible {
-  outline: none;
-  color: var(--ov-on-focus);
-  background: var(--ov-focus);
-  border-color: var(--ov-focus);
-  box-shadow: var(--shadow-focus);
+.guide-key li {
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
 }
 
-.week-day:focus-visible .week-ep,
-.week-day:focus-visible .row-meta,
-.week-day:focus-visible .week-today,
-button.week-airing:focus-visible .week-ep {
-  color: var(--ov-on-focus-dim);
+.guide-key i {
+  width: 1.1em;
+  height: 0.8em;
+  background-color: hsl(var(--hue) var(--g-sat) var(--g-light));
+  border: var(--bw) solid var(--g-cell-line);
+  border-radius: calc(var(--k-sm) * var(--u) * 0.5);
+}
+
+.guide-now {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: calc(0.2 * var(--u));
+  margin-left: calc(-0.1 * var(--u));
+  background: var(--g-now);
+  pointer-events: none;
+}
+
+.guide-empty {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  margin: 0;
+  padding: 0 calc(0.8 * var(--u));
+  font-family: var(--ff-body);
+  font-size: var(--fs-meta);
+  color: var(--g-dim);
+  background: var(--g-hatch);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide-track,
+  .guide-block,
+  .guide-grid {
+    transition: none;
+  }
 }
 
 /* --- Channel editor: the schedule editor behind "Ajustes avançados" -------------------------------------------- */
@@ -3773,29 +4039,16 @@ button.week-airing:focus-visible .week-ep {
   color: var(--ov-dim);
 }
 
-.wizard-quick {
-  border-color: var(--ov-accent);
+/* The shortcut is a button (it fills when focused), not an option: no accent edge, which would read as "chosen". */
+.wizard-quick .row-lead,
+.wizard-quick .selector-arrow {
+  color: var(--ov-accent);
+  opacity: 1;
 }
 
-.wizard-body .wizard-chips {
-  gap: calc(0.4 * var(--u));
-}
-
-.wizard-body .wizard-chips .action-tile {
-  padding-block: calc(0.45 * var(--u));
-}
-
-.day-chip {
-  justify-content: center;
-  padding-inline: calc(0.9 * var(--u));
-}
-
-.day-chip[aria-checked='true'] {
-  background: color-mix(in srgb, var(--ov-accent) 30%, var(--ov-tile));
-}
-
-.day-chip[aria-checked='true']:focus-visible {
-  background: var(--ov-focus);
+.wizard-quick:focus-visible .row-lead,
+.wizard-quick:focus-visible .selector-arrow {
+  color: inherit;
 }
 
 .summary-list {
@@ -3846,4 +4099,193 @@ button.week-airing:focus-visible .week-ep {
 
 .pairing-badge + .panel-close {
   margin-left: 0;
+}
+
+/* --- Choices (components/Choice.tsx): the one control for choosing options, in every screen and every skin.
+   CHOSEN is the indicator (○ ● for one among several, ☐ ☑ for each of a list) plus a tinted fill and an accent edge.
+   FOCUS is a bright ring around the option, with a lighter fill. They never share a treatment: an option can be
+   chosen and unfocused, focused and unchosen, or both. (A button, unlike a choice, is filled when it has the focus.) ---- */
+.choice {
+  display: flex;
+  align-items: center;
+  gap: calc(0.7 * var(--u));
+  min-width: 0;
+  font: inherit;
+  text-align: left;
+  color: var(--ov-text);
+  background: var(--ov-tile);
+  border: var(--bw) solid transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s ease-out, border-color 0.15s ease-out, outline-offset 0.15s ease-out;
+}
+
+.choice[data-variant='row'] {
+  padding: calc(0.7 * var(--u)) calc(1 * var(--u));
+  border-radius: calc(var(--k-md) * var(--u));
+}
+
+.choice[data-variant='chip'] {
+  padding: calc(0.45 * var(--u)) calc(0.95 * var(--u)) calc(0.45 * var(--u)) calc(0.7 * var(--u));
+  border-radius: var(--r-pill);
+  gap: calc(0.5 * var(--u));
+}
+
+.choice-text {
+  display: grid;
+  flex: 1;
+  gap: calc(0.15 * var(--u));
+  min-width: 0;
+}
+
+.choice-label {
+  font-size: var(--fs-label);
+  font-weight: var(--fw-display);
+  line-height: 1.15;
+  text-transform: var(--tt);
+}
+
+.choice[data-variant='chip'] .choice-label {
+  font-size: var(--fs-button);
+  white-space: nowrap;
+}
+
+.choice-meta {
+  font-family: var(--ff-body);
+  font-size: var(--fs-meta);
+  line-height: 1.35;
+  color: var(--ov-dim);
+  text-transform: none;
+}
+
+/* The indicator: a ring (radio) or a box (checkbox), filled with the accent when chosen. */
+.choice-mark {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: calc(1.45 * var(--u));
+  height: calc(1.45 * var(--u));
+  color: var(--ov-on-accent);
+  background: transparent;
+  border: calc(var(--bw) * 2) solid var(--ov-dim);
+  transition: background 0.15s ease-out, border-color 0.15s ease-out;
+}
+
+.choice-mark[data-kind='radio'] {
+  border-radius: 50%;
+}
+
+.choice-mark[data-kind='checkbox'] {
+  border-radius: calc(var(--k-sm) * var(--u) * 0.8);
+}
+
+.choice-mark .icon {
+  width: 1.05em;
+  height: 1.05em;
+}
+
+/* The dot of a chosen radio. */
+.choice-mark[data-kind='radio']::after {
+  content: '';
+  width: 52%;
+  height: 52%;
+  border-radius: 50%;
+  background: var(--ov-on-accent);
+  transform: scale(0);
+  transition: transform 0.15s ease-out;
+}
+
+.choice-mark[data-on='true'] {
+  background: var(--ov-accent);
+  border-color: var(--ov-accent);
+}
+
+.choice-mark[data-kind='radio'][data-on='true']::after {
+  transform: scale(1);
+}
+
+/* Half chosen: a dash in a box. */
+.choice-mark[data-mixed] {
+  border-color: var(--ov-accent);
+}
+
+.choice-mark[data-mixed]::after {
+  content: '';
+  width: 56%;
+  height: calc(var(--bw) * 2.4);
+  background: var(--ov-accent);
+}
+
+.choice[aria-checked='true'],
+.choice[aria-checked='mixed'] {
+  background: color-mix(in srgb, var(--ov-accent) 22%, var(--ov-tile));
+  border-color: var(--ov-accent);
+}
+
+.choice[aria-checked='mixed'] {
+  border-style: dashed;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .choice:hover {
+    background: var(--ov-tile-hover);
+  }
+
+  .choice[aria-checked='true']:hover,
+  .choice[aria-checked='mixed']:hover {
+    background: color-mix(in srgb, var(--ov-accent) 30%, var(--ov-tile));
+  }
+}
+
+.choice[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Focus: a ring outside the option and a lighter fill; the chosen/unchosen look underneath is untouched. */
+.overlay .choice:focus-visible {
+  z-index: 1;
+  outline: calc(var(--bw) * 2 + 0.08 * var(--u)) solid var(--ov-text);
+  outline-offset: calc(0.14 * var(--u));
+  background: color-mix(in srgb, var(--ov-text) 16%, var(--ov-tile));
+}
+
+.overlay .choice[aria-checked='true']:focus-visible,
+.overlay .choice[aria-checked='mixed']:focus-visible {
+  background: color-mix(in srgb, var(--ov-accent) 34%, var(--ov-tile));
+}
+
+.choice-order {
+  flex: none;
+}
+
+/* The seven days: boxes in a grid, not a ragged line of chips. */
+.choice-days {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: calc(0.5 * var(--u));
+  padding: calc(0.3 * var(--u));
+}
+
+.choice-days .choice[data-variant='chip'] {
+  justify-content: flex-start;
+  border-radius: calc(var(--k-md) * var(--u));
+}
+
+.choice-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(0.4 * var(--u));
+  padding: calc(0.3 * var(--u));
+}
+
+.choice-group .choice[data-variant='chip'] {
+  flex: 1 1 auto;
+}
+
+/* Options that are too wide for one line sit in two columns instead of leaving one alone on the next line. */
+.choice-group[data-columns='2'] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }

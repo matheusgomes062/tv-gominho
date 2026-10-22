@@ -1,5 +1,4 @@
 import {
-  formatSpan,
   formatTimeOfDay,
   localIsoDate,
   proposalToRaw,
@@ -11,12 +10,13 @@ import {
   type Show,
 } from '@tv-gominho/nucleo';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { Choice } from '../components/Choice';
 import { Icon, type IconName } from '../components/Icon';
 import { KeyHints, Overlay } from '../components/Overlay';
 import { ScrollBody } from '../components/ScrollBody';
 import { useWeek } from '../components/useWeek';
-import { WeekView, WeekWarnings } from '../components/WeekView';
-import type { WeekDay } from '../week-model';
+import { Guide } from '../components/Guide';
+import { WeekWarnings } from '../components/WeekWarnings';
 import type { Durations } from '../media';
 import { useSettings } from '../settings';
 import { clickDirection } from '../settings-model';
@@ -28,6 +28,7 @@ import { EXAMPLES, MAX_REQUEST_LENGTH, NOTICE, NOTICE_KEY, afterProposal, applyP
 import {
   DAY_LABELS,
   DAY_ORDER,
+  DAYS_CHOICES,
   DAY_PRESETS,
   MAX_NAME_LENGTH,
   MAX_RANGES,
@@ -50,11 +51,11 @@ import {
   chooseNew,
   chooseReplace,
   dayLabel,
+  daysChoiceOf,
   daysSummary,
   existingGradeFiles,
   formatRange,
   initialState,
-  longDayLabel,
   moveRangeEdge,
   movePicked,
   openStep,
@@ -322,7 +323,7 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
   const first = nav.trail.length === 0;
 
   return (
-    <Overlay edge="left" label="Criar uma programação" onBack={goBack} className="wizard-overlay">
+    <Overlay edge="left" label="Criar uma programação" onBack={goBack} className={`wizard-overlay${phase.name === 'editing' && step === 'review' ? ' overlay-wide' : ''}`}>
       <div className="wizard">
         <header className="panel-header">
           <Icon name="calendar" />
@@ -495,11 +496,6 @@ interface RowProps {
   icon: IconName;
   label: string;
   meta?: string;
-  /** A radio/checkbox style row, with its state shown on the right. */
-  role?: 'radio' | 'checkbox';
-  checked?: boolean;
-  /** A button that is on or off (not a radio): aria-pressed, with the same mark. */
-  pressed?: boolean;
   autofocus?: boolean;
   children?: ReactNode;
   className?: string;
@@ -510,8 +506,7 @@ interface RowProps {
   data?: string;
 }
 
-function Row({ icon, label, meta, role, checked, pressed, autofocus, children, className = '', onClick, onKeyDown, adjust, data }: RowProps) {
-  const on = Boolean(role ? checked : pressed);
+function Row({ icon, label, meta, autofocus, children, className = '', onClick, onKeyDown, adjust, data }: RowProps) {
   return (
     <button
       data-nav
@@ -519,9 +514,6 @@ function Row({ icon, label, meta, role, checked, pressed, autofocus, children, c
       data-autofocus={autofocus ? '' : undefined}
       data-wizard={data}
       className={`row wizard-row ${className}`.trim()}
-      role={role}
-      aria-checked={role ? Boolean(checked) : undefined}
-      aria-pressed={!role && pressed !== undefined ? pressed : undefined}
       onClick={onClick}
       onKeyDown={onKeyDown}
     >
@@ -530,7 +522,7 @@ function Row({ icon, label, meta, role, checked, pressed, autofocus, children, c
         <span className="row-label">{label}</span>
         {meta && <span className="row-meta">{meta}</span>}
       </span>
-      {children ?? ((role || pressed !== undefined) && <span className="wizard-mark" data-on={on}>{on && <Icon name="check" />}</span>)}
+      {children}
     </button>
   );
 }
@@ -578,7 +570,9 @@ function WhenStep({
   onQuick(): void;
 }) {
   const choose = (preset: PresetId) => onChange((current) => applyPreset(current, preset));
-  const sameDays = (days: Weekday[]) => days.length === state.days.length && days.every((day) => state.days.includes(day));
+  // "Escolher dias" is a choice of its own: the seven boxes show only then (or when the days match no shortcut).
+  const [picking, setPicking] = useState(false);
+  const daysChoice = daysChoiceOf(state.days, picking);
   const setDays = (days: Weekday[]) => onChange((current) => ({ ...current, days }));
   return (
     <>
@@ -604,20 +598,18 @@ function WhenStep({
       </Row>
 
       <p className="wizard-group">Ou ajuste</p>
-      <div className="wizard-chips" role="group" aria-label="Faixas de horário" data-nav-row="presets">
+      <div className="choice-group" data-columns="2" role="radiogroup" aria-label="Faixas de horário" data-nav-row="presets">
         {RANGE_PRESETS.map((preset) => (
-          <button
+          <Choice
             key={preset.id}
-            data-nav
-            data-preset={preset.id}
-            className="action-tile"
-            aria-pressed={preset.id === state.preset}
+            kind="radio"
+            variant="chip"
+            checked={preset.id === state.preset}
+            label={preset.label}
+            attrs={{ 'data-preset': preset.id }}
             title={preset.id === 'custom' ? 'Até 3 faixas, com os horários que você escolher' : preset.ranges.map(formatRange).join(' e ')}
             onClick={() => choose(preset.id)}
-          >
-            <Icon name="clock" className="action-icon" />
-            <span>{preset.label}</span>
-          </button>
+          />
         ))}
       </div>
 
@@ -656,40 +648,39 @@ function WhenStep({
         </div>
       ) : null}
 
-      <div className="wizard-chips" aria-label="Atalhos de dias" data-nav-row="day-presets">
-        {DAY_PRESETS.map((preset) => (
-          <button
-            key={preset.id}
-            data-nav
-            data-days-preset={preset.id}
-            className="action-tile"
-            aria-pressed={sameDays(preset.days)}
-            onClick={() => setDays([...preset.days])}
-          >
-            {preset.label}
-          </button>
+      <p className="wizard-group">Em quais dias</p>
+      <div className="choice-group" data-columns="2" role="radiogroup" aria-label="Dias" data-nav-row="day-presets">
+        {DAYS_CHOICES.map((choice) => (
+          <Choice
+            key={choice.id}
+            kind="radio"
+            variant="chip"
+            checked={daysChoice === choice.id}
+            label={choice.label}
+            attrs={{ 'data-days-preset': choice.id }}
+            onClick={() => {
+              if (choice.id === 'pick') return setPicking(true);
+              setPicking(false);
+              setDays([...DAY_PRESETS.find((preset) => preset.id === choice.id)!.days]);
+            }}
+          />
         ))}
       </div>
-      <div className="wizard-chips" role="group" aria-label="Dias da semana" data-nav-row="days">
-        {DAY_ORDER.map((day) => {
-          const on = state.days.includes(day);
-          return (
-            <button
+      {daysChoice === 'pick' && (
+        <div className="choice-days" role="group" aria-label="Dias da semana" data-nav-row="days">
+          {DAY_ORDER.map((day) => (
+            <Choice
               key={day}
-              data-nav
-              data-day={day}
-              role="checkbox"
-              aria-checked={on}
-              aria-label={DAY_LABELS[day]}
-              title={DAY_LABELS[day]}
-              className="action-tile day-chip"
+              kind="checkbox"
+              variant="chip"
+              checked={state.days.includes(day)}
+              label={DAY_LABELS[day]}
+              attrs={{ 'data-day': day }}
               onClick={() => setDays(toggleDay(state.days, day))}
-            >
-              <span>{DAY_LABELS[day].slice(0, 3)}</span>
-            </button>
-          );
-        })}
-      </div>
+            />
+          ))}
+        </div>
+      )}
       <p className="panel-note">
         No ar: {sortedRanges(state.ranges).map(formatRange).join(' e ')}, {daysSummary(state.days).toLowerCase()}.
       </p>
@@ -717,19 +708,21 @@ function ShowsStep({
   const titleOf = new Map(library.shows.map((show) => [show.id, show.title]));
   return (
     <>
-      <div className="wizard-list" role="group" aria-label="Quais programas">
-        <Row
+      <div className="wizard-list" role="radiogroup" aria-label="Quais programas">
+        <Choice
           icon="episode"
-          pressed={!picking}
+          kind="radio"
+          checked={!picking}
           autofocus={!picking}
           label="Todos os programas"
           meta={`${shows.length} ${shows.length === 1 ? 'programa' : 'programas'}, em rodízio na ordem que o app escolhe. OK já usa e segue.`}
           data="all"
           onClick={onAll}
         />
-        <Row
+        <Choice
           icon="episode"
-          pressed={picking}
+          kind="radio"
+          checked={picking}
           autofocus={picking}
           label="Escolher os programas"
           meta="Você marca os que entram e a ordem do rodízio."
@@ -739,16 +732,16 @@ function ShowsStep({
       </div>
 
       {picking && (
-        <div className="wizard-list" role="group" aria-label="Programas">
+        <div className="wizard-list" role="group" aria-label="Programas do canal">
           {shows.map((show) => {
             const position = state.picked.indexOf(show.id);
             const on = position >= 0;
             const move = (direction: 1 | -1) => onChange({ picked: movePicked(state.picked, show.id, direction) });
             return (
-              <Row
+              <Choice
                 key={show.id}
                 icon="episode"
-                role="checkbox"
+                kind="checkbox"
                 checked={on}
                 adjust={on}
                 data={`show-${show.id}`}
@@ -766,16 +759,14 @@ function ShowsStep({
                   else onChange({ picked: togglePicked(state.picked, show.id) });
                 }}
               >
-                {on ? (
-                  <span className="row-control selector" title="Ordem no rodízio: ← antes, → depois">
+                {on && (
+                  <span className="row-control selector choice-order" title="Ordem no rodízio: ← antes, → depois">
                     <Icon name="chevronLeft" className="selector-arrow" />
                     <strong>{position + 1}</strong>
                     <Icon name="chevronRight" className="selector-arrow" />
                   </span>
-                ) : (
-                  <span className="wizard-mark" data-on="false" />
                 )}
-              </Row>
+              </Choice>
             );
           })}
           <p className="panel-note">Os programas passam em rodízio na ordem dos números. Com a seta ← ou → no programa marcado, ele passa para antes ou depois.</p>
@@ -812,9 +803,9 @@ function CommercialsStep({ state, library, onChange }: { state: WizardState; lib
   return (
     <>
       <div role="radiogroup" aria-label="Regras dos comerciais" className="wizard-list">
-        <Row
+        <Choice
           icon="ads"
-          role="radio"
+          kind="radio"
           autofocus={!custom}
           checked={!custom}
           label="Seguir a configuração geral"
@@ -822,9 +813,9 @@ function CommercialsStep({ state, library, onChange }: { state: WizardState; lib
           data="general"
           onClick={() => onChange((current) => ({ ...current, adMode: 'general' }))}
         />
-        <Row
+        <Choice
           icon="ads"
-          role="radio"
+          kind="radio"
           autofocus={custom}
           checked={custom}
           label="Regras próprias deste canal"
@@ -850,17 +841,17 @@ function CommercialsStep({ state, library, onChange }: { state: WizardState; lib
             data="ads"
             onStep={(direction) => onChange((current) => ({ ...current, ad: stepAd(current.ad, 'ads', direction) }))}
           />
-          <Row
+          <Choice
             icon="episode"
-            role="checkbox"
+            kind="checkbox"
             checked={state.ad.afterEpisode}
             label="Intervalo depois de cada episódio"
             data="after"
             onClick={() => setAd({ afterEpisode: !state.ad.afterEpisode })}
           />
-          <Row
+          <Choice
             icon="interstitials"
-            role="checkbox"
+            kind="checkbox"
             checked={state.ad.bumpers}
             label="Vinhetas de entrada e saída do intervalo"
             data="bumpers"
@@ -896,9 +887,9 @@ function BumpersStep({ state, library, onChange }: { state: WizardState; library
   return (
     <>
       <div role="radiogroup" aria-label="Marca das vinhetas" className="wizard-list">
-        <Row
+        <Choice
           icon="interstitials"
-          role="radio"
+          kind="radio"
           autofocus={state.brand === ''}
           checked={state.brand === ''}
           label="Qualquer marca"
@@ -907,10 +898,10 @@ function BumpersStep({ state, library, onChange }: { state: WizardState; library
           onClick={() => onChange((current) => chooseBrand(current, library, ''))}
         />
         {brands.map((brand) => (
-          <Row
+          <Choice
             key={brand.id}
             icon="interstitials"
-            role="radio"
+            kind="radio"
             autofocus={state.brand === brand.id}
             checked={state.brand === brand.id}
             label={brand.id}
@@ -999,9 +990,9 @@ function ReplaceStep({ state, fileName, library, onChange }: { state: WizardStat
   return (
     <>
       <div role="radiogroup" aria-label="Canal novo ou trocar um canal" className="wizard-list">
-        <Row
+        <Choice
           icon="plus"
-          role="radio"
+          kind="radio"
           autofocus={!replacing}
           checked={!replacing}
           label="Criar um canal novo"
@@ -1010,10 +1001,10 @@ function ReplaceStep({ state, fileName, library, onChange }: { state: WizardStat
           onClick={() => onChange(chooseNew)}
         />
         {channels.map((channel) => (
-          <Row
+          <Choice
             key={channel.id}
             icon="restore"
-            role="radio"
+            kind="radio"
             autofocus={state.target === channel.id}
             checked={state.target === channel.id}
             label={`Trocar o canal “${channel.name}”`}
@@ -1040,8 +1031,6 @@ function ReplaceStep({ state, fileName, library, onChange }: { state: WizardStat
 
 /// ---------------------------------------------------------------- preview
 
-type PreviewView = 'day' | 'week';
-
 function PreviewStep({
   prepared,
   stale,
@@ -1056,14 +1045,11 @@ function PreviewStep({
   library: Library;
   durations: Durations;
 }) {
-  const [view, setView] = useState<PreviewView>('day');
-  const [day, setDay] = useState(0);
-
   const schedule = prepared?.built.generated.schedule;
   const today = prepared?.today;
   const dates = useMemo(() => (today ? previewDates(today) : []), [today]);
   // The same week as the one of "Mudar uma programação" (week-model.ts), with the real durations once they are read.
-  const { week, reading } = useWeek(schedule, library, dates, durations);
+  const { week, reading } = useWeek(schedule, library, dates, durations, { today });
 
   if (!prepared || !schedule || !week) {
     return building ? (
@@ -1073,49 +1059,10 @@ function PreviewStep({
     ) : null;
   }
 
-  const selected = week.days[day]!;
-
   return (
     <>
-      <div className="wizard-chips" role="group" aria-label="Ver" data-nav-row="view">
-        {(['day', 'week'] as const).map((name) => (
-          <button
-            key={name}
-            data-nav
-            data-view={name}
-            className="action-tile"
-            aria-pressed={view === name}
-            onClick={() => setView(name)}
-          >
-            <Icon name={name === 'day' ? 'clock' : 'calendar'} className="action-icon" />
-            <span>{name === 'day' ? 'Um dia' : 'A semana'}</span>
-          </button>
-        ))}
-      </div>
-
-      {view === 'day' && (
-        <Stepper
-          icon="calendar"
-          label="Dia"
-          value={longDayLabel(dates[day]!)}
-          data="day"
-          onStep={(direction) => setDay((current) => (current + direction + dates.length) % dates.length)}
-        />
-      )}
-
-      {/* The week is read first and its warnings come after it; a day's warnings come before its list. */}
-      {view === 'day' ? (
-        <>
-          <WeekWarnings week={week} only={selected.label} />
-          <DayList day={selected} />
-        </>
-      ) : (
-        <>
-          <WeekView week={week} label="A semana" />
-          <WeekWarnings week={week} />
-        </>
-      )}
-
+      <Guide key={prepared.today} week={week} label="Programação dos próximos sete dias" />
+      <WeekWarnings week={week} />
       <p className="panel-note" data-note="estimate">
         {stale
           ? 'Atualizando a prévia com as suas mudanças… '
@@ -1124,37 +1071,9 @@ function PreviewStep({
           : reading
             ? 'Lendo a duração dos vídeos da semana… os horários podem mudar um pouco. '
             : 'Horários calculados com a duração real dos vídeos. '}
-        Os intervalos comerciais já contam. Cada horário marcado começa na hora certa, a menos que o anterior passe dela.
+        Os intervalos comerciais já contam. Cada horário marcado começa na hora certa, a menos que o anterior passe dela. ← → andam pelos episódios e ↑ ↓ pelos dias.
       </p>
     </>
-  );
-}
-
-/** One day, a line per episode with how long it runs; the times are the ones of the week (week-model.ts). */
-function DayList({ day }: { day: WeekDay }) {
-  const { preview } = day;
-  if (!preview.airs) return <p className="panel-note">O canal não passa neste dia: não está entre os dias escolhidos.</p>;
-  if (day.airings.length === 0) return <p className="panel-note">Nada a mostrar neste dia.</p>;
-  return (
-    <ul className="preview-list" aria-label="Programação do dia">
-      {preview.rows.map((row, i) => {
-        const airing = day.airings[i]!;
-        const newBlock = i === 0 || preview.rows[i - 1]!.block !== row.block;
-        return (
-          <li key={airing.key} className="preview-row" tabIndex={0} data-nav data-row={i}>
-            {newBlock && <span className="preview-block">Às {formatTimeOfDay(preview.blocks[row.block]!.start)}</span>}
-            <span className="preview-time">{airing.time}</span>
-            <span className="row-text">
-              <span className="row-label">{airing.showTitle}</span>
-              <span className="row-meta">
-                {airing.label}
-                {airing.title ? ` · ${airing.title}` : ''} · {formatSpan(row.end - row.start)}
-              </span>
-            </span>
-          </li>
-        );
-      })}
-    </ul>
   );
 }
 
@@ -1199,9 +1118,9 @@ function SummaryStep({
             {lostAgenda > 0 && ' A agenda de episódios escolhidos à mão do canal antigo não é copiada: ela fica só na cópia de segurança.'}
           </p>
           <div className="wizard-list">
-            <Row
+            <Choice
               icon="alert"
-              role="checkbox"
+              kind="checkbox"
               autofocus={!state.confirmed}
               checked={state.confirmed}
               label={`Sim, trocar o canal “${replacing.name}”`}

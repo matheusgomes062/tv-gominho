@@ -1,5 +1,6 @@
 import { applyTheme, type PartialSettings, type Schedule, type Theme } from '@tv-gominho/nucleo';
 import { useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { Mark } from '../components/Choice';
 import { Icon } from '../components/Icon';
 import { KeyHints, Overlay } from '../components/Overlay';
 import { BACK_KEYS } from '../nav';
@@ -129,7 +130,7 @@ export function SettingsPanel({ channels, libraryName, ai, initialCategory = 'th
                     <ThemePreview theme={theme} />
                     <span className="theme-name">
                       {THEME_LABELS[theme]}
-                      {settings.theme === theme && <Icon name="check" className="theme-check" />}
+                      <Mark kind="radio" checked={settings.theme === theme} />
                     </span>
                   </button>
                 ))}

@@ -12,7 +12,7 @@ O cabeçalho diz onde você está, em uma linha: "Passo 3 de 4 · Nome e prévia
 
 | Tela | O que você escolhe |
 |---|---|
-| 1. Quando? | O atalho **Manhã, seg a sex** (08:00–12:00, segunda a sexta): OK nele já usa e segue para os programas. Abaixo, "Ou ajuste": **Manhã**, **Tarde** (14:00–18:00), **Manhã e tarde** ou **Faixas próprias** (até 3 faixas, com início e fim ajustados de 15 em 15 minutos: ← → no valor, ou clique nas setas; as faixas não podem se sobrepor e cada uma termina depois de começar), e os dias da semana (atalhos "Segunda a sexta", "Fim de semana" e "Todos os dias", ou cada dia: pelo menos um). Se a IA está ligada, **Pedir para a IA** também fica nesta tela. |
+| 1. Quando? | O atalho **Manhã, seg a sex** (08:00–12:00, segunda a sexta): OK nele já usa e segue para os programas. Abaixo, "Ou ajuste": **Manhã**, **Tarde** (14:00–18:00), **Manhã e tarde** ou **Faixas próprias** (até 3 faixas, com início e fim ajustados de 15 em 15 minutos: ← → no valor, ou clique nas setas; as faixas não podem se sobrepor e cada uma termina depois de começar), e os dias, numa escolha só: **Seg a sex**, **Fim de semana**, **Todos os dias** ou **Escolher dias** (só aí aparecem os sete dias para marcar, pelo menos um). Se a IA está ligada, **Pedir para a IA** também fica nesta tela. |
 | 2. O que passa? | **Todos os programas** (o app escolhe a ordem do rodízio; OK já segue) ou **Escolher os programas**: você marca os que entram e a ordem do rodízio é a da marcação; com ← → no programa marcado ele passa para antes ou depois. Pelo menos um programa. |
 | 3. Nome e prévia | O nome do canal (como aparece na troca de canais), o botão **Ajustes avançados** e a prévia do que vai passar (veja abaixo). Enter no nome segue para a última tela. |
 | 4. Salvar | Um resumo com uma linha por resposta, cada uma com **Mudar**, e o botão **Salvar canal** (ou **Trocar o canal**), que já começa selecionado. |
@@ -41,12 +41,33 @@ O interruptor geral de comerciais (e o de vinhetas) vence: as regras do canal s�
 
 A prévia fica na tela **Nome e prévia**, embaixo do nome. Ao mudar o nome ela se refaz um instante depois (o nome do arquivo decide o sorteio), e a anterior continua na tela até a nova ficar pronta.
 
-A prévia mostra **um dia** (com ← → trocando de dia) ou **a semana** (os próximos 7 dias a partir de hoje), com o **horário estimado de cada episódio** e **qual episódio passa**. Ela usa o mesmo motor da TV (`planDay` e `buildTimeline`, com as regras de intervalo do canal e a configuração geral de comerciais e vinhetas), então os episódios são os que a TV vai passar nesses dias, com as mesmas escolhas sorteadas (o sorteio depende do nome do arquivo do canal, que a prévia já usa). Os horários seguem o jeito de `horario: real`: cada horário começa na hora marcada, a menos que o anterior passe dela. Os intervalos comerciais já estão contados.
+A prévia é o [guia de programação](#o-guia-de-programação) dos próximos 7 dias a partir de hoje, com o **horário estimado de cada episódio** e **qual episódio passa**. Ela usa o mesmo motor da TV (`planDay` e `buildTimeline`, com as regras de intervalo do canal e a configuração geral de comerciais e vinhetas), então os episódios são os que a TV vai passar nesses dias, com as mesmas escolhas sorteadas (o sorteio depende do nome do arquivo do canal, que a prévia já usa). Os horários seguem o jeito de `horario: real`: cada horário começa na hora marcada, a menos que o anterior passe dela. Os intervalos comerciais já estão contados.
 
 - **Duração real ou estimada:** o app lê a duração dos vídeos que a semana usa (os metadados dos arquivos, sem ffmpeg). Enquanto isso, ou para os vídeos que não deu para medir, valem durações típicas (22 minutos por episódio, 30 segundos por comercial) e a prévia diz que o horário é **estimado**.
 - **Aviso de sobreposição:** quando um horário passa da hora do próximo, a prévia diz quanto o próximo começa atrasado (a TV não corta episódios, como na regra 2 abaixo).
 - **Aviso de buraco grande:** quando entre dois horários passam mais de 10 minutos sem nada (o limite que o motor preenche com vinhetas e comerciais, regra 1 abaixo), a prévia mostra o intervalo sem programação. Isso é normal em "Manhã e tarde"; o aviso só lembra que a TV não preenche esse espaço.
-- Em dias fora de `dias`, a prévia diz que o canal não passa.
+- Em dias fora de `dias`, a prévia diz "fora do ar".
+
+### O guia de programação
+
+A prévia do assistente e a semana de [Mudar uma programação](#a-semana-do-canal) são desenhadas como os guias das TVs a cabo dos anos 1990 e 2000 (o botão GUIA):
+
+- **Tela cheia**, como os guias de verdade: enquanto o guia está na tela, o painel ocupa a largura toda (a imagem da TV fica escurecida atrás).
+- **Horários na horizontal**, com um traço a cada 15 minutos e o horário escrito de meia em meia hora; a janela mostra 1h30 por vez (mais, numa tela bem larga) e anda junto com o foco. O guia abre no que passa agora na linha de hoje (ou no próximo); se o dia de hoje já acabou ou a semana não tem hoje, abre no começo do primeiro dia no ar. **Uma linha por dia** (hoje leva a marca "hoje"; dia fora de `dias` diz "fora do ar").
+- **Cada episódio é um bloco** com a largura do tempo que ele passa (do começo ao fim, já com os intervalos que cortam o episódio). O bloco tem a cor do desenho (uma cor para cada desenho da semana, explicada na legenda embaixo do guia) e diz o nome do desenho e, se houver espaço, "Ep. N" embaixo. Um bloco estreito demais para umas quatro letras mostra só a cor; a faixa de cima diz qual é. Um buraco curto entre dois blocos (o intervalo comercial, até 10 minutos) aparece listrado. Um episódio **Fixo** leva uma barra no alto do bloco; um que só passa porque foi escolhido, estando em "não passar", fica listrado e a faixa de cima diz "não passa".
+- **A linha vermelha é o agora**, na linha de hoje.
+- **A faixa de cima** diz o que está em foco: o desenho, o episódio (número e título), o dia, a hora de início e de fim e quanto dura, com "Fixo" quando for o caso. Ela fica à vista enquanto a lista de dias rola.
+- **Teclado e controle:** ← → vão de bloco em bloco (a janela de horários acompanha); ↑ ↓ vão para o bloco que passa na mesma hora no dia de cima ou de baixo (pulando os dias fora do ar); OK, em Mudar uma programação, abre a escolha do episódio. O foco aparece como um bloco destacado.
+- **Visual por tema:** TV antiga usa a grade azul com letras brancas e amarelas e o destaque amarelo; Fita VHS usa o azul de videocassete com contornos brancos; TV moderna usa superfícies suaves. As cores vêm dos mesmos temas do resto do app.
+
+O que cada bloco diz vem do mesmo motor da TV (`planDay` e `buildTimeline`), e a posição de cada um é só a duração do episódio na tela: o guia não tem horário próprio.
+
+### Seletores de opção
+
+Em todo o app (Quando?, Programas, comerciais, vinhetas, trocar um canal, dias do editor, [Desenhos que não passam](biblioteca.md#desenhos-que-não-passam-nao-passaryaml) e o Tema das Configurações) a escolha de opções usa o mesmo controle:
+
+- **○ ●** é escolha única (marcar uma tira a outra) e **☐ ☑** é escolha de cada item de uma lista (nos "não passar", a marca é ☒). O que está **escolhido** aparece pela marca preenchida, pelo fundo com a cor de destaque e pela borda.
+- O **foco** é um **anel branco** em volta da opção, sempre diferente do escolhido: dá para ver uma opção escolhida sem foco, uma com foco sem estar escolhida, ou as duas coisas. OK escolhe (ou marca e desmarca); ← → ↑ ↓ andam.
 
 ### Novo canal ou trocar um que já existe
 
@@ -77,13 +98,13 @@ A tela abre na **semana do canal**. Para mexer nos horários, nos dias, no nome 
 
 ### A semana do canal
 
-Cada linha é um dia (de segunda a domingo; os dias fora de `dias` aparecem como "O canal não passa neste dia") e mostra o que passa nele, **com o horário em que cada episódio começa**: `08:00 Superman (Fleischer) Ep. 3`, `08:09 Popeye e as Mil e Uma Noites Ep. 3`, e assim por diante. Dá para ver o que passa na quarta e a que horas sem abrir os ajustes avançados.
+A semana é o [guia de programação](#o-guia-de-programação): cada linha é um dia (de segunda a domingo; os dias fora de `dias` dizem "fora do ar") e cada episódio é um bloco na hora em que começa, com a largura do tempo que dura. A faixa de cima diz o desenho, o episódio e o horário do bloco em foco. Dá para ver o que passa na quarta e a que horas sem abrir os ajustes avançados.
 
 Os horários vêm do mesmo motor da TV que faz a [prévia do assistente](#prévia) (`planDay` e `buildTimeline`, com as regras de intervalo do canal e a configuração geral de comerciais e vinhetas), e a tela usa o **mesmo componente** da prévia: a semana da prévia e a semana do canal dizem os mesmos horários. O app lê a duração dos vídeos da semana; enquanto isso, ou para o que não deu para medir, valem durações típicas e a tela diz que o horário é **estimado**. Os avisos da prévia (um horário que passa do próximo, um buraco sem nada) aparecem embaixo da semana.
 
 A semana é calculada para o canal **como está agora, mesmo antes de salvar**, e já com a lista [não passar](biblioteca.md#desenhos-que-não-passam-nao-passaryaml): se você mudar o que passa ou os dias nos ajustes avançados, ao voltar a semana já mostra o resultado. Um episódio que está em "não passar" e só passa porque foi escolhido leva a marca **não passar**. Um programa com `ordem: aleatoria` mostra o episódio sorteado.
 
-- **Escolher o episódio de um dia:** clique no episódio (ou, com o teclado, vá até ele e aperte Enter). Abre a lista de episódios do desenho, com o que passa agora marcado; escolha um. O episódio fica marcado **Fixo** e os dias seguintes já mostram a sequência continuando a partir dele, como descrito em [Agenda](#agenda). Um item com `episodios: N` abre a lista pelo primeiro episódio dele: o que você escolher é o primeiro da sequência. Um episódio que está em "não passar" aparece na lista com essa marca e pode ser escolhido mesmo assim. Episódios sem número no nome do arquivo não podem ser fixados (a agenda se refere ao episódio pelo número).
+- **Escolher o episódio de um dia:** clique no bloco (ou, com o teclado, ← → ↑ ↓ até ele e OK). Abre a lista de episódios do desenho, com o que passa agora marcado; escolha um. O episódio fica marcado **Fixo** e os dias seguintes já mostram a sequência continuando a partir dele, como descrito em [Agenda](#agenda). Um item com `episodios: N` abre a lista pelo primeiro episódio dele: o que você escolher é o primeiro da sequência. Um episódio que está em "não passar" aparece na lista com essa marca e pode ser escolhido mesmo assim. Episódios sem número no nome do arquivo não podem ser fixados (a agenda se refere ao episódio pelo número).
 - **Voltar ao dinâmico:** abra um episódio fixo e escolha "Voltar ao dinâmico": a escolha sai da agenda e o motor volta a decidir. Esc fecha a lista sem mudar nada.
 - **Semanas:** "Anterior", "Esta semana" e "Próxima". Dias que já passaram aparecem na semana, mas não dá para mexer neles; só de hoje em diante.
 - As escolhas entram no arquivo junto com o resto, quando você salva (Ctrl+S ou "Salvar canal"), na seção `agenda`. Se você reordena itens, muda um horário ou troca o desenho de um item nos ajustes avançados, cada escolha fica no item dela ou é descartada.
@@ -96,7 +117,7 @@ Abre o editor da grade, com os nomes de todo dia: **Horário** (o `bloco` do arq
 - **Horários:** acrescentar e remover horários e mudar a hora de cada um (`HH:MM`, como `08:00`). Dois horários não podem começar na mesma hora, e os horários ficam sempre em ordem.
 - **O que passa em cada horário:** acrescentar, remover e reordenar os itens de cada horário (os botões ▲ ▼ ou Alt+↑ / Alt+↓): **Desenho** (qual e quantos episódios), **Abertura/Encerramento** (o tipo e, dentro dele, "sortear entre todas", "sortear entre as de" uma subpasta ou um arquivo específico) e **Intervalo** (quantos comerciais).
 
-**No teclado e no controle**, ↑ ↓ ← → andam entre os controles; ↓ entra na semana e anda pelos dias e pelos episódios. Em "Ajustes avançados", Esc volta para a semana (as mudanças ficam); na semana, Esc fecha a tela, avisando se há mudanças que ainda não foram salvas. A tela tem a mesma largura das outras telas do menu.
+**No teclado e no controle**, ↑ ↓ ← → andam entre os controles; ↓ entra no guia da semana, onde ← → andam pelos episódios e ↑ ↓ pelos dias. Em "Ajustes avançados", Esc volta para a semana (as mudanças ficam); na semana, Esc fecha a tela, avisando se há mudanças que ainda não foram salvas. A tela tem a mesma largura das outras telas do menu.
 
 Itens que não existem na biblioteca (um desenho ou uma vinheta que sumiu) aparecem com o mesmo aviso que o app mostra em Avisos, e a grade continua podendo ser salva: o motor só pula o item. Já uma hora inválida, dois horários na mesma hora, um horário sem nada passando, uma quantidade que não seja um número inteiro de 1 a 99 ou um canal sem nome impedem de salvar, com o motivo na tela.
 

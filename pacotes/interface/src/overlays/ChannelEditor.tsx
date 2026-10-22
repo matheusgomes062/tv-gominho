@@ -1,5 +1,6 @@
 import { localIsoDate, type Library, type Schedule, type ScheduleItem, type Weekday } from '@tv-gominho/nucleo';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { Choice } from '../components/Choice';
 import { Icon, type IconName } from '../components/Icon';
 import { KeyHints, Overlay } from '../components/Overlay';
 import { ScrollBody } from '../components/ScrollBody';
@@ -223,7 +224,7 @@ export function ChannelEditor({ source, library, durations, schedule, onSaved, o
   const editing = phase.name === 'editing';
 
   return (
-    <Overlay edge="left" label={`Editar o canal ${schedule.name}`} onBack={goBack} className="wizard-overlay">
+    <Overlay edge="left" label={`Editar o canal ${schedule.name}`} onBack={goBack} className={`wizard-overlay${editing && view === 'week' ? ' overlay-wide' : ''}`}>
       <div className="editor" onKeyDown={onKeyDown}>
         <header className="panel-header">
           <Icon name="clock" />
@@ -457,24 +458,18 @@ function Fields({ state, edit }: { state: EditorState; edit(change: (current: Ed
       </label>
       <div className="editor-days" role="group" aria-label="Dias da semana">
         <span className="row-label">Dias</span>
-        <div className="wizard-chips">
-          {DAY_ORDER.map((day: Weekday) => {
-            const on = state.days.includes(day);
-            return (
-              <button
-                key={day}
-                data-nav
-                data-day={day}
-                role="checkbox"
-                aria-checked={on}
-                className="action-tile day-chip small"
-                onClick={() => edit((current) => toggleDay(current, day))}
-              >
-                {on && <Icon name="check" className="action-icon" />}
-                <span>{DAY_LABELS[day]}</span>
-              </button>
-            );
-          })}
+        <div className="choice-days">
+          {DAY_ORDER.map((day: Weekday) => (
+            <Choice
+              key={day}
+              kind="checkbox"
+              variant="chip"
+              checked={state.days.includes(day)}
+              label={DAY_LABELS[day]}
+              attrs={{ 'data-day': day }}
+              onClick={() => edit((current) => toggleDay(current, day))}
+            />
+          ))}
         </div>
       </div>
     </div>

@@ -16,6 +16,8 @@ export interface Airing {
   start: number;
   /** "08:21". */
   time: string;
+  /** Seconds since midnight when its last part ends (the breaks inside it count): the guide draws it from `start` to here. */
+  end: number;
   showId: string;
   showTitle: string;
   episodeIndex: number;
@@ -114,6 +116,7 @@ export function buildWeekModel(schedule: Schedule, library: Library, dates: read
         date,
         start: row.start,
         time: formatTimeOfDay(row.start),
+        end: row.end,
         showId: row.show.id,
         showTitle: row.show.title,
         episodeIndex: row.episodeIndex,

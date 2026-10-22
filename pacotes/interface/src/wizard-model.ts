@@ -302,6 +302,23 @@ export function sortedDays(days: Weekday[]): Weekday[] {
   return WEEKDAYS.filter((day) => days.includes(day));
 }
 
+/** What the days of "Quando?" are, as one single choice: a shortcut, or "Escolher dias" (the seven checkboxes). */
+export type DaysChoice = 'week' | 'weekend' | 'all' | 'pick';
+
+export const DAYS_CHOICES: ReadonlyArray<{ id: DaysChoice; label: string }> = [
+  { id: 'week', label: 'Seg a sex' },
+  { id: 'weekend', label: 'Fim de semana' },
+  { id: 'all', label: 'Todos os dias' },
+  { id: 'pick', label: 'Escolher dias' },
+];
+
+/** Which option of the days is on: the shortcut the days match, unless the person asked to choose them one by one. */
+export function daysChoiceOf(days: readonly Weekday[], picking: boolean): DaysChoice {
+  if (picking) return 'pick';
+  const preset = DAY_PRESETS.find((entry) => entry.days.length === days.length && entry.days.every((day) => days.includes(day)));
+  return (preset?.id as DaysChoice | undefined) ?? 'pick';
+}
+
 export function daysSummary(days: Weekday[]): string {
   const preset = DAY_PRESETS.find((entry) => entry.days.length === days.length && entry.days.every((day) => days.includes(day)));
   if (preset) return preset.label;

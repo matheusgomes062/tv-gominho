@@ -73,6 +73,8 @@ describe('the week of a channel', () => {
       ['10:30', 'DBZ', 'Ep. 2'],
     ]);
     expect(week.days[0]!.airings[1]!.title).toBe('Titulo 1');
+    // Each one also says when it ends (the guide draws it from its start to here).
+    expect(week.days[0]!.airings.map((airing) => airing.end - airing.start)).toEqual([22 * 60, 11 * 60, 11 * 60, 22 * 60]);
   });
 
   it('marks the days the channel does not air on, and keeps them in the week', async () => {
