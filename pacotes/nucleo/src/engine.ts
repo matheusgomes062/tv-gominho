@@ -221,6 +221,9 @@ export interface TimelineOptions {
   adBreaks?: AdBreakSettings;
 }
 
+/** Gaps between blocks up to this long (seconds) are filled with bumpers and commercials: the default `maxGapFill`. */
+export const DEFAULT_MAX_GAP_FILL = 600;
+
 /** Shortest stretch of episode between the start (or end) and an automatic break, in seconds. */
 export const MIN_ACT_SECONDS = 120;
 
@@ -254,7 +257,7 @@ export function buildTimeline(
   durationOf: (path: string) => number | undefined,
   options: TimelineOptions = {},
 ): Timeline {
-  const maxGapFill = options.maxGapFill ?? 600;
+  const maxGapFill = options.maxGapFill ?? DEFAULT_MAX_GAP_FILL;
   const entries: TimelineEntry[] = [];
   const skipped = new Set<string>();
   const known = (path: string) => {

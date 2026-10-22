@@ -1,16 +1,39 @@
-import { WEEKDAYS, formatTimeOfDay, type GenerateBlock, type GenerateOptions, type Weekday } from '@tv-gominho/nucleo';
+import {
+  AD_BREAK_LIMITS,
+  DEFAULT_AD_BREAKS,
+  WEEKDAYS,
+  dayNumberToIso,
+  formatTimeOfDay,
+  generateSchedule,
+  gradeBackupName,
+  isoToDayNumber,
+  pickInterstitialRef,
+  preservePositions,
+  weekdayOf,
+  yearRange,
+  type AdBreakSettings,
+  type GenerateBlock,
+  type GenerateOptions,
+  type GeneratedSchedule,
+  type Library,
+  type Schedule,
+  type Weekday,
+} from '@tv-gominho/nucleo';
 
 // The model of the "Montar a semana" wizard: steps, what each step needs, how the answers
 // become generator options and how the channel file is named. No React or DOM in here, so
 // it is all testable (see wizard-model.test.ts); WeekWizard.tsx only draws it.
 
-export type StepId = 'ranges' | 'days' | 'shows' | 'name' | 'save';
+export type StepId = 'ranges' | 'days' | 'shows' | 'commercials' | 'bumpers' | 'name' | 'preview' | 'save';
 
 export const STEPS: ReadonlyArray<{ id: StepId; title: string; help: string }> = [
   { id: 'ranges', title: 'Horários', help: 'Em que horas o canal fica no ar.' },
   { id: 'days', title: 'Dias', help: 'Em quais dias da semana.' },
   { id: 'shows', title: 'Programas', help: 'O que passa no canal.' },
-  { id: 'name', title: 'Nome', help: 'Como o canal aparece na troca de canais.' },
+  { id: 'commercials', title: 'Comerciais', help: 'Os intervalos comerciais deste canal.' },
+  { id: 'bumpers', title: 'Vinhetas', help: 'A marca e a época das vinhetas.' },
+  { id: 'name', title: 'Nome', help: 'Como o canal aparece na troca de canais, e se é novo ou troca um que já existe.' },
+  { id: 'preview', title: 'Prévia', help: 'O que vai passar, com os horários estimados.' },
   { id: 'save', title: 'Salvar', help: 'Confira e guarde o canal.' },
 ];
 
@@ -65,19 +88,38 @@ export interface WizardState {
   showMode: 'all' | 'pick';
   /** Show ids in the order they take turns. */
   picked: string[];
+  /** "general": the channel follows the general break settings. "custom": it has its own, in `ad`. */
+  adMode: 'general' | 'custom';
+  /** The channel's own break rules (used with adMode "custom"); starts as a copy of the general ones. */
+  ad: AdBreakSettings;
+  /** A word the bumpers' path must carry (a brand folder, "tv-globinho"); "" = any brand. */
+  brand: string;
+  /** The year of the bumpers, or null = any era. */
+  era: number | null;
   name: string;
+  /** The id (grade file name) of the channel this one replaces; null = a new channel, the default. */
+  target: string | null;
+  /** The person confirmed replacing `target`. */
+  confirmed: boolean;
 }
 
 export const DEFAULT_NAME = 'Meu canal';
 
-export function initialState(): WizardState {
+/** `general` seeds the channel's own break rules: the ones the app plays with now. */
+export function initialState(general: AdBreakSettings = DEFAULT_AD_BREAKS): WizardState {
   return {
     preset: 'morning',
     ranges: RANGE_PRESETS[0]!.ranges.map((range) => ({ ...range })),
     days: [...DAY_PRESETS[0]!.days],
     showMode: 'all',
     picked: [],
+    adMode: 'general',
+    ad: { ...general },
+    brand: '',
+    era: null,
     name: DEFAULT_NAME,
+    target: null,
+    confirmed: false,
   };
 }
 
@@ -208,11 +250,15 @@ export function stepProblem(step: StepId, state: WizardState, showCount: number)
     case 'shows':
       if (showCount === 0) return 'A biblioteca não tem programas com episódios.';
       return state.showMode === 'pick' && state.picked.length === 0 ? 'Escolha pelo menos um programa, ou deixe “Todos os programas”.' : null;
+    case 'commercials':
+    case 'bumpers':
+    case 'preview':
+      return null;
     case 'name':
       if (state.name.trim() === '') return 'Dê um nome ao canal.';
       return state.name.trim().length > MAX_NAME_LENGTH ? `Use no máximo ${MAX_NAME_LENGTH} letras no nome.` : null;
     case 'save':
-      return null;
+      return state.target !== null && !state.confirmed ? 'Para trocar o canal, marque a confirmação. O arquivo antigo fica guardado como cópia de segurança.' : null;
   }
 }
 
@@ -227,8 +273,11 @@ export function toBlocks(ranges: TimeRange[]): GenerateBlock[] {
   return sortedRanges(ranges).map((range) => ({ start: range.start, length: range.end - range.start }));
 }
 
-/** What generateSchedule needs for the answers. Throws if they are not valid (see stepProblem). */
-export function toGenerateOptions(state: WizardState, startDate: string): GenerateOptions {
+/**
+ * What generateSchedule needs for the answers. Throws if they are not valid (see stepProblem).
+ * `settings` are the ones the TV will play with (the user's choices over the library's): they decide the estimates.
+ */
+export function toGenerateOptions(state: WizardState, startDate: string, settings?: GenerateOptions['settings']): GenerateOptions {
   const problem = rangesProblem(state.ranges) ?? stepProblem('days', state, 1) ?? stepProblem('shows', state, 1) ?? stepProblem('name', state, 1);
   if (problem) throw new Error(problem);
   return {
@@ -237,7 +286,199 @@ export function toGenerateOptions(state: WizardState, startDate: string): Genera
     blocks: toBlocks(state.ranges),
     days: sortedDays(state.days),
     startDate,
+    brand: state.brand,
+    era: state.era ?? undefined,
+    adBreaks: toAdBreaks(state),
+    ...(settings ? { settings } : {}),
   };
+}
+
+// ---------------------------------------------------------------- commercials
+
+/** The channel's own break rules for the grade (`intervalos`), or undefined when it follows the general ones. */
+export function toAdBreaks(state: WizardState): Partial<AdBreakSettings> | undefined {
+  return state.adMode === 'custom' ? { ...state.ad } : undefined;
+}
+
+/** Moves "a cada N minutos" or "N comerciais" by one, within the limits of the settings. */
+export function stepAd(ad: AdBreakSettings, key: 'every' | 'ads', direction: 1 | -1): AdBreakSettings {
+  const { min, max } = AD_BREAK_LIMITS[key];
+  return { ...ad, [key]: Math.min(max, Math.max(min, ad[key] + direction)) };
+}
+
+/** The rules in a sentence: "a cada 8 min, 3 comerciais por intervalo, ...". */
+export function adSummary(ad: AdBreakSettings): string {
+  const parts = [
+    ad.every > 0 ? `intervalo a cada ${ad.every} min de episódio` : 'sem intervalos no meio do episódio',
+    `${ad.ads} ${ad.ads === 1 ? 'comercial' : 'comerciais'} por intervalo`,
+    ad.afterEpisode ? 'intervalo depois de cada episódio' : 'sem intervalo depois do episódio',
+    ad.bumpers ? 'com vinhetas de entrada e saída' : 'sem vinhetas de entrada e saída',
+  ];
+  return parts.join(', ');
+}
+
+// ---------------------------------------------------------------- bumpers (brand and era)
+
+/** The bumper categories the generator picks by brand and era. */
+const BUMPER_CATEGORIES = ['aberturas', 'encerramentos', 'chamadas', 'intervalos'] as const;
+
+export interface BrandOption {
+  /** The word to prefer in the bumpers' path: the brand folder without its years ("tv-globinho"). */
+  id: string;
+  /** How many bumper files carry it. */
+  count: number;
+}
+
+const fold = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+/** "tv-globinho-2003-2009" -> "tv-globinho": the folder name without the years of its era. */
+function brandOfFolder(folder: string): string {
+  const bare = folder.replace(/[\s_-]*\(?(?:19|20)\d\d(?:\s*[-–a_]\s*(?:19|20)\d\d)?\)?\s*$/, '').replace(/[\s_-]+$/, '');
+  return bare === '' ? folder : bare;
+}
+
+/** The brand folders found in the library's bumpers (vinhetas/aberturas/<marca>/...), as `tv-gominho grade --marca` takes them. */
+export function bumperBrands(library: Library): BrandOption[] {
+  const found = new Map<string, BrandOption>();
+  for (const item of library.interstitials) {
+    if (!(BUMPER_CATEGORIES as readonly string[]).includes(item.category)) continue;
+    const parts = item.relativePath.split('/');
+    if (parts.length < 3) continue;
+    const id = brandOfFolder(parts[1]!);
+    const entry = found.get(fold(id)) ?? { id, count: 0 };
+    entry.count++;
+    found.set(fold(id), entry);
+  }
+  return [...found.values()].sort((a, b) => a.id.localeCompare(b.id, 'pt-BR'));
+}
+
+/** The years that appear in the names of the bumpers of the brand ("" = any), as `--epoca` takes them, in order. */
+export function bumperEras(library: Library, brand: string): number[] {
+  const years = new Set<number>();
+  for (const item of library.interstitials) {
+    if (!(BUMPER_CATEGORIES as readonly string[]).includes(item.category)) continue;
+    if (brand && !fold(item.relativePath).includes(fold(brand))) continue;
+    const range = yearRange(item.relativePath.slice(item.category.length));
+    if (range) for (const year of range) years.add(year);
+  }
+  return [...years].sort((a, b) => a - b);
+}
+
+/** Picks a brand. The era is kept only if that brand has it. */
+export function chooseBrand(state: WizardState, library: Library, brand: string): WizardState {
+  const eras = bumperEras(library, brand);
+  return { ...state, brand, era: state.era !== null && eras.includes(state.era) ? state.era : null };
+}
+
+/** Moves the era through "any era" and the years found: direction 1 goes to a later year. */
+export function stepEra(eras: readonly number[], era: number | null, direction: 1 | -1): number | null {
+  const options: Array<number | null> = [null, ...eras];
+  const at = Math.max(0, options.indexOf(era));
+  return options[(at + direction + options.length) % options.length] ?? null;
+}
+
+/** What the generator will use as opening, closing and break bumpers for the answers (null = none in the library). */
+export function bumperChoice(library: Library, state: Pick<WizardState, 'brand' | 'era'>): Array<{ label: string; ref: string | null }> {
+  const era = state.era ?? undefined;
+  return [
+    { label: 'Abertura', ref: pickInterstitialRef(library, 'aberturas', state.brand, era) },
+    { label: 'Encerramento', ref: pickInterstitialRef(library, 'encerramentos', state.brand, era) },
+    { label: 'Intervalos', ref: pickInterstitialRef(library, 'intervalos', state.brand, era) },
+  ];
+}
+
+// ---------------------------------------------------------------- new channel or replace
+
+/** The channels of the library that are files in grades/ (the automatic and per-show channels are not). */
+export function replaceableChannels(library: Library): Schedule[] {
+  return library.schedules;
+}
+
+/** Replace `channel`: the name the channel has is the starting point, and the confirmation starts unmarked. */
+export function chooseReplace(state: WizardState, channel: Schedule): WizardState {
+  return { ...state, target: channel.id, name: channel.name, confirmed: false };
+}
+
+/** Back to a new channel. */
+export function chooseNew(state: WizardState): WizardState {
+  return { ...state, target: null, confirmed: false };
+}
+
+export interface ReplacePlan {
+  /** The grade file (without extension) that is overwritten. */
+  fileName: string;
+  /** Its path in the library. */
+  path: string;
+  /** The name of the copy kept before overwriting, in the same folder (it never loads as a channel). */
+  backupName: string;
+  backupPath: string;
+}
+
+/**
+ * Where the new channel goes when it replaces `channel`: over the same file, after the old one is copied to a backup named
+ * with `today`. `inGrades` lists the file names already in grades/, so the backup never takes a name that is in use.
+ */
+export function planReplace(channel: Schedule, today: string, inGrades: Iterable<string>, root: string): ReplacePlan {
+  const fileName = gradeFileBase(channel.path);
+  const backupName = gradeBackupName(fileName, today, inGrades);
+  return { fileName, path: gradePath(root, fileName), backupName, backupPath: `${root}grades/${backupName}` };
+}
+
+export interface BuildInput {
+  state: WizardState;
+  library: Library;
+  durationOf: (path: string) => number | undefined;
+  /** What the TV plays with: the user's choices over the library's. */
+  settings: GenerateOptions['settings'];
+  /** "YYYY-MM-DD": the first day of the channel, and the day the saved positions are taken. */
+  today: string;
+  /** The names of the grade files that exist, to avoid them for a new channel. */
+  taken: readonly string[];
+}
+
+export interface BuiltChannel {
+  generated: GeneratedSchedule;
+  /** The grade file name without extension; also the channel id, which seeds the day's draws. */
+  fileName: string;
+  /** The channel it replaces, or null for a new one. */
+  replaces: Schedule | null;
+}
+
+/**
+ * The channel for the answers, ready to preview and to write. A new one takes a free file name. A replacement takes the
+ * id and file of the old one, and with the positions every show had in the old one on `today` (preservePositions), so
+ * nothing jumps back or skips. The id is the file name because it seeds the draws: the preview must be what the TV airs.
+ */
+export function buildChannel({ state, library, durationOf, settings, today, taken }: BuildInput): BuiltChannel {
+  const replaces = state.target === null ? null : (library.schedules.find((schedule) => schedule.id === state.target) ?? null);
+  if (state.target !== null && !replaces) throw new Error('O canal que seria trocado não está mais na biblioteca.');
+  const fileName = replaces ? gradeFileBase(replaces.path) : uniqueFileName(state.name, taken);
+  const generated = generateSchedule(library, durationOf, toGenerateOptions(state, today, settings));
+  const fresh: Schedule = { ...generated.schedule, id: fileName, path: gradePath(library.root, fileName) };
+  const schedule = replaces ? preservePositions(replaces, fresh, library, today) : fresh;
+  return { generated: { ...generated, schedule }, fileName, replaces };
+}
+
+// ---------------------------------------------------------------- the preview days
+
+/** `count` days in a row from `from` ("YYYY-MM-DD"). */
+export function previewDates(from: string, count = 7): string[] {
+  const first = isoToDayNumber(from);
+  return Array.from({ length: count }, (_, i) => dayNumberToIso(first + i));
+}
+
+const SHORT_DAY: Record<Weekday, string> = { dom: 'Dom', seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui', sex: 'Sex', sab: 'Sáb' };
+
+/** "Seg 22/10". */
+export function dayLabel(date: string): string {
+  const [, month, day] = date.split('-');
+  return `${SHORT_DAY[weekdayOf(isoToDayNumber(date))]} ${day}/${month}`;
+}
+
+/** "Segunda, 22/10". */
+export function longDayLabel(date: string): string {
+  const [, month, day] = date.split('-');
+  return `${DAY_LABELS[weekdayOf(isoToDayNumber(date))]}, ${day}/${month}`;
 }
 
 // ---------------------------------------------------------------- the file
@@ -280,6 +521,12 @@ export function uniqueFileName(name: string, taken: Iterable<string>): string {
 /** Where a new grade goes inside the picked folder: grades/ under the library root ("" or "biblioteca/"). */
 export function gradePath(root: string, fileName: string): string {
   return `${root}grades/${fileName}.yaml`;
+}
+
+/** Every file directly in grades/ (channels and backups alike), by name: the names a new backup must not take. */
+export function gradeFolderFiles(files: readonly string[], root: string): string[] {
+  const prefix = `${root}grades/`.toLowerCase();
+  return files.filter((file) => file.toLowerCase().startsWith(prefix) && !file.slice(prefix.length).includes('/')).map((file) => file.slice(prefix.length));
 }
 
 /** The grade files in a library's file list, to avoid their names. */

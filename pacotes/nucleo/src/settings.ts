@@ -301,8 +301,15 @@ function watermarkPath(key: string, value: unknown, warn: (message: string) => v
   return text;
 }
 
-/** The `intervalos` block, in the settings file and in a grade: only the valid keys, bad values warn and are left out. */
-export function parseAdBreaks(value: unknown, warn: (message: string) => void): Partial<AdBreakSettings> {
+const DEFAULT_FALLBACK = 'Usando o padrão.';
+
+/**
+ * The `intervalos` block, in the settings file and in a grade: only the valid keys, bad values warn and are left out.
+ * A bad value falls back to something else, and the warning says to what: `fallback` ends those messages
+ * (a grade's `intervalos` falls back to the general setting, not to "the default").
+ */
+export function parseAdBreaks(value: unknown, rawWarn: (message: string) => void, fallback = DEFAULT_FALLBACK): Partial<AdBreakSettings> {
+  const warn = (message: string) => rawWarn(message.endsWith(DEFAULT_FALLBACK) ? message.slice(0, -DEFAULT_FALLBACK.length) + fallback : message);
   const adBreaks: Partial<AdBreakSettings> = {};
   if (value === null || value === undefined) return adBreaks;
   if (!isRecord(value)) {

@@ -6,27 +6,54 @@ Não precisa escrever a grade à mão: `tv-gominho grade <biblioteca> --epoca 20
 
 ## Montar a semana pelo app
 
-No app, **Menu → Programação** abre o assistente "Montar a semana": uma sequência curta de passos que gera uma grade nova com o mesmo gerador do `tv-gominho grade` e a salva na biblioteca. Funciona com mouse, teclado e controle remoto (setas, OK e Voltar).
+No app, **Menu → Programação** abre o assistente "Montar a semana": uma sequência curta de passos que gera uma grade com o mesmo gerador do `tv-gominho grade` e a salva na biblioteca. Funciona com mouse, teclado e controle remoto (setas, OK e Voltar; nos botões do rodapé, ← → alternam entre "Voltar" e "Avançar").
 
 | Passo | O que você escolhe |
 |---|---|
 | 1. Horários | **Manhã** (08:00–12:00), **Tarde** (14:00–18:00), **Manhã e tarde**, ou **Faixas próprias**: até 3 faixas, com início e fim ajustados de 15 em 15 minutos (← → no valor, ou clique nas setas). As faixas não podem se sobrepor e cada uma termina depois de começar. |
 | 2. Dias | Os dias da semana em que o canal passa, com atalhos "Segunda a sexta", "Fim de semana" e "Todos os dias". Pelo menos um dia. |
 | 3. Programas | **Todos os programas** (o app escolhe a ordem do rodízio) ou **Escolher os programas**: você marca os que entram e a ordem do rodízio é a da marcação; com ← → no programa marcado ele passa para antes ou depois. Pelo menos um programa. |
-| 4. Nome | Como o canal aparece na troca de canais. |
-| 5. Salvar | Um resumo e o botão **Salvar canal**. |
+| 4. Comerciais | **Seguir a configuração geral** (o padrão: a grade não escreve regras) ou **Regras próprias deste canal**: de quanto em quanto tempo há intervalo (0 a 30 minutos; 0 = sem cortes no meio do episódio), quantos comerciais passam (1 a 10), se há intervalo depois de cada episódio e se há vinhetas de entrada e saída. Vira o bloco [`intervalos`](#intervalos-por-canal) da grade. |
+| 5. Vinhetas | A **marca** (as pastas de marca que existem em `vinhetas/aberturas`, `encerramentos`, `chamadas` e `intervalos`, como `tv-globinho`) e a **época** (os anos que aparecem nos nomes, como "2003-2009" ou "(2011)"). O padrão é **Qualquer marca** e **qualquer época**. A tela mostra qual abertura, encerramento e vinheta de intervalo saem da escolha. |
+| 6. Nome | Como o canal aparece na troca de canais, e se ele é **novo** (o padrão) ou **troca um canal que já existe** (veja abaixo). |
+| 7. Prévia | O que vai passar, como a TV vai passar (veja abaixo). |
+| 8. Salvar | Um resumo e o botão **Salvar canal** (ou **Trocar o canal**). |
 
-Cada faixa de horário vira um bloco da grade, preenchido com os programas em rodízio, com abertura, chamadas e encerramento, como em `tv-gominho grade` (a marca padrão é a TV Globinho, sem época específica). Voltar (Esc) recua um passo; no primeiro, fecha o assistente.
+Cada faixa de horário vira um bloco da grade, preenchido com os programas em rodízio, com abertura, chamadas e encerramento, como em `tv-gominho grade`. A marca e a época usam a mesma escolha de vinhetas do comando (`--marca` e `--epoca`). Os horários nos comentários do arquivo contam os intervalos do **próprio canal**, quando ele tem regras próprias: o bloco fecha perto do fim da faixa com os comerciais que de fato vão passar. Voltar (Esc) recua um passo; no primeiro, fecha o assistente.
 
-**O assistente sempre cria um canal novo.** O nome do arquivo vem do nome do canal (letras, números e hífens: "Manhãs da Turma" vira `grades/manhas-da-turma.yaml`) e, se já existe, ganha `-2`, `-3`... Nenhum arquivo existente é trocado. Para mudar um canal que já existe, use o [editor de canal](#editar-um-canal-pelo-app) ou edite o arquivo (formato abaixo).
+### O que o canal não pode mudar
+
+O interruptor geral de comerciais (e o de vinhetas) vence: as regras do canal só mudam *como* são os intervalos, nunca *se* há comerciais ou vinhetas. Se eles estão desligados na configuração geral, o passo avisa e o canal passa sem eles.
+
+### Prévia
+
+A prévia mostra **um dia** (com ← → trocando de dia) ou **a semana** (os próximos 7 dias a partir de hoje), com o **horário estimado de cada episódio** e **qual episódio passa**. Ela usa o mesmo motor da TV (`planDay` e `buildTimeline`, com as regras de intervalo do canal e a configuração geral de comerciais e vinhetas), então os episódios são os que a TV vai passar nesses dias, com as mesmas escolhas sorteadas (o sorteio depende do nome do arquivo do canal, que a prévia já usa). Os horários seguem o jeito de `horario: real`: cada bloco começa na hora marcada, a menos que o anterior passe dela. Os intervalos comerciais já estão contados.
+
+- **Duração real ou estimada:** o app lê a duração dos vídeos que a semana usa (os metadados dos arquivos, sem ffmpeg). Enquanto isso, ou para os vídeos que não deu para medir, valem durações típicas (22 minutos por episódio, 30 segundos por comercial) e a prévia diz que o horário é **estimado**.
+- **Aviso de sobreposição:** quando um bloco passa do horário do próximo, a prévia diz quanto o próximo começa atrasado (a TV não corta episódios, como na regra 2 abaixo).
+- **Aviso de buraco grande:** quando entre dois blocos passam mais de 10 minutos sem nada (o limite que o motor preenche com vinhetas e comerciais, regra 1 abaixo), a prévia mostra o intervalo sem programação. Isso é normal em "Manhã e tarde"; o aviso só lembra que a TV não preenche esse espaço.
+- Em dias fora de `dias`, a prévia diz que o canal não passa.
+
+### Novo canal ou trocar um que já existe
+
+**Por padrão o assistente cria um canal novo.** O nome do arquivo vem do nome do canal (letras, números e hífens: "Manhãs da Turma" vira `grades/manhas-da-turma.yaml`) e, se já existe, ganha `-2`, `-3`... Nenhum arquivo existente é trocado.
+
+Para mudar só um pedaço de um canal (um horário, um item), use o [editor de canal](#editar-um-canal-pelo-app). Para refazer o canal do zero com as respostas do assistente, o passo "Nome" também permite escolher **Trocar o canal "..."**, entre os canais que são arquivos de `grades/` (o Canal Automático e os canais por programa não aparecem). Trocar tem estas garantias:
+
+1. **Confirmação explícita:** no último passo, o botão **Trocar o canal** só funciona depois de marcar "Sim, trocar o canal...".
+2. **Cópia de segurança antes de gravar:** o arquivo antigo é copiado para `grades/<canal>.AAAA-MM-DD.yaml.bak` (por exemplo `manha.2026-10-22.yaml.bak`; se já existe uma cópia do mesmo dia, `manha.2026-10-22-2.yaml.bak`). O app confere se a cópia ficou igual antes de gravar por cima; se não consegue fazer a cópia, não mexe no canal. A terminação `.bak` faz com que a biblioteca **não leia a cópia como canal** (só `.yaml` e `.yml` em `grades/` são canais) e não gera aviso. Para voltar atrás, apague o canal novo e tire a data e o `.bak` do nome da cópia.
+3. **Os programas não pulam:** o canal novo recebe as [posições salvas](#posições-salvas) de cada programa na data de hoje (o episódio que o canal antigo passaria primeiro hoje), então cada programa segue do ponto em que estava.
+4. **O que não é copiado:** o assistente refaz o canal com as respostas dele. A `agenda` (episódios escolhidos à mão) e outras edições que você fez no arquivo antigo não vão para o canal novo; ficam só na cópia de segurança.
+
+Sem permissão de escrita, o app baixa os dois arquivos (a cópia e o canal novo, com o nome do antigo) e diz como colocá-los em `grades/`.
 
 ### Onde o canal é salvo
 
-- **Chrome ou Edge, no PC, com a biblioteca aberta pelo botão "Escolher biblioteca"** (a pasta fica lembrada): ao tocar em **Salvar canal**, o navegador pede **permissão de escrita** na pasta. O app só pede isso nessa hora; a leitura continua como sempre. Dada a permissão, o arquivo é gravado em `grades/` (a pasta é criada se não existir; se a biblioteca está dentro de uma pasta `biblioteca`, vai para `biblioteca/grades/`). Em seguida a biblioteca é lida de novo e o canal já aparece na troca de canais, sem recarregar a página. A tela oferece **Assistir agora**.
-- **Biblioteca servida por `tv-gominho servir --editar`** (a TV, o celular ou outro PC pela rede): na primeira vez, o app pede o PIN que aparece no terminal do computador (números do controle remoto ou o teclado na tela). Depois o arquivo é gravado em `grades/` pelo servidor e o canal já aparece na troca de canais. Veja [ferramentas.md](ferramentas.md#salvar-canais-pelo-servidor---editar).
+- **Chrome ou Edge, no PC, com a biblioteca aberta pelo botão "Escolher biblioteca"** (a pasta fica lembrada): ao tocar em **Salvar canal** (ou **Trocar o canal**), o navegador pede **permissão de escrita** na pasta. O app só pede isso nessa hora; a leitura continua como sempre. Dada a permissão, o arquivo é gravado em `grades/` (a pasta é criada se não existir; se a biblioteca está dentro de uma pasta `biblioteca`, vai para `biblioteca/grades/`). Em seguida a biblioteca é lida de novo e o canal já aparece na troca de canais, sem recarregar a página. A tela oferece **Assistir agora**.
+- **Biblioteca servida por `tv-gominho servir --editar`** (a TV, o celular ou outro PC pela rede): na primeira vez, o app pede o PIN que aparece no terminal do computador (números do controle remoto ou o teclado na tela). Depois o arquivo é gravado em `grades/` pelo servidor e o canal já aparece na troca de canais. Veja [ferramentas.md](ferramentas.md#salvar-canais-pelo-servidor---editar). O servidor só cria arquivos novos e não sobrescreve: **trocar um canal** por esse caminho ainda não grava no servidor, e o app baixa os dois arquivos (a cópia e o canal novo) como no caso abaixo.
 - **Em qualquer outro caso** (Firefox, Safari, pasta aberta pelo campo de pasta comum, `tv-gominho servir` sem `--editar`, ou permissão negada): o app **baixa o arquivo** `.yaml` e mostra onde colocá-lo: dentro da pasta `grades/` da biblioteca (a mesma pasta, no pendrive e no Raspberry Pi). Depois é só abrir a biblioteca de novo para o canal aparecer.
 
-Para os blocos fecharem perto do fim de cada faixa, o assistente lê a duração dos vídeos (o navegador lê os metadados dos arquivos, sem ffmpeg). Se isso demorar mais de 12 segundos numa biblioteca grande, valem as durações típicas (22 minutos por episódio) para o que faltou.
+Para os blocos fecharem perto do fim de cada faixa, o assistente lê a duração dos vídeos (o navegador lê os metadados dos arquivos, sem ffmpeg) ao chegar na prévia. Se isso demorar mais de 12 segundos numa biblioteca grande, valem as durações típicas (22 minutos por episódio) para o que faltou. O canal salvo é exatamente o que a prévia mostrou.
 
 ## Editar um canal pelo app
 
@@ -187,7 +214,7 @@ intervalos:
 
 - **O que a grade não escreve vem da configuração geral** (`configuracoes.yaml` e o que foi escolhido no menu). Outras grades da mesma biblioteca, sem `intervalos`, seguem as regras gerais.
 - **O interruptor geral `comerciais` vence.** O canal só muda *como* os intervalos são, nunca *se* há comerciais: com `comerciais: não` na configuração geral, ou no menu, nenhuma grade liga comerciais. `vinhetas: não` geral também continua tirando as vinhetas de intervalo.
-- **Valores inválidos** (texto onde se espera número, "talvez" no lugar de sim/não, opção desconhecida) geram um aviso em Avisos e são ignorados, e a regra volta a ser a geral. Números fora dos limites viram o limite mais próximo, como na configuração geral.
+- **Valores inválidos** (texto onde se espera número, "talvez" no lugar de sim/não, opção desconhecida) geram um aviso em Avisos (que termina com "Vale a regra da configuração geral.") e são ignorados, e a regra volta a ser a geral. Números fora dos limites viram o limite mais próximo, como na configuração geral.
 - Vale no app e no `tv-gominho pendrive`.
 
 ## Grades da comunidade

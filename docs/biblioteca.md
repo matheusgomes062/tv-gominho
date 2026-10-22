@@ -46,6 +46,7 @@ biblioteca/
 - **Temporadas** são opcionais. Se existirem, as pastas `temporada-NN` são lidas em ordem e os episódios ficam numa sequência só.
 - **Título do episódio:** vem de `episodios.yaml`. Se não houver, usa o nome do arquivo sem o número (`A Volta de Goku`).
 - **Arquivos ignorados:** qualquer coisa que não seja vídeo, imagem ou YAML conhecido, e arquivos que começam com `.`.
+- **Cópias de segurança de canais:** ao trocar um canal pelo assistente, o app guarda o arquivo antigo em `grades/` com o nome `<canal>.AAAA-MM-DD.yaml.bak` (por exemplo `manha.2026-10-22.yaml.bak`). Por terminar em `.bak`, ela **não é lida como canal** e não gera aviso. Para voltar atrás, apague o canal novo e renomeie a cópia, tirando a data e o `.bak` (`manha.yaml`). Pode apagar as cópias quando não precisar mais.
 - **Vinhetas** podem ficar em subpastas dentro de cada categoria (por exemplo, `vinhetas/aberturas/2003/`). A grade pode apontar para a categoria inteira ou para uma subpasta.
 
 ## Vinhetas de intervalo (`vinhetas/intervalos/`)
@@ -126,6 +127,12 @@ episodios:
 - **Programa inteiro na lista (ou todos os episódios dele):** o item da grade é pulado, com um aviso, como um programa que não existe. O Canal Automático e os canais por programa nem incluem esse programa.
 - **Avisos, nunca erros:** programa ou episódio que não existe na biblioteca, chave desconhecida ou arquivo mal escrito geram um aviso na tela de Avisos e a entrada é ignorada; o resto da lista vale. Um arquivo com erro de sintaxe é ignorado por inteiro.
 - O `tv-gominho pendrive` também respeita a lista.
+
+### Pela tela do app
+
+Você não precisa escrever o arquivo à mão. No menu da TV, **Não passar** lista os programas: OK em um programa o bloqueia (ou libera) inteiro, e **Episódios** abre a lista dele para marcar só alguns. Tudo funciona com as setas, OK e Voltar, ou com o mouse. **Salvar** grava o `nao-passar.yaml` (trocando o que já existe) e, como mudar a lista muda a contagem da sequência, grava também a posição de cada programa nas grades que usam os programas alterados (`posicoes`, veja [a grade](grade.md)), para nenhum episódio pular. Nas grades, só essa seção muda; o resto do arquivo e seus comentários ficam como estão. Já os comentários do `nao-passar.yaml` não são mantidos, porque o arquivo é escrito de novo.
+
+O jeito de gravar é o mesmo de "Montar a semana": direto na pasta (Chrome e Edge, com a permissão pedida só ao salvar), pelo `tv-gominho servir --editar` (com o PIN) ou, sem isso, baixando os arquivos. Nesse último caso, copie **todos** os arquivos baixados para a biblioteca, trocando os que já existem (`nao-passar.yaml` na raiz, as grades em `grades/`), e abra a biblioteca de novo. As grades são gravadas antes da lista: se um arquivo falhar no meio, o app para, diz o que ficou gravado e baixa o que faltou, e a lista antiga continua valendo.
 
 ## Formatos
 
