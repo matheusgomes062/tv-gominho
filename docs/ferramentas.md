@@ -188,6 +188,8 @@ O custo é pequeno: o programa é perguntado uma vez por pasta, e o tipo de cada
 
 ## `grade`
 
+Prefere montar pela tela? No app, Menu → Programação abre o assistente "Montar a semana", que usa este mesmo gerador (veja [grade.md](grade.md#montar-a-semana-pelo-app)).
+
 ```
 tv-gominho grade <biblioteca> [opções]
 ```

@@ -1,0 +1,289 @@
+import { WEEKDAYS, formatTimeOfDay, type GenerateBlock, type GenerateOptions, type Weekday } from '@tv-gominho/nucleo';
+
+// The model of the "Montar a semana" wizard: steps, what each step needs, how the answers
+// become generator options and how the channel file is named. No React or DOM in here, so
+// it is all testable (see wizard-model.test.ts); WeekWizard.tsx only draws it.
+
+export type StepId = 'ranges' | 'days' | 'shows' | 'name' | 'save';
+
+export const STEPS: ReadonlyArray<{ id: StepId; title: string; help: string }> = [
+  { id: 'ranges', title: 'Horários', help: 'Em que horas o canal fica no ar.' },
+  { id: 'days', title: 'Dias', help: 'Em quais dias da semana.' },
+  { id: 'shows', title: 'Programas', help: 'O que passa no canal.' },
+  { id: 'name', title: 'Nome', help: 'Como o canal aparece na troca de canais.' },
+  { id: 'save', title: 'Salvar', help: 'Confira e guarde o canal.' },
+];
+
+/** A time range of the day: seconds since midnight, the end after the start. */
+export interface TimeRange {
+  start: number;
+  end: number;
+}
+
+export const MAX_RANGES = 3;
+/** Custom times move in steps of this many seconds. */
+export const TIME_STEP = 15 * 60;
+export const MIN_RANGE = 15 * 60;
+export const LAST_TIME = 23 * 3600 + 45 * 60;
+export const MAX_NAME_LENGTH = 40;
+
+const hours = (from: number, to: number): TimeRange => ({ start: from * 3600, end: to * 3600 });
+
+export type PresetId = 'morning' | 'afternoon' | 'both' | 'custom';
+
+export const RANGE_PRESETS: ReadonlyArray<{ id: PresetId; label: string; ranges: TimeRange[] }> = [
+  { id: 'morning', label: 'Manhã', ranges: [hours(8, 12)] },
+  { id: 'afternoon', label: 'Tarde', ranges: [hours(14, 18)] },
+  { id: 'both', label: 'Manhã e tarde', ranges: [hours(8, 12), hours(14, 18)] },
+  { id: 'custom', label: 'Faixas próprias', ranges: [hours(8, 12)] },
+];
+
+export const DAY_LABELS: Record<Weekday, string> = {
+  dom: 'Domingo',
+  seg: 'Segunda',
+  ter: 'Terça',
+  qua: 'Quarta',
+  qui: 'Quinta',
+  sex: 'Sexta',
+  sab: 'Sábado',
+};
+
+/** Monday first, the way a Brazilian week is read. */
+export const DAY_ORDER: readonly Weekday[] = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
+
+export const DAY_PRESETS: ReadonlyArray<{ id: string; label: string; days: Weekday[] }> = [
+  { id: 'week', label: 'Segunda a sexta', days: ['seg', 'ter', 'qua', 'qui', 'sex'] },
+  { id: 'weekend', label: 'Fim de semana', days: ['sab', 'dom'] },
+  { id: 'all', label: 'Todos os dias', days: [...DAY_ORDER] },
+];
+
+export interface WizardState {
+  preset: PresetId;
+  ranges: TimeRange[];
+  days: Weekday[];
+  /** "all": every show, in the order the generator picks. "pick": only `picked`, in that order. */
+  showMode: 'all' | 'pick';
+  /** Show ids in the order they take turns. */
+  picked: string[];
+  name: string;
+}
+
+export const DEFAULT_NAME = 'Meu canal';
+
+export function initialState(): WizardState {
+  return {
+    preset: 'morning',
+    ranges: RANGE_PRESETS[0]!.ranges.map((range) => ({ ...range })),
+    days: [...DAY_PRESETS[0]!.days],
+    showMode: 'all',
+    picked: [],
+    name: DEFAULT_NAME,
+  };
+}
+
+// ---------------------------------------------------------------- steps
+
+export function nextStep(step: StepId): StepId {
+  return STEPS[Math.min(STEPS.length - 1, stepIndex(step) + 1)]!.id;
+}
+
+/** The step before, or null on the first one (Back there leaves the wizard). */
+export function previousStep(step: StepId): StepId | null {
+  const index = stepIndex(step);
+  return index === 0 ? null : STEPS[index - 1]!.id;
+}
+
+export function stepIndex(step: StepId): number {
+  return STEPS.findIndex((entry) => entry.id === step);
+}
+
+// ---------------------------------------------------------------- time ranges
+
+export function applyPreset(state: WizardState, preset: PresetId): WizardState {
+  // Custom keeps what is on screen, so a preset can be fine-tuned.
+  const ranges = preset === 'custom' ? state.ranges : RANGE_PRESETS.find((entry) => entry.id === preset)!.ranges;
+  return { ...state, preset, ranges: ranges.map((range) => ({ ...range })) };
+}
+
+export function formatRange(range: TimeRange): string {
+  return `${formatTimeOfDay(range.start)}–${formatTimeOfDay(range.end)}`;
+}
+
+/** A time moved by `direction` steps, clamped to the day (00:00 to 23:45). */
+export function stepTime(seconds: number, direction: 1 | -1): number {
+  const snapped = Math.round(seconds / TIME_STEP) * TIME_STEP;
+  return Math.min(LAST_TIME, Math.max(0, snapped + direction * TIME_STEP));
+}
+
+/**
+ * Moves one end of a range. The end never goes closer than 15 minutes to the start, and moving the
+ * start too close to the end drags the end along, so stepping through the day never leaves a broken range.
+ */
+export function moveRangeEdge(ranges: TimeRange[], index: number, edge: 'start' | 'end', direction: 1 | -1): TimeRange[] {
+  return ranges.map((range, i) => {
+    if (i !== index) return range;
+    if (edge === 'end') return { ...range, end: Math.min(LAST_TIME, Math.max(range.start + MIN_RANGE, stepTime(range.end, direction))) };
+    const start = Math.min(LAST_TIME - MIN_RANGE, stepTime(range.start, direction));
+    const end = range.end <= start + MIN_RANGE - 1 ? Math.min(LAST_TIME, start + MIN_RANGE) : range.end;
+    return { start, end };
+  });
+}
+
+/** Adds a range of two hours after the last one (or at 08:00), when there is room. */
+export function addRange(ranges: TimeRange[]): TimeRange[] {
+  if (ranges.length >= MAX_RANGES) return ranges;
+  const last = [...ranges].sort((a, b) => a.start - b.start).at(-1);
+  const start = last ? Math.min(LAST_TIME - 2 * 3600, last.end + 2 * 3600) : 8 * 3600;
+  return [...ranges, { start, end: Math.min(LAST_TIME, start + 2 * 3600) }];
+}
+
+export function removeRange(ranges: TimeRange[], index: number): TimeRange[] {
+  return ranges.length <= 1 ? ranges : ranges.filter((_, i) => i !== index);
+}
+
+/** Ranges in time order. */
+export function sortedRanges(ranges: TimeRange[]): TimeRange[] {
+  return [...ranges].sort((a, b) => a.start - b.start || a.end - b.end);
+}
+
+/** Why the ranges cannot be used, in Portuguese, or null when they are fine. */
+export function rangesProblem(ranges: TimeRange[]): string | null {
+  if (ranges.length === 0) return 'Escolha pelo menos uma faixa de horário.';
+  if (ranges.length > MAX_RANGES) return `Use no máximo ${MAX_RANGES} faixas de horário.`;
+  for (const range of ranges) {
+    if (range.end <= range.start) return `A faixa ${formatRange(range)} precisa terminar depois de começar.`;
+    if (range.end - range.start < MIN_RANGE) return `A faixa ${formatRange(range)} é curta demais: use pelo menos 15 minutos.`;
+  }
+  const sorted = sortedRanges(ranges);
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i]!.start < sorted[i - 1]!.end) {
+      return `As faixas ${formatRange(sorted[i - 1]!)} e ${formatRange(sorted[i]!)} se sobrepõem.`;
+    }
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------- days and shows
+
+export function toggleDay(days: Weekday[], day: Weekday): Weekday[] {
+  return days.includes(day) ? days.filter((entry) => entry !== day) : [...days, day];
+}
+
+/** Days in the order of the week (Sunday first), the way the grade file lists them. */
+export function sortedDays(days: Weekday[]): Weekday[] {
+  return WEEKDAYS.filter((day) => days.includes(day));
+}
+
+export function daysSummary(days: Weekday[]): string {
+  const preset = DAY_PRESETS.find((entry) => entry.days.length === days.length && entry.days.every((day) => days.includes(day)));
+  if (preset) return preset.label;
+  return DAY_ORDER.filter((day) => days.includes(day))
+    .map((day) => DAY_LABELS[day])
+    .join(', ');
+}
+
+export function togglePicked(picked: string[], id: string): string[] {
+  return picked.includes(id) ? picked.filter((entry) => entry !== id) : [...picked, id];
+}
+
+/** Moves a picked show earlier (-1) or later (1) in the order they take turns. */
+export function movePicked(picked: string[], id: string, direction: 1 | -1): string[] {
+  const from = picked.indexOf(id);
+  const to = from + direction;
+  if (from < 0 || to < 0 || to >= picked.length) return picked;
+  const result = [...picked];
+  [result[from], result[to]] = [result[to]!, result[from]!];
+  return result;
+}
+
+// ---------------------------------------------------------------- validation
+
+/** Why the step cannot move on, in Portuguese, or null. `showCount` is how many shows the library has. */
+export function stepProblem(step: StepId, state: WizardState, showCount: number): string | null {
+  switch (step) {
+    case 'ranges':
+      return rangesProblem(state.ranges);
+    case 'days':
+      return state.days.length === 0 ? 'Escolha pelo menos um dia da semana.' : null;
+    case 'shows':
+      if (showCount === 0) return 'A biblioteca não tem programas com episódios.';
+      return state.showMode === 'pick' && state.picked.length === 0 ? 'Escolha pelo menos um programa, ou deixe “Todos os programas”.' : null;
+    case 'name':
+      if (state.name.trim() === '') return 'Dê um nome ao canal.';
+      return state.name.trim().length > MAX_NAME_LENGTH ? `Use no máximo ${MAX_NAME_LENGTH} letras no nome.` : null;
+    case 'save':
+      return null;
+  }
+}
+
+/** The first step with a problem, or null when the whole wizard is ready to save. */
+export function firstProblemStep(state: WizardState, showCount: number): StepId | null {
+  return STEPS.find((step) => stepProblem(step.id, state, showCount) !== null)?.id ?? null;
+}
+
+// ---------------------------------------------------------------- the grade
+
+export function toBlocks(ranges: TimeRange[]): GenerateBlock[] {
+  return sortedRanges(ranges).map((range) => ({ start: range.start, length: range.end - range.start }));
+}
+
+/** What generateSchedule needs for the answers. Throws if they are not valid (see stepProblem). */
+export function toGenerateOptions(state: WizardState, startDate: string): GenerateOptions {
+  const problem = rangesProblem(state.ranges) ?? stepProblem('days', state, 1) ?? stepProblem('shows', state, 1) ?? stepProblem('name', state, 1);
+  if (problem) throw new Error(problem);
+  return {
+    name: state.name.trim(),
+    shows: state.showMode === 'pick' ? state.picked : undefined,
+    blocks: toBlocks(state.ranges),
+    days: sortedDays(state.days),
+    startDate,
+  };
+}
+
+// ---------------------------------------------------------------- the file
+
+const RESERVED = new Set(['con', 'prn', 'aux', 'nul', 'com1', 'com2', 'com3', 'com4', 'lpt1', 'lpt2', 'lpt3']);
+
+/** "Desenhos da Manhã!" -> "desenhos-da-manha": letters and digits joined by hyphens, as the grade file names are. */
+export function slugify(name: string): string {
+  const slug = name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, MAX_NAME_LENGTH)
+    .replace(/-+$/g, '');
+  if (slug === '') return 'canal';
+  return RESERVED.has(slug) ? `${slug}-canal` : slug;
+}
+
+/** Strips the folder and the .yaml/.yml extension from a path in grades/. */
+export function gradeFileBase(path: string): string {
+  return (path.split('/').at(-1) ?? path).replace(/\.ya?ml$/i, '');
+}
+
+/**
+ * The file name (without extension) for a new channel: the slug of its name, or `-2`, `-3`... when
+ * that is taken. `taken` holds the names of the grade files that already exist, in any case.
+ */
+export function uniqueFileName(name: string, taken: Iterable<string>): string {
+  const used = new Set([...taken].map((entry) => gradeFileBase(entry).toLowerCase()));
+  const base = slugify(name);
+  if (!used.has(base)) return base;
+  for (let n = 2; ; n++) {
+    const candidate = `${base}-${n}`;
+    if (!used.has(candidate)) return candidate;
+  }
+}
+
+/** Where a new grade goes inside the picked folder: grades/ under the library root ("" or "biblioteca/"). */
+export function gradePath(root: string, fileName: string): string {
+  return `${root}grades/${fileName}.yaml`;
+}
+
+/** The grade files in a library's file list, to avoid their names. */
+export function existingGradeFiles(files: readonly string[], root: string): string[] {
+  const prefix = `${root}grades/`.toLowerCase();
+  return files.filter((file) => file.toLowerCase().startsWith(prefix) && /\.ya?ml$/i.test(file) && !file.slice(prefix.length).includes('/'));
+}

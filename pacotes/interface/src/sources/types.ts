@@ -4,6 +4,8 @@ import type { LibrarySource } from '@tv-gominho/nucleo';
 export interface BrowserLibrary extends LibrarySource {
   /** Folder name, shown to the user. */
   name: string;
+  /** The picked folder, when it came from showDirectoryPicker (Chrome/Edge): the way back to write a channel into it. */
+  handle?: FileSystemDirectoryHandle;
   /** A URL the <video>/<img> elements can load. */
   url(path: string): Promise<string>;
   /** Changes when the file changes; used to cache video durations. */

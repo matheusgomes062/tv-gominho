@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Weekday } from './dates';
 import { buildTimeline, planDay } from './engine';
 import { generateSchedule, pickInterstitialRef, scheduleToYaml, yearRange } from './generate';
 import { scanLibrary } from './library';
@@ -151,5 +152,52 @@ describe('generateSchedule', () => {
     expect(showsOf(1)[0]).toBe(showsOf(0).length % 2 === 0 ? 'pinguins' : 'dbz');
     expect(() => generateSchedule(library, durationOf, { shows: ['vazio'], startDate: '2004-03-01' })).toThrow();
     expect(() => generateSchedule(library, durationOf, { shows: ['nenhum'], startDate: '2004-03-01' })).toThrow('Não achei');
+  });
+});
+
+describe('generateSchedule for the "Montar a semana" wizard', () => {
+  const options = {
+    name: 'Manhãs e tardes',
+    shows: ['pinguins', 'dbz'],
+    days: ['sex', 'seg', 'qua'] as Weekday[],
+    startDate: '2026-03-02',
+    blocks: [
+      { start: 8 * 3600, length: 2 * 3600 },
+      { start: 14 * 3600, length: 1 * 3600 },
+      { start: 18 * 3600, length: 30 * 60 },
+    ],
+  };
+
+  it('makes one block per time range, filled to its length, with only the shows asked for', async () => {
+    const library = await scanLibrary(memorySource(FILES));
+    const { schedule, estimates } = generateSchedule(library, durationOf, options);
+    expect(schedule.blocks.map((block) => block.start)).toEqual([8 * 3600, 14 * 3600, 18 * 3600]);
+    expect(schedule.name).toBe('Manhãs e tardes');
+    const airing = schedule.blocks.flatMap((block) => block.items.flatMap((item) => (item.type === 'show' ? [item.show] : [])));
+    expect(new Set(airing)).toEqual(new Set(['pinguins', 'dbz']));
+    // The longer the range, the more it airs.
+    expect(estimates[0]!).toBeGreaterThan(estimates[1]!);
+    expect(estimates[1]!).toBeGreaterThan(estimates[2]!);
+    expect(Math.abs(estimates[0]! - 2 * 3600)).toBeLessThan(15 * 60);
+  });
+
+  it('keeps the shows in the order given and the days it was told', async () => {
+    const library = await scanLibrary(memorySource(FILES));
+    const { schedule } = generateSchedule(library, durationOf, options);
+    const first = schedule.blocks[0]!.items.find((item) => item.type === 'show');
+    expect(first).toMatchObject({ show: 'pinguins' });
+    expect(schedule.days).toEqual(['sex', 'seg', 'qua']);
+  });
+
+  it('writes a file that reads back with the same blocks, days and name', async () => {
+    const library = await scanLibrary(memorySource(FILES));
+    const generated = generateSchedule(library, durationOf, { ...options, days: ['seg', 'qua', 'sex'] });
+    const warnings: LibraryWarning[] = [];
+    const parsed = parseSchedule('grades/manhas-e-tardes.yaml', scheduleToYaml(generated), warnings);
+    expect(warnings).toEqual([]);
+    expect(parsed!.id).toBe('manhas-e-tardes');
+    expect(parsed!.name).toBe('Manhãs e tardes');
+    expect(parsed!.days).toEqual(['seg', 'qua', 'sex']);
+    expect(parsed!.blocks).toEqual(generated.schedule.blocks);
   });
 });
