@@ -7,6 +7,7 @@
 import {
   basename,
   buildTimeline,
+  channelAdBreaks,
   isAiringDay,
   nextAiringDate,
   planDay,
@@ -66,16 +67,17 @@ export async function planTimelines(
   onDay?: (date: string, index: number) => void,
 ): Promise<DayTimeline[]> {
   const days: DayTimeline[] = [];
+  const adBreaks = channelAdBreaks(settings, schedule);
   for (const [index, date] of dates.entries()) {
     onDay?.(date, index);
     const plan = planDay(schedule, library, date, {
       interstitials: settings.interstitials,
       commercials: settings.commercials,
-      bumpers: settings.adBreaks.bumpers,
+      bumpers: adBreaks.bumpers,
     });
     await durations.load(requiredPaths(plan));
     // Same options as the app's `horario: do_inicio` (TvMode.tsx): maxGapFill 0 skips every gap.
-    const timeline = buildTimeline(plan, durations.get, { maxGapFill: 0, adBreaks: settings.adBreaks });
+    const timeline = buildTimeline(plan, durations.get, { maxGapFill: 0, adBreaks });
     days.push({ date, plan, timeline });
   }
   return days;

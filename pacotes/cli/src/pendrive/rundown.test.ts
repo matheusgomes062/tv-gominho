@@ -98,6 +98,16 @@ describe('rundown', () => {
     expect(turma).toEqual(['003.mp4', '002.mp4', '003.mp4']);
   });
 
+  it('uses the break rules of the channel over the general settings', async () => {
+    const rules = DAYS.replace('blocos:', 'intervalos:\n  a_cada: 0\n  comerciais: 1\n  apos_episodio: nao\n\nblocos:');
+    const library = await load({ ...FILES, 'grades/teste.yaml': rules });
+    const { days } = await rundownOf('2026-10-12', 1, SETTINGS, 30, library);
+    // The general rules would put 2 commercials after each episode; the channel asks for none (no breaks inside, none after).
+    expect(days[0]!.pieces.some((piece) => piece.role === 'comercial')).toBe(false);
+    const general = await rundownOf('2026-10-12', 1);
+    expect(general.days[0]!.pieces.some((piece) => piece.role === 'comercial')).toBe(true);
+  });
+
   it('starts every day with its first block and skips the gap to the next block (do_inicio)', async () => {
     const { days } = await rundownOf('2026-10-12', 1);
     const paths = days[0]!.pieces.map((piece) => piece.path);

@@ -2,6 +2,7 @@ import { parse } from 'yaml';
 import { normalizeEpisodeRef } from './agenda';
 import { WEEKDAYS, isIsoDate, isoToDayNumber, parseTimeOfDay, weekdayOf, type Weekday } from './dates';
 import { basename, fold, stripExtension } from './paths';
+import { parseAdBreaks } from './settings';
 import type { AgendaPick, LibraryWarning, Schedule, ScheduleBlock, ScheduleItem } from './types';
 
 const DEFAULT_START_DATE = '2000-01-01';
@@ -41,6 +42,8 @@ export function parseSchedule(path: string, text: string, warnings: LibraryWarni
     else warn('"vinhetas_intervalo" deve ser uma pasta ou arquivo de vinhetas, por exemplo "intervalos/tv-globinho". Ela foi ignorada.');
   }
 
+  const adBreaks = raw.intervalos === undefined ? {} : parseAdBreaks(raw.intervalos, warn);
+
   if (!Array.isArray(raw.blocos) || raw.blocos.length === 0) {
     warn('A grade não tem "blocos".');
     return null;
@@ -68,6 +71,7 @@ export function parseSchedule(path: string, text: string, warnings: LibraryWarni
     days,
     blocks,
     ...(breakBumpersRef !== undefined ? { breakBumpersRef } : {}),
+    ...(Object.keys(adBreaks).length > 0 ? { adBreaks } : {}),
     ...(agenda.length > 0 ? { agenda } : {}),
   };
 }

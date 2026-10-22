@@ -48,6 +48,7 @@ blocos:
 | `data_inicio` | Dia da estreia; define qual episódio passa em cada dia. |
 | `dias` | Dias da semana em que a grade passa (padrão: todos). |
 | `vinhetas_intervalo` | Opcional. De onde vêm as vinhetas que abrem e fecham os intervalos comerciais (veja "Intervalos comerciais" abaixo). |
+| `intervalos` | Opcional. Regras de intervalo só deste canal, com os mesmos nomes da configuração geral (veja "Intervalos por canal" abaixo). |
 | `agenda` | Opcional. Episódios escolhidos à mão para datas específicas (veja "Agenda" abaixo). |
 | `blocos` | Os blocos de horário, com seus itens. |
 
@@ -103,6 +104,22 @@ Como na TV de verdade, os episódios não passam direto: o motor insere **interv
 - **O tempo conta:** os intervalos entram na linha do tempo, então um bloco com intervalos dura mais que a soma dos episódios (e o preenchimento de espaços entre blocos, a regra 1, usa só o que sobrar). O episódio continua a partir do ponto em que parou, no mesmo arquivo.
 - **Vinhetas de intervalo:** com `intervalos.vinhetas` ligado (padrão), cada intervalo começa com uma vinheta de **entrada** ("TV Globinho volta já") e termina com uma de **saída** ("estamos de volta"), tiradas de `vinhetas/intervalos/` (nomes e pastas em [biblioteca.md](biblioteca.md)). Os dois lados de um intervalo vêm sempre da mesma marca (subpasta). Se a grade não diz nada, o motor sorteia uma marca **por dia**, com a semente do dia (igual em todo aparelho e durante o dia todo, então o canal parece uma emissora só naquele dia). Com `vinhetas_intervalo`, a grade escolhe a marca, na mesma sintaxe dos itens `vinheta`: uma categoria (`intervalos`, que volta a sortear uma subpasta por dia), uma subpasta (`intervalos/tv-globinho`) ou um arquivo (`intervalos/tv-globinho/entrada-01.mp4`, que só serve ao lado que o nome indica). Se o caminho não existe, aparece um aviso em Avisos e vale o sorteio diário. Sem vinheta de entrada (ou de saída) na marca, aquele lado do intervalo fica sem vinheta. As vinhetas contam no tempo do dia como os comerciais e só passam quando o intervalo acontece. O "Canal Automático" e os canais por programa também as usam, sempre com o sorteio diário.
 - **Vinhetas escritas na grade** (`vinheta: intervalos`, `encerramentos`...) continuam passando onde você escreveu: a grade é sua. O "Canal Automático" e os canais por programa não colocam mais vinhetas de intervalo entre os episódios; quem faz isso são os comerciais.
+
+### Intervalos por canal
+
+Uma grade pode ter as próprias regras de intervalo, com o bloco opcional `intervalos` e os mesmos nomes do [bloco geral](configuracoes.md): `a_cada`, `comerciais`, `apos_episodio` e `vinhetas`.
+
+```yaml
+intervalos:
+  a_cada: 11            # só este canal: um intervalo a cada 11 minutos de episódio
+  comerciais: 2         # e 2 comerciais por intervalo
+                        # apos_episodio e vinhetas não aparecem: valem os da configuração geral
+```
+
+- **O que a grade não escreve vem da configuração geral** (`configuracoes.yaml` e o que foi escolhido no menu). Outras grades da mesma biblioteca, sem `intervalos`, seguem as regras gerais.
+- **O interruptor geral `comerciais` vence.** O canal só muda *como* os intervalos são, nunca *se* há comerciais: com `comerciais: não` na configuração geral, ou no menu, nenhuma grade liga comerciais. `vinhetas: não` geral também continua tirando as vinhetas de intervalo.
+- **Valores inválidos** (texto onde se espera número, "talvez" no lugar de sim/não, opção desconhecida) geram um aviso em Avisos e são ignorados, e a regra volta a ser a geral. Números fora dos limites viram o limite mais próximo, como na configuração geral.
+- Vale no app e no `tv-gominho pendrive`.
 
 ## Grades da comunidade
 
