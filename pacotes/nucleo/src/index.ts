@@ -1,5 +1,5 @@
 export * from './types';
-export { scanLibrary, findShow, resolveInterstitials } from './library';
+export { scanLibrary, findShow, resolveInterstitials, scheduleItemProblem } from './library';
 export { parseSchedule } from './schedule';
 export { allowedEpisodes, blockedEpisodes, blocklistToYaml, parseBlocklist, emptyBlocklist, BLOCKLIST_FILE } from './blocklist';
 export { findEpisodeByRef, normalizeEpisodeRef, type Anchor, type AnchorSource, type EpisodeLookup } from './agenda';
@@ -67,6 +67,8 @@ export {
   secondsSinceMidnight,
   formatTimeOfDay,
   parseTimeOfDay,
+  isoToDayNumber,
+  weekdayOf,
   WEEKDAYS,
   type Weekday,
 } from './dates';
