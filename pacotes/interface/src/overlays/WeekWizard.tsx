@@ -15,8 +15,9 @@ import { KeyHints, Overlay } from '../components/Overlay';
 import type { Durations } from '../media';
 import { useSettings } from '../settings';
 import { clickDirection } from '../settings-model';
-import { downloadText, replaceGrade, requestWriteAccess, saveGrade, type ReplaceResult, type SaveResult } from '../sources/save';
-import type { BrowserLibrary } from '../sources/types';
+import { PAIR_MESSAGES, PIN_LENGTH, pinComplete, typePin } from '../pin-model';
+import { downloadText, replaceGrade, requestWriteAccess, saveGrade, saveThroughServer, type ReplaceResult, type SaveResult } from '../sources/save';
+import type { BrowserLibrary, ServerEditing } from '../sources/types';
 import {
   DAY_LABELS,
   DAY_ORDER,
@@ -76,7 +77,12 @@ interface Props {
   onBack(): void;
 }
 
-type Phase = { name: 'editing' } | { name: 'saving' } | { name: 'done'; result: SaveResult | ReplaceResult; reread: boolean };
+type Phase =
+  | { name: 'editing' }
+  | { name: 'saving' }
+  // Saving through `tv-gominho servir --editar` and this device is not paired yet: the PIN, then the same file.
+  | { name: 'pin'; editing: ServerEditing; yaml: string; message?: string }
+  | { name: 'done'; result: SaveResult | ReplaceResult; reread: boolean };
 
 /** The channel the answers build, kept from the preview to the save so both show and write the same thing. */
 interface Prepared {
@@ -166,6 +172,7 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
   const goBack = () => {
     if (phase.name === 'saving') return;
     if (phase.name === 'done') return onBack();
+    if (phase.name === 'pin') return setPhase({ name: 'editing' });
     setError(null);
     const before = previousStep(step);
     if (before) setStep(before);
@@ -191,15 +198,29 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
         'Os horários nos comentários são estimativas, com os intervalos comerciais.',
         ...(built.replaces ? ['Troca a grade anterior, que ficou guardada ao lado, com a data no nome e a terminação .bak.'] : []),
       ]);
-      const result = built.replaces
-        ? await replaceGrade(source, library, access, built.replaces, today, yaml)
-        : await saveGrade(source, library, access, state.name.trim(), yaml, taken);
-      const reread = result.kind === 'written' ? await onSaved().catch(() => false) : true;
-      setPhase({ name: 'done', result, reread });
+      // The server only creates files (it refuses to overwrite), so replacing a channel goes through the folder or downloads.
+      if (source.editing && !built.replaces) return await saveToServer(source.editing, yaml);
+      await finish(
+        built.replaces
+          ? await replaceGrade(source, library, access, built.replaces, today, yaml)
+          : await saveGrade(source, library, access, state.name.trim(), yaml, taken),
+      );
     } catch (failure) {
       setError(`Não foi possível montar o canal: ${(failure as Error).message}`);
       setPhase({ name: 'editing' });
     }
+  }
+
+  async function saveToServer(editing: ServerEditing, yaml: string, message?: string) {
+    setPhase({ name: 'saving' });
+    const result = await saveThroughServer(editing, library, state.name.trim(), yaml, taken);
+    if (result === 'needs-pin') setPhase({ name: 'pin', editing, yaml, message });
+    else await finish(result);
+  }
+
+  async function finish(result: SaveResult | ReplaceResult) {
+    const reread = result.kind === 'written' ? await onSaved().catch(() => false) : true;
+    setPhase({ name: 'done', result, reread });
   }
 
   const last = step === 'save';
@@ -228,6 +249,18 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
         <div className="wizard-body" ref={body} key={`${step}-${phase.name}`}>
           {phase.name === 'done' ? (
             <DonePage result={phase.result} reread={phase.reread} onWatch={() => onWatch(phase.result.fileName)} onClose={onBack} />
+          ) : phase.name === 'pin' ? (
+            <PinPage
+              editing={phase.editing}
+              message={phase.message}
+              onPaired={() =>
+                void saveToServer(phase.editing, phase.yaml, 'O computador pediu o PIN de novo. Confira o número no terminal.').catch((failure) => {
+                  setError(`Não foi possível salvar o canal: ${(failure as Error).message}`);
+                  setPhase({ name: 'editing' });
+                })
+              }
+              onCancel={goBack}
+            />
           ) : phase.name === 'saving' ? (
             <p className="wizard-busy" role="status">
               {state.target ? 'Guardando a cópia de segurança e trocando o canal…' : 'Gravando o canal…'}
@@ -1030,6 +1063,91 @@ function SummaryStep({
         </p>
       )}
     </>
+  );
+}
+
+// ---------------------------------------------------------------- PIN
+
+const KEYPAD = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'delete', '0', 'ok'] as const;
+
+/**
+ * Pairing this device with `tv-gominho servir --editar`: the PIN shown in the terminal, typed with the
+ * remote's number keys or with the on-screen keypad (arrows and OK). Asked once; the server remembers
+ * the device by a cookie until it is turned off.
+ */
+export function PinPage({ editing, message, onPaired, onCancel }: { editing: ServerEditing; message?: string; onPaired(): void; onCancel(): void }) {
+  const [pin, setPin] = useState('');
+  const [problem, setProblem] = useState(message ?? null);
+  const [busy, setBusy] = useState(false);
+
+  async function confirm(value: string) {
+    if (busy || !pinComplete(value)) return;
+    setBusy(true);
+    const outcome = await editing.pair(value);
+    setBusy(false);
+    if (outcome === 'paired') return onPaired();
+    setProblem(PAIR_MESSAGES[outcome]);
+    setPin('');
+  }
+  const press = (key: string) => {
+    if (key === 'ok') return void confirm(pin);
+    const next = typePin(pin, key);
+    setPin(next);
+    if (next.length === PIN_LENGTH && next !== pin) void confirm(next);
+  };
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (/^\d$/.test(event.key)) {
+      event.preventDefault();
+      press(event.key);
+    } else if (event.key === 'Backspace' && pin) {
+      // Deletes a digit; with nothing typed, Backspace goes back as everywhere else.
+      event.preventDefault();
+      event.stopPropagation();
+      press('delete');
+    }
+  };
+
+  return (
+    <div className="wizard-pin" onKeyDown={onKeyDown}>
+      <h2>Digite o PIN</h2>
+      <p className="panel-note">
+        Para salvar por aqui, digite o PIN de {PIN_LENGTH} números que o <code>tv-gominho servir --editar</code> mostra no computador. Só uma vez neste
+        aparelho.
+      </p>
+      <p className="wizard-pin-digits" aria-label={`PIN: ${pin.length} de ${PIN_LENGTH} números`} data-pin-length={pin.length}>
+        {Array.from({ length: PIN_LENGTH }, (_, i) => (
+          <span key={i} data-on={i < pin.length}>
+            {i < pin.length ? '•' : ''}
+          </span>
+        ))}
+      </p>
+      <div className="wizard-keypad" role="group" aria-label="Teclado numérico">
+        {KEYPAD.map((key) => (
+          <button
+            key={key}
+            data-nav
+            data-autofocus={key === '1' ? '' : undefined}
+            data-key={key}
+            className={`action-tile${key === 'ok' ? ' primary' : ''}`}
+            aria-label={key === 'delete' ? 'Apagar' : key === 'ok' ? 'Confirmar' : undefined}
+            aria-disabled={(key === 'ok' && !pinComplete(pin)) || busy ? true : undefined}
+            onClick={() => press(key)}
+          >
+            {key === 'delete' ? <Icon name="back" className="action-icon" /> : key === 'ok' ? <Icon name="check" className="action-icon" /> : key}
+          </button>
+        ))}
+      </div>
+      {problem && (
+        <p className="wizard-problem" role="alert">
+          {problem}
+        </p>
+      )}
+      <div className="wizard-footer">
+        <button data-nav className="action-tile" onClick={onCancel}>
+          <span>Cancelar</span>
+        </button>
+      </div>
+    </div>
   );
 }
 

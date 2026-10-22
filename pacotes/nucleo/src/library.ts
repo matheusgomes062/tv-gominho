@@ -23,6 +23,7 @@ import type {
   LibrarySource,
   LibraryWarning,
   Schedule,
+  ScheduleItem,
   Show,
 } from './types';
 
@@ -301,27 +302,29 @@ function validateReferences(schedule: Schedule, library: Library) {
   }
   validateAgenda(schedule, library);
   validatePositions(schedule, library);
-  const showIds = new Set(library.shows.map((show) => show.id.toLowerCase()));
   for (const block of schedule.blocks) {
     for (const item of block.items) {
-      if (item.type === 'show' && !showIds.has(item.show.toLowerCase())) {
-        library.warnings.push({
-          path: schedule.path,
-          message: `A grade usa o programa "${item.show}", que não existe em programas/. Ele será pulado.`,
-        });
-      } else if (item.type === 'show' && allowedEpisodes(library, findShow(library, item.show)!).length === 0) {
-        library.warnings.push({
-          path: schedule.path,
-          message: `A grade usa o programa "${item.show}", que está inteiro em ${BLOCKLIST_FILE} (o programa ou todos os episódios). Ele será pulado.`,
-        });
-      } else if (item.type === 'interstitial' && resolveInterstitials(library, item.ref).length === 0) {
-        library.warnings.push({
-          path: schedule.path,
-          message: `A grade usa a vinheta "${item.ref}", que não existe em vinhetas/. Ela será pulada.`,
-        });
-      }
+      const message = scheduleItemProblem(library, item);
+      if (message) library.warnings.push({ path: schedule.path, message });
     }
   }
+}
+
+/**
+ * Why a schedule item will be skipped (a show or a bumper the library does not have), as the warning the grade
+ * shows for it, or null when the item is fine. Commercials are never a problem here.
+ */
+export function scheduleItemProblem(library: Library, item: ScheduleItem): string | null {
+  if (item.type === 'show') {
+    const show = findShow(library, item.show);
+    if (!show) return `A grade usa o programa "${item.show}", que não existe em programas/. Ele será pulado.`;
+    if (allowedEpisodes(library, show).length === 0) {
+      return `A grade usa o programa "${item.show}", que está inteiro em ${BLOCKLIST_FILE} (o programa ou todos os episódios). Ele será pulado.`;
+    }
+  } else if (item.type === 'interstitial' && resolveInterstitials(library, item.ref).length === 0) {
+    return `A grade usa a vinheta "${item.ref}", que não existe em vinhetas/. Ela será pulada.`;
+  }
+  return null;
 }
 
 /** Drops (with a warning) the agenda picks whose episode is not in the show. A pick of a missing show stays: that show is already reported. */
