@@ -3,10 +3,11 @@
 // app may write grades/<nome>.yaml and nao-passar.yaml, and nothing else.
 
 import { randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
-import { lstat, mkdir, readdir, realpath, rename, stat, unlink, writeFile } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { copyFile, lstat, mkdir, readdir, readFile, realpath, rename, stat, unlink, writeFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
-import { BLOCKLIST_FILE, parseBlocklist, parseSchedule, type LibraryWarning } from '@tv-gominho/nucleo';
+import { BLOCKLIST_FILE, gradeBackupName, localIsoDate, parseBlocklist, parseSchedule, type LibraryWarning } from '@tv-gominho/nucleo';
 import { sendJson } from './http';
 
 export const CAPABILITIES_PATH = '/__tv-gominho/capacidades';
@@ -25,6 +26,8 @@ const PAIR_TIMEOUT_MS = 10_000;
 
 const COOKIE = 'tvg_sessao';
 const PIN_DIGITS = 6;
+/** Backup names tried before giving up (a name is only taken when another process made it meanwhile). */
+const MAX_BACKUP_TRIES = 50;
 
 /**
  * What may be written, relative to the folder being served: the library root is that folder or its
@@ -113,11 +116,13 @@ export function createEditor(library: string, options: EditOptions) {
     }
   }
 
-  async function write(req: IncomingMessage, res: ServerResponse, raw: string, overwrite: boolean) {
+  async function write(req: IncomingMessage, res: ServerResponse, raw: string, overwrite: boolean, backup: boolean) {
     if (!hasSession(req)) return fail(req, res, 401, 'Digite o PIN que aparece no computador.');
     const match = ALLOWED.exec(raw);
     if (!match || (match[3] && WINDOWS_DEVICES.test(match[3]))) return fail(req, res, 400, 'Só dá para gravar grades/<nome>.yaml e nao-passar.yaml.');
     const [, nested, , gradeName] = match;
+    // The copy of the old file is the server's own doing, never a path the client may write: only grades, only over an existing one.
+    if (backup && (!overwrite || !gradeName)) return fail(req, res, 400, 'A cópia de segurança só vale ao substituir uma grade.');
 
     const length = Number(req.headers['content-length'] ?? 0);
     if (length > MAX_BODY) return fail(req, res, 413, 'Arquivo grande demais.');
@@ -137,10 +142,13 @@ export function createEditor(library: string, options: EditOptions) {
       if (!dir) return fail(req, res, 400, 'A pasta de destino não fica dentro da biblioteca.');
       const name = gradeName ? `${gradeName}.yaml` : BLOCKLIST_FILE;
       // The library is read case-insensitively: "Manha.yaml" next to "manha.yaml" would be the same channel twice.
-      const same = (await readdir(dir)).find((entry) => entry.toLowerCase() === name.toLowerCase());
+      const entries = await readdir(dir);
+      const same = entries.find((entry) => entry.toLowerCase() === name.toLowerCase());
       const file = path.join(dir, same ?? name);
       const existing = await lstat(file).catch(() => null);
       if (existing && (!overwrite || !existing.isFile())) return fail(req, res, 409, 'Esse arquivo já existe.');
+      // The copy comes first: if it cannot be made and checked, the channel is left as it was.
+      const copy = existing && backup ? await backupFile(dir, file, entries, localIsoDate(new Date(now()))) : null;
       const temp = path.join(dir, `.tv-gominho-${randomBytes(6).toString('hex')}.tmp`);
       try {
         await writeFile(temp, text, { encoding: 'utf8', flag: 'wx' });
@@ -151,7 +159,9 @@ export function createEditor(library: string, options: EditOptions) {
       }
       const written = path.relative(library, file).split(path.sep).join('/');
       options.log(`Gravado: ${written}`);
-      sendJson(req, res, { caminho: written }, existing ? 200 : 201);
+      const savedCopy = copy ? path.relative(library, path.join(dir, copy)).split(path.sep).join('/') : undefined;
+      if (savedCopy) options.log(`Cópia de segurança: ${savedCopy}`);
+      sendJson(req, res, { caminho: written, ...(savedCopy ? { copia: savedCopy } : {}) }, existing ? 200 : 201);
     });
     queue = job.catch(() => {});
     await job;
@@ -173,10 +183,37 @@ export function createEditor(library: string, options: EditOptions) {
         return true;
       }
       if (isPair) await pair(req, res);
-      else await write(req, res, url.slice(WRITE_PATH.length), new URLSearchParams(query).get('substituir') === '1');
+      else await write(req, res, url.slice(WRITE_PATH.length), new URLSearchParams(query).get('substituir') === '1', new URLSearchParams(query).get('copia') === '1');
       return true;
     },
   };
+}
+
+/**
+ * Copies `file` to <name>.AAAA-MM-DD.yaml.bak (-2, -3... when taken) in `dir` and returns the copy's name. COPYFILE_EXCL
+ * fails instead of replacing, so an existing backup is never overwritten (no hard links: FAT32/exFAT pendrives lack them).
+ * The copy is read back and compared byte by byte; a copy that does not match is removed and the save is refused.
+ */
+async function backupFile(dir: string, file: string, entries: readonly string[], date: string): Promise<string> {
+  const taken = [...entries];
+  for (let attempt = 0; attempt < MAX_BACKUP_TRIES; attempt++) {
+    const name = gradeBackupName(path.basename(file), date, taken);
+    const target = path.join(dir, name);
+    try {
+      await copyFile(file, target, constants.COPYFILE_EXCL);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+      taken.push(name);
+      continue;
+    }
+    const [original, copy] = await Promise.all([readFile(file), readFile(target)]);
+    if (!original.equals(copy)) {
+      await unlink(target).catch(() => {});
+      throw new Error('a cópia de segurança não confere');
+    }
+    return name;
+  }
+  throw new Error('não foi possível achar um nome livre para a cópia de segurança');
 }
 
 /** Same origin as the address the page was opened at (already checked against allowedHost). */
