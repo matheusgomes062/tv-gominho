@@ -125,6 +125,8 @@ code, pre { font-family: var(--font-mono); }
     linear-gradient(90deg, rgba(8, 10, 22, 0.94) 0%, rgba(8, 10, 22, 0.86) 30%, rgba(8, 10, 22, 0.35) 46%, rgba(8, 10, 22, 0) 58%),
     linear-gradient(0deg, rgba(8, 10, 22, 0.6), rgba(8, 10, 22, 0) 28%),
     rgba(8, 10, 22, 0.12); }
+/* Grid items with auto inline margins shrink to fit; the hero rows must keep the full page width. */
+.hero > .wrap { width: 100%; }
 .hero-inner { display: grid; align-items: center; padding-block: 64px 28px; }
 .hero-copy { display: grid; gap: 18px; max-width: 29rem; }
 /* The logo is a crayon drawing; on the dark scrim its blue letters would vanish, so it sits on a
