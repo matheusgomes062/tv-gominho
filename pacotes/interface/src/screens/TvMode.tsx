@@ -27,6 +27,7 @@ import type { OsdState } from '../components/osd-painter';
 import { Static } from '../components/Static';
 import { useFileUrl } from '../components/useFileUrl';
 import { useFlash } from '../components/useFlash';
+import { HINT_MS, IDLE_HINT_MS, hintSeen, markHintSeen } from '../menu-hint';
 import { useImage } from '../components/useImage';
 import type { Durations } from '../media';
 import { BACK_KEYS } from '../nav';
@@ -123,6 +124,8 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
   const [osd, showOsd] = useFlash(OSD_MS, true);
   const [info, showInfo] = useFlash(OSD_MS);
   const [pointer, showPointer] = useFlash(2500);
+  // "Voltar = Menu": on the first launch, and again when nobody touches the TV for a while.
+  const [hint, showHint] = useFlash(HINT_MS, !hintSeen());
   // play() needs the latest tune() without re-creating itself.
   const tuneRef = useRef<(token: number) => Promise<void>>(async () => undefined);
   const nextDayRef = useRef<(token: number) => Promise<void>>(async () => undefined);
@@ -446,6 +449,27 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
     return () => window.removeEventListener('keydown', handler);
   }, [changeChannel, channels.length, onChannel, overlayOpen, onMenu, onQuick, status.name, showInfo]);
 
+  // The first-launch hint counts as seen once it was shown; the idle one comes back after a quiet stretch.
+  useEffect(() => markHintSeen(), []);
+  useEffect(() => {
+    if (overlayOpen) return;
+    let timer: number | undefined;
+    const arm = () => {
+      clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        showHint();
+        arm();
+      }, IDLE_HINT_MS);
+    };
+    arm();
+    const events = ['keydown', 'pointerdown', 'pointermove'] as const;
+    for (const name of events) window.addEventListener(name, arm);
+    return () => {
+      clearTimeout(timer);
+      for (const name of events) window.removeEventListener(name, arm);
+    };
+  }, [overlayOpen, showHint]);
+
   // Off-air/unplayable gaps always show static; `chuvisco_troca_canal` only decides about tuning.
   const showStatic = (status.name === 'tuning' && settings.channelChangeStatic) || status.name === 'idle';
   const showBlack = status.name === 'tuning' && !settings.channelChangeStatic;
@@ -533,6 +557,12 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
 
         {/* With the WebGL tube the watermark is painted into it (components/osd-painter.ts); this is the plain screen's copy. */}
         {!crtActive && watermark && <img className="tv-watermark" src={watermark.src} alt="" draggable={false} />}
+
+        {hint && !overlayOpen && !info && (
+          <p className="tv-hint" role="status">
+            Voltar = Menu
+          </p>
+        )}
 
         {settings.clock && <Clock className={hidden} time={crtActive ? clockText : undefined} />}
 

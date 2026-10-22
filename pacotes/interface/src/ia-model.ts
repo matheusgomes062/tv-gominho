@@ -1,7 +1,7 @@
 import { MAX_REQUEST_LENGTH, proposalToRaw, validateProposal, type Library, type Proposal, type Show } from '@tv-gominho/nucleo';
 import { RANGE_PRESETS, initialState, type WizardState } from './wizard-model';
 
-// "Pedir para a IA" in the "Montar a semana" wizard, when `tv-gominho servir --ia` runs with a key: what the app
+// "Pedir para a IA" in the "Criar uma programação" wizard, when `tv-gominho servir --ia` runs with a key: what the app
 // tells the person before using it, what it sends, and how a proposal becomes the wizard's answers. No DOM or fetch.
 
 export { MAX_REQUEST_LENGTH };

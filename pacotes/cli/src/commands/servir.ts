@@ -39,10 +39,10 @@ Opções:
   --rede                aceita outros aparelhos da rede (TV, celular, outro PC). Sem ela, só
                         este computador abre o endereço
   --abrir               abre o navegador neste computador
-  --editar              deixa salvar canais pelo app ("Montar a semana"). Mostra um PIN aqui;
+  --editar              deixa salvar canais pelo app ("Criar uma programação"). Mostra um PIN aqui;
                         cada aparelho digita o PIN uma vez. Só grava grades/<nome>.yaml e
                         nao-passar.yaml, nada mais
-  --ia                  liga o "Pedir para a IA" do "Montar a semana", com a sua chave da
+  --ia                  liga o "Pedir para a IA" do "Criar uma programação", com a sua chave da
                         Anthropic em ANTHROPIC_API_KEY (custa dinheiro na sua conta). Envia
                         títulos, durações, a lista de programas e o pedido; nunca vídeos.
                         Também pede o PIN. Sem a chave, fica desligada

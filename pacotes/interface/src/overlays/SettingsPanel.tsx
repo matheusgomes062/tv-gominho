@@ -24,6 +24,10 @@ interface Props {
   channels: Schedule[];
   libraryName: string;
   initialCategory?: string;
+  /** Opens the schedule screen (the same one as Menu → Programação). */
+  onSchedule(): void;
+  /** Focus the "Programação" row when the panel opens (coming back from that screen). */
+  focusSchedule?: boolean;
   onBack(): void;
 }
 
@@ -37,7 +41,7 @@ const THEME_ORDER: Theme[] = ['classic', 'vhs', 'modern', 'custom'];
  * chosen category in the next. Changes apply to the picture at once. Back goes from the options to the
  * categories, and from the categories closes the panel.
  */
-export function SettingsPanel({ channels, libraryName, initialCategory = 'theme', onBack }: Props) {
+export function SettingsPanel({ channels, libraryName, initialCategory = 'theme', onSchedule, focusSchedule = false, onBack }: Props) {
   const { settings, overrides, fromLibrary, update, reset } = useSettings();
   const [category, setCategory] = useState(initialCategory);
   const [restored, setRestored] = useState(false);
@@ -55,7 +59,8 @@ export function SettingsPanel({ channels, libraryName, initialCategory = 'theme'
   // Right/OK on a category enters its options; Back inside the options returns to the categories.
   const onKeyDown = (event: KeyboardEvent) => {
     const inBody = body.current?.contains(event.target as Node) ?? false;
-    if (inBody && BACK_KEYS.has(event.key)) leaveBody();
+    if ((event.target as HTMLElement).closest('[data-hub-link]') && event.key === 'ArrowRight') onSchedule();
+    else if (inBody && BACK_KEYS.has(event.key)) leaveBody();
     else if (!inBody && event.key === 'ArrowRight') enterBody();
     else return;
     event.preventDefault();
@@ -75,11 +80,16 @@ export function SettingsPanel({ channels, libraryName, initialCategory = 'theme'
         </header>
 
         <nav className="panel-cats" aria-label="Categorias">
+          <button data-nav data-hub-link data-autofocus={focusSchedule ? '' : undefined} className="cat cat-link" onClick={onSchedule}>
+            <Icon name="calendar" className="cat-icon" />
+            <span>Programação</span>
+            <Icon name="chevronRight" className="cat-chevron" />
+          </button>
           {CATEGORIES.map((entry) => (
             <button
               key={entry.id}
               data-nav
-              data-autofocus={entry.id === current.id ? '' : undefined}
+              data-autofocus={entry.id === current.id && !focusSchedule ? '' : undefined}
               data-cat={entry.id}
               className="cat"
               aria-current={entry.id === current.id}
@@ -134,7 +144,7 @@ export function SettingsPanel({ channels, libraryName, initialCategory = 'theme'
           ))}
 
           {current.id === 'ads' && settings.commercials === false && (
-            <p className="panel-note">Os comerciais estão desligados em Programação, então estes ajustes ficam bloqueados.</p>
+            <p className="panel-note">Os comerciais estão desligados em “Como a TV passa”, então estes ajustes ficam bloqueados.</p>
           )}
 
           {current.id === 'about' && (

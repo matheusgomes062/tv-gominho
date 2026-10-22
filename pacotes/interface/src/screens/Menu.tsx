@@ -12,7 +12,7 @@ interface Props {
   onWarnings(): void;
   onQuick(): void;
   onSettings(): void;
-  /** Opens the "Montar a semana" wizard. */
+  /** Opens the "Criar uma programação" wizard. */
   onSchedule(): void;
   onChangeFolder(): void;
   /** Closes the menu and goes back to the picture. */

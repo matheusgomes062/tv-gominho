@@ -2,7 +2,7 @@ import { writeText } from './overwrite';
 import { downloadText,type DownloadReason, type WriteAccess } from './save';
 import type { BrowserLibrary, ServerEditing } from './types';
 
-// Writing several existing files of the library in a row (the "Não passar" list and the grades whose
+// Writing several existing files of the library in a row (the "Desenhos que não passam" list and the grades whose
 // positions moved with it). Always over what is there: these files are the app's to update.
 
 export interface SaveFile {
