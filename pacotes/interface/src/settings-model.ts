@@ -189,15 +189,13 @@ export function buildDefs(channels: Schedule[], startChannel: string | null): Re
       get: (s) => s.clock,
       set: (clock) => ({ clock: clock as boolean }),
     }),
-    // Only the library's configuracoes.yaml can name the image, so without one the switch is locked.
+    // The library's configuracoes.yaml can name another image; without one the TV uses its own logo (watermarkSource).
     def({
       key: 'watermarkEnabled',
       label: "Marca d'água",
       icon: 'picture',
       kind: 'switch',
       options: ON_OFF,
-      dimmed: (s) => s.watermark === null,
-      dimmedReason: "Sem marca d'água na biblioteca",
       get: (s) => s.watermarkEnabled,
       set: (watermarkEnabled) => ({ watermarkEnabled: watermarkEnabled as boolean }),
     }),
@@ -417,4 +415,12 @@ export function originOf(item: SettingDef, overrides: PartialSettings, fromLibra
   if (keys.some((key) => isSet(overrides, key))) return 'alterado por você';
   if (keys.some((key) => isSet(fromLibrary, key))) return 'da biblioteca';
   return null;
+}
+
+/** Where the watermark comes from: the library's `marca_dagua`, or (the default) the logo bundled with the app. */
+export type WatermarkSource = { kind: 'library'; path: string } | { kind: 'bundled' } | { kind: 'off' };
+
+export function watermarkSource(settings: Pick<Settings, 'watermark' | 'watermarkEnabled'>): WatermarkSource {
+  if (!settings.watermarkEnabled) return { kind: 'off' };
+  return settings.watermark === null ? { kind: 'bundled' } : { kind: 'library', path: settings.watermark };
 }

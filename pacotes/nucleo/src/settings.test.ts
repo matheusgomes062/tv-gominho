@@ -209,7 +209,7 @@ canal_inicial: 3
       expect(parse('marca_dagua: "  marca.jpg "\n').settings).toEqual({ watermark: 'marca.jpg' });
     });
 
-    it('has no watermark by default and when the value is empty', () => {
+    it('has no library watermark by default (the interface falls back to its bundled logo) and when the value is empty', () => {
       expect(DEFAULT_SETTINGS.watermark).toBeNull();
       expect(parse('marca_dagua:\n')).toEqual({ settings: {}, warnings: [] });
     });
