@@ -175,7 +175,8 @@ describe('the AI settings of servir, from this computer', () => {
   it('starts with no key and the AI off, and the app can tell it may change them', async () => {
     const { host } = await start();
     expect(await state(host)).toEqual({ chave: 'nenhuma', ligada: false, disponivel: false, local: true, modelo: 'falso-1' });
-    expect(JSON.parse((await send(host, 'GET', CAPS)).body)).toEqual({ editar: false, ia: false, pareado: false, configIa: true });
+    // This computer counts as paired: it never needs the PIN.
+    expect(JSON.parse((await send(host, 'GET', CAPS)).body)).toEqual({ editar: false, ia: false, pareado: true, configIa: true });
     // With no key the assistant's route makes no call.
     expect((await send(host, 'POST', IA, json(host), JSON.stringify({ pedido: 'manhã' }))).status).toBe(409);
     expect(keysUsed).toEqual([]);
@@ -196,6 +197,11 @@ describe('the AI settings of servir, from this computer', () => {
     // This computer's browser uses it without the PIN.
     const asked = await watch(send(host, 'POST', IA, json(host), JSON.stringify({ pedido: 'uma manhã' })));
     expect(asked.status).toBe(200);
+    expect(keysUsed).toEqual([KEY]);
+    // Not from a page of another site open on this computer.
+    expect((await watch(send(host, 'POST', IA, json(host, { origin: 'http://malicioso.example.com' }), JSON.stringify({ pedido: 'manhã' })))).status).toBe(403);
+    expect((await watch(send(host, 'POST', IA, json(host, { 'sec-fetch-site': 'cross-site' }), JSON.stringify({ pedido: 'manhã' })))).status).toBe(403);
+    expect((await watch(send(host, 'POST', IA, { 'content-type': 'application/json' }, JSON.stringify({ pedido: 'manhã' })))).status).toBe(403);
     expect(keysUsed).toEqual([KEY]);
 
     expect(JSON.parse((await watch(turn(host, false))).body)).toMatchObject({ ligada: false, disponivel: false });
@@ -267,7 +273,9 @@ describe('the AI settings of servir, from another device', () => {
     // The state, without even the end of the key.
     const seenThere = await state(host, forged);
     expect(seenThere).toEqual({ chave: 'salva', ligada: true, disponivel: true, local: false, modelo: 'falso-1' });
+    expect(JSON.parse((await send(host, 'GET', CAPS, forged)).body).pareado).toBe(false);
     // Using the AI needs the PIN from there.
+    expect((await watch(send(host, 'POST', IA, json(host, forged), JSON.stringify({ pedido: 'manhã' })))).status).toBe(401);
     expect((await watch(send(host, 'POST', IA, json(host), JSON.stringify({ pedido: 'manhã' })))).status).toBe(401);
     const pair = await send(host, 'POST', '/__tv-gominho/pareamento', json(host), JSON.stringify({ pin: PIN }));
     const cookie = String(pair.headers['set-cookie']).split(';')[0]!;

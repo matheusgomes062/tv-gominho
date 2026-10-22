@@ -5,7 +5,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { isGradeBackup } from '@tv-gominho/nucleo';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { createKeyStore } from '../ia/chave';
 import { LOCK_MS, MAX_ATTEMPTS, MAX_BODY } from '../serve/edit';
+import { createIaConfig } from '../serve/ia-config';
 import { createLibraryServer } from './servir';
 
 const PIN = '123456';
@@ -44,6 +46,26 @@ function send(host: string, method: string, urlPath: string, headers: Record<str
     req.on('error', reject);
     req.end(body);
   });
+}
+
+/**
+ * A server wired as `servir` wires it: "this computer" is decided by createIaConfig from the connection's address,
+ * the socket's unless `remote` says otherwise (a device on the network).
+ */
+async function startWired(remote?: string): Promise<string> {
+  const log = (line: string) => logs.push(line);
+  const ia = await createIaConfig({
+    store: createKeyStore(await mkdtemp(path.join(root, 'dados-'))),
+    library,
+    model: 'falso-1',
+    provider: () => ({ name: 'Falso', model: 'falso-1', propose: async () => '{}' }),
+    log,
+    ...(remote ? { remoteAddress: () => remote } : {}),
+  });
+  const server = createLibraryServer(library, app, { pin: PIN, log, now: () => clock, isLocal: ia.isLocal }, ia);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  servers.push(server);
+  return `127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
 
 let editing: string;
@@ -356,5 +378,48 @@ describe('servir --editar', () => {
         expect((await put(cookie, `${file}?substituir=1&copia=1`)).status).toBe(400);
       }
     });
+  });
+});
+
+describe('servir --editar, in the browser of this computer', () => {
+  let here: string;
+  let lan: string;
+  const putAt = (host: string, file: string, headers: Record<string, string> = {}) =>
+    send(host, 'PUT', `/__tv-gominho/arquivos/${file}`, { origin: `http://${host}`, 'content-type': 'text/yaml', ...headers }, GRADE);
+  const caps = async (host: string, headers: Record<string, string> = {}) => JSON.parse((await send(host, 'GET', '/__tv-gominho/capacidades', headers)).body);
+
+  beforeAll(async () => {
+    here = await startWired();
+    lan = await startWired('192.168.0.20');
+  });
+
+  it('counts as paired: capacidades says so here, and not to a device on the network', async () => {
+    expect(await caps(here)).toEqual({ editar: true, ia: false, pareado: true, configIa: true });
+    expect(await caps(lan)).toEqual({ editar: true, ia: false, pareado: false, configIa: true });
+  });
+
+  it('writes without the PIN, with every other check still there', async () => {
+    expect((await putAt(here, 'grades/no-pc.yaml')).status).toBe(201);
+    expect(await readFile(path.join(library, 'grades/no-pc.yaml'), 'utf8')).toBe(GRADE);
+    // Still never overwrites unless asked, and only the files a channel is made of.
+    expect((await putAt(here, 'grades/no-pc.yaml')).status).toBe(409);
+    expect((await putAt(here, '../fora/x.yaml')).status).toBe(400);
+    expect((await send(here, 'PUT', '/__tv-gominho/arquivos/grades/nada.yaml', { origin: `http://${here}` }, 'não é grade')).status).toBe(400);
+  });
+
+  it('refuses pages of other sites open on this computer (CSRF) and other host names (DNS rebinding)', async () => {
+    expect((await putAt(here, 'grades/csrf-pc.yaml', { origin: 'http://malicioso.example.com' })).status).toBe(403);
+    expect((await putAt(here, 'grades/csrf-pc.yaml', { 'sec-fetch-site': 'cross-site' })).status).toBe(403);
+    expect((await putAt(here, 'grades/csrf-pc.yaml', { 'sec-fetch-site': 'same-site' })).status).toBe(403);
+    expect((await send(here, 'PUT', '/__tv-gominho/arquivos/grades/csrf-pc.yaml', { 'content-type': 'text/yaml' }, GRADE)).status).toBe(403);
+    expect((await putAt(here, 'grades/csrf-pc.yaml', { host: 'malicioso.example.com', origin: 'http://malicioso.example.com' })).status).toBe(421);
+    await expect(readdir(path.join(library, 'grades'))).resolves.not.toContain('csrf-pc.yaml');
+  });
+
+  it('still needs the PIN from another address, whatever the headers say', async () => {
+    const forged = { 'x-forwarded-for': '127.0.0.1', 'x-real-ip': '127.0.0.1', forwarded: 'for=127.0.0.1' };
+    expect((await putAt(lan, 'grades/forjado.yaml', forged)).status).toBe(401);
+    expect((await caps(lan, forged)).pareado).toBe(false);
+    await expect(readdir(path.join(library, 'grades'))).resolves.not.toContain('forjado.yaml');
   });
 });
