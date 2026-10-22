@@ -42,7 +42,7 @@ export function parseSchedule(path: string, text: string, warnings: LibraryWarni
     else warn('"vinhetas_intervalo" deve ser uma pasta ou arquivo de vinhetas, por exemplo "intervalos/tv-globinho". Ela foi ignorada.');
   }
 
-  const adBreaks = raw.intervalos === undefined ? {} : parseAdBreaks(raw.intervalos, warn);
+  const adBreaks = raw.intervalos === undefined ? {} : parseAdBreaks(raw.intervalos, warn, 'Vale a regra da configuração geral.');
 
   if (!Array.isArray(raw.blocos) || raw.blocos.length === 0) {
     warn('A grade não tem "blocos".');

@@ -4,6 +4,8 @@ export { parseSchedule } from './schedule';
 export { allowedEpisodes, blockedEpisodes, blocklistToYaml, parseBlocklist, emptyBlocklist, BLOCKLIST_FILE } from './blocklist';
 export { findEpisodeByRef, normalizeEpisodeRef, type Anchor, type AnchorSource, type EpisodeLookup } from './agenda';
 export { preservePositions } from './positions';
+export { gradeBackupName, isGradeBackup, BACKUP_EXTENSION } from './backup';
+export { previewDay, formatSpan, type DayPreview, type PreviewRow, type PreviewBlock, type PreviewWarning, type PreviewOptions } from './preview';
 export { bumperRole, groupBumpers, bumpersOf, NO_BUMPERS, type BumperRole, type BumperGroup, type BreakBumpers } from './bumpers';
 export {
   DEFAULT_SETTINGS,
@@ -35,6 +37,7 @@ export {
   breakPoints,
   filePosition,
   MIN_ACT_SECONDS,
+  DEFAULT_MAX_GAP_FILL,
   type DayPlan,
   type PlannedItem,
   type PlannedBlock,
@@ -68,6 +71,9 @@ export {
   formatTimeOfDay,
   parseTimeOfDay,
   WEEKDAYS,
+  isoToDayNumber,
+  dayNumberToIso,
+  weekdayOf,
   type Weekday,
 } from './dates';
 export {
