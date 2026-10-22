@@ -282,5 +282,17 @@ export function scheduleToYaml(generated: GeneratedSchedule, header: string[] = 
       lines.push(`    - bloco: "${formatTimeOfDay(pick.blockStart)}"`, `      item: ${pick.item}${show}`, `      episodio: ${/^\d+$/.test(pick.episode) ? pick.episode : quote(pick.episode)}`);
     }
   }
+  if (schedule.positions && schedule.positions.length > 0) {
+    lines.push('', 'posicoes:');
+    let day: string | undefined;
+    for (const position of schedule.positions) {
+      if (position.date !== day) {
+        lines.push(`  ${quote(position.date)}:`);
+        day = position.date;
+      }
+      const show = /^[A-Za-z][\w-]*$/.test(position.show) ? position.show : quote(position.show);
+      lines.push(`    ${show}: ${/^\d+$/.test(position.episode) ? position.episode : quote(position.episode)}`);
+    }
+  }
   return `${lines.join('\n')}\n`;
 }
