@@ -105,7 +105,7 @@ export function Welcome({ onOpen }: Props) {
       <Static className="welcome-static" />
       <div className="welcome-card">
         <h1 className="welcome-logo">
-          <img src={logo} alt="TV Gominho" width="960" height="640" />
+          <img src={logo} alt="TV Gominho" width="640" height="634" />
         </h1>
         <p className="tagline">Os desenhos das manhãs da sua infância, como na TV.</p>
 

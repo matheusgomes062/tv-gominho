@@ -11,7 +11,7 @@ exemplo/
 # Portable package (npm run pacote).
 /pacote/
 
-# Full-size original of the app logo; the app ships the WebP next to it.
+# Original of the old 3D app logo, replaced by the crayon logo of the site.
 /pacotes/interface/src/assets/tv-gominho-logo.png
 
 # Answers cache and work folder the CLI writes next to the files it reads.
