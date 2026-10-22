@@ -8,6 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CliError, UsageError } from '../errors';
 import { helpOptions, intOption, parseOptions } from '../options';
+import { CAPABILITIES_PATH, createEditor, MAX_BODY, newPin, type EditOptions } from '../serve/edit';
 import { LIBRARY_FILE_PATH, LIBRARY_LIST_PATH, libraryListing, resolveInside, sendJson, sendLibraryFile, sendStatic } from '../serve/http';
 import type { Command } from './types';
 
@@ -16,6 +17,7 @@ const OPTIONS = {
   porta: { type: 'string', short: 'p' },
   rede: { type: 'boolean' },
   abrir: { type: 'boolean' },
+  editar: { type: 'boolean' },
   interface: { type: 'string' },
 } as const;
 
@@ -26,13 +28,16 @@ const HELP = `Uso:
 
 Abre a TV Gominho como um site, já com a biblioteca carregada: é só abrir o endereço
 no navegador (Chrome, Edge, Firefox, Chromium do Raspberry Pi, navegador da TV...).
-Não precisa escolher pasta. Os arquivos não saem do computador e nada é gravado.
+Não precisa escolher pasta. Os arquivos não saem do computador e, sem --editar, nada é gravado.
 
 Opções:
   --porta, -p <n>       porta. Padrão: ${DEFAULT_PORT}
   --rede                aceita outros aparelhos da rede (TV, celular, outro PC). Sem ela, só
                         este computador abre o endereço
   --abrir               abre o navegador neste computador
+  --editar              deixa salvar canais pelo app ("Montar a semana"). Mostra um PIN aqui;
+                        cada aparelho digita o PIN uma vez. Só grava grades/<nome>.yaml e
+                        nao-passar.yaml, nada mais
   --interface <pasta>   pasta do app compilado (padrão: a que vem com a ferramenta)
   --ajuda               mostra esta ajuda
 
@@ -40,7 +45,8 @@ Para o Raspberry Pi em modo quiosque, veja docs/raspberry-pi.md.
 
 Exemplos:
   tv-gominho servir ./biblioteca --abrir
-  tv-gominho servir E:\\biblioteca --rede --porta 8000`;
+  tv-gominho servir E:\\biblioteca --rede --porta 8000
+  tv-gominho servir ./biblioteca --rede --editar`;
 
 export const servirCommand: Command = {
   name: 'servir',
@@ -59,7 +65,8 @@ export const servirCommand: Command = {
     const port = intOption('--porta', values.porta, 1, 65535) ?? DEFAULT_PORT;
     const host = values.rede ? '0.0.0.0' : '127.0.0.1';
 
-    const server = createLibraryServer(library, app);
+    const pin = values.editar ? newPin() : undefined;
+    const server = createLibraryServer(library, app, pin ? { pin, log: (message) => console.log(message) } : undefined);
     await new Promise<void>((resolve, reject) => {
       server.once('error', (error: NodeJS.ErrnoException) =>
         reject(error.code === 'EADDRINUSE' ? new CliError(`A porta ${port} já está em uso. Escolha outra com --porta.`) : error),
@@ -71,6 +78,10 @@ export const servirCommand: Command = {
     console.log(`TV Gominho no ar, com a biblioteca ${library}`);
     console.log(`  Neste computador: ${local}`);
     if (values.rede) for (const address of lanAddresses()) console.log(`  Na rede:          http://${address}:${port}/`);
+    if (pin) {
+      console.log(`Salvar canais pelo app: LIGADO. PIN para parear um aparelho: ${pin}`);
+      console.log(`  Só quem digitar o PIN grava, e só grades/<nome>.yaml e nao-passar.yaml (até ${MAX_BODY / 1024} KB).`);
+    }
     console.log('Ctrl+C para desligar.');
     if (values.abrir) openBrowser(local);
 
@@ -96,21 +107,27 @@ export function allowedHost(host: string | undefined, machineName = hostname()):
   return name === 'localhost' || name.endsWith('.localhost') || name === machine || name === `${machine}.local`;
 }
 
-/** The server: the app at /, the library under /__biblioteca/. Read-only. */
-export function createLibraryServer(library: string, app: string): Server {
+/**
+ * The server: the app at /, the library under /__biblioteca/. Read-only, unless `edit` is given: then
+ * the routes of serve/edit.ts also take a PIN and the files a channel is made of.
+ */
+export function createLibraryServer(library: string, app: string, edit?: EditOptions): Server {
+  const editor = edit ? createEditor(library, edit) : null;
   return createServer((req, res) => {
-    const url = (req.url ?? '/').split('?')[0]!;
+    const [url, query = ''] = (req.url ?? '/').split('?') as [string, string?];
     if (!allowedHost(req.headers.host)) {
       res.statusCode = 421;
       res.end('Use o endereço que o tv-gominho servir mostrou (IP ou localhost).');
       return;
     }
-    if (req.method !== 'GET' && req.method !== 'HEAD') {
-      res.statusCode = 405;
-      res.end();
-      return;
-    }
     const handle = async () => {
+      if (editor && (await editor.handle(req, res, url, query))) return;
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        res.statusCode = 405;
+        res.end();
+        return;
+      }
+      if (url === CAPABILITIES_PATH) return sendJson(req, res, { editar: false, pareado: false });
       if (url === LIBRARY_LIST_PATH) return sendJson(req, res, await libraryListing(library));
       if (url.startsWith(LIBRARY_FILE_PATH)) {
         const relative = url.slice(LIBRARY_FILE_PATH.length);

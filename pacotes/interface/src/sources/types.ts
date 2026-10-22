@@ -1,4 +1,12 @@
 import type { LibrarySource } from '@tv-gominho/nucleo';
+import type { PairOutcome, WriteOutcome } from '../pin-model';
+
+/** Saving through `tv-gominho servir --editar`: pair once with the PIN, then write channel files. */
+export interface ServerEditing {
+  pair(pin: string): Promise<PairOutcome>;
+  /** Writes a new file (never over an existing one) at a library path such as "grades/manha.yaml". */
+  write(path: string, text: string): Promise<WriteOutcome>;
+}
 
 /** A library folder opened in the browser. */
 export interface BrowserLibrary extends LibrarySource {
@@ -6,6 +14,8 @@ export interface BrowserLibrary extends LibrarySource {
   name: string;
   /** The picked folder, when it came from showDirectoryPicker (Chrome/Edge): the way back to write a channel into it. */
   handle?: FileSystemDirectoryHandle;
+  /** Present when the library is served by `tv-gominho servir --editar`: the way to write a channel through it. */
+  editing?: ServerEditing;
   /** A URL the <video>/<img> elements can load. */
   url(path: string): Promise<string>;
   /** Changes when the file changes; used to cache video durations. */
