@@ -232,6 +232,49 @@ export function pickInterstitialRef(library: Library, category: string, brand: s
   return folders[0]!;
 }
 
+/** The bumper categories the generator picks by brand and era. */
+const BUMPER_CATEGORIES = ['aberturas', 'encerramentos', 'chamadas', 'intervalos'] as const;
+
+export interface BrandOption {
+  /** The word to prefer in the bumpers' path: the brand folder without its years ("tv-globinho"). */
+  id: string;
+  /** How many bumper files carry it. */
+  count: number;
+}
+
+/** "tv-globinho-2003-2009" -> "tv-globinho": the folder name without the years of its era. */
+function brandOfFolder(folder: string): string {
+  const bare = folder.replace(/[\s_-]*\(?(?:19|20)\d\d(?:\s*[-–a_]\s*(?:19|20)\d\d)?\)?\s*$/, '').replace(/[\s_-]+$/, '');
+  return bare === '' ? folder : bare;
+}
+
+/** The brand folders found in the library's bumpers (vinhetas/aberturas/<marca>/...), as `tv-gominho grade --marca` takes them. */
+export function bumperBrands(library: Library): BrandOption[] {
+  const found = new Map<string, BrandOption>();
+  for (const item of library.interstitials) {
+    if (!(BUMPER_CATEGORIES as readonly string[]).includes(item.category)) continue;
+    const parts = item.relativePath.split('/');
+    if (parts.length < 3) continue;
+    const id = brandOfFolder(parts[1]!);
+    const entry = found.get(fold(id)) ?? { id, count: 0 };
+    entry.count++;
+    found.set(fold(id), entry);
+  }
+  return [...found.values()].sort((a, b) => a.id.localeCompare(b.id, 'pt-BR'));
+}
+
+/** The years that appear in the names of the bumpers of the brand ("" = any), as `--epoca` takes them, in order. */
+export function bumperEras(library: Library, brand: string): number[] {
+  const years = new Set<number>();
+  for (const item of library.interstitials) {
+    if (!(BUMPER_CATEGORIES as readonly string[]).includes(item.category)) continue;
+    if (brand && !fold(item.relativePath).includes(fold(brand))) continue;
+    const range = yearRange(item.relativePath.slice(item.category.length));
+    if (range) for (const year of range) years.add(year);
+  }
+  return [...years].sort((a, b) => a - b);
+}
+
 /** The `vinhetas_intervalo` brand group (intervalos/<subfolder>) for the brand and era; null = let the engine draw one a day. */
 function pickBumperGroup(library: Library, brand: string, era: number | undefined): string | null {
   const ref = pickInterstitialRef(library, 'intervalos', brand, era);

@@ -58,7 +58,7 @@ No navegador, clique em **Escolher biblioteca** e selecione a sua pasta `bibliot
 | `npm run cli -- converter <biblioteca>` | Converte AVI, MKV e outros vídeos que o app não toca para MP4 (precisa do ffmpeg). Veja [ferramentas](docs/ferramentas.md) |
 | `npm run cli -- organizar <downloads> <biblioteca> --simular` | Arruma vídeos baixados na biblioteca com a ajuda do Jev (IA da TypeSafe; opcional, precisa de chave em `.env`, veja [ferramentas](docs/ferramentas.md#organizar)) |
 | `npm run cli -- grade <biblioteca> --epoca 2004` | Monta o canal TV Gominho, no estilo da TV Globinho, com os programas da biblioteca (`grades/tv-gominho.yaml`) |
-| `npm run cli -- servir <biblioteca> --abrir` | Abre o app já com a biblioteca (`--rede` para outros aparelhos da casa, `--editar` para salvar canais pelo app com um PIN) |
+| `npm run cli -- servir <biblioteca> --abrir` | Abre o app já com a biblioteca (`--rede` para outros aparelhos da casa, `--editar` para salvar canais pelo app com um PIN, `--ia` para pedir canais ao Claude com a sua chave em `.env`; opcional, veja [ferramentas](docs/ferramentas.md#assistente-de-ia---ia)) |
 | `npm run cli -- pendrive <biblioteca> -d E:\ -r 480` | Grava a programação em MP4 para tocar em qualquer TV; `verificar E:\` confere o resultado |
 | `npm run pacote` | Monta o pacote portátil em `pacote/tv-gominho` (app, ferramenta, atalhos e instalador do Raspberry Pi) |
 | `npm run cli -- ajuda` | Lista os comandos da linha de comando |

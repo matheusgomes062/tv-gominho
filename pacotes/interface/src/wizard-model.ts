@@ -7,11 +7,13 @@ import {
   generateSchedule,
   gradeBackupName,
   isoToDayNumber,
+  bumperBrands,
+  bumperEras,
   pickInterstitialRef,
   preservePositions,
   weekdayOf,
-  yearRange,
   type AdBreakSettings,
+  type BrandOption,
   type GenerateBlock,
   type GenerateOptions,
   type GeneratedSchedule,
@@ -319,50 +321,8 @@ export function adSummary(ad: AdBreakSettings): string {
 
 // ---------------------------------------------------------------- bumpers (brand and era)
 
-/** The bumper categories the generator picks by brand and era. */
-const BUMPER_CATEGORIES = ['aberturas', 'encerramentos', 'chamadas', 'intervalos'] as const;
+export { bumperBrands, bumperEras, type BrandOption };
 
-export interface BrandOption {
-  /** The word to prefer in the bumpers' path: the brand folder without its years ("tv-globinho"). */
-  id: string;
-  /** How many bumper files carry it. */
-  count: number;
-}
-
-const fold = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-
-/** "tv-globinho-2003-2009" -> "tv-globinho": the folder name without the years of its era. */
-function brandOfFolder(folder: string): string {
-  const bare = folder.replace(/[\s_-]*\(?(?:19|20)\d\d(?:\s*[-–a_]\s*(?:19|20)\d\d)?\)?\s*$/, '').replace(/[\s_-]+$/, '');
-  return bare === '' ? folder : bare;
-}
-
-/** The brand folders found in the library's bumpers (vinhetas/aberturas/<marca>/...), as `tv-gominho grade --marca` takes them. */
-export function bumperBrands(library: Library): BrandOption[] {
-  const found = new Map<string, BrandOption>();
-  for (const item of library.interstitials) {
-    if (!(BUMPER_CATEGORIES as readonly string[]).includes(item.category)) continue;
-    const parts = item.relativePath.split('/');
-    if (parts.length < 3) continue;
-    const id = brandOfFolder(parts[1]!);
-    const entry = found.get(fold(id)) ?? { id, count: 0 };
-    entry.count++;
-    found.set(fold(id), entry);
-  }
-  return [...found.values()].sort((a, b) => a.id.localeCompare(b.id, 'pt-BR'));
-}
-
-/** The years that appear in the names of the bumpers of the brand ("" = any), as `--epoca` takes them, in order. */
-export function bumperEras(library: Library, brand: string): number[] {
-  const years = new Set<number>();
-  for (const item of library.interstitials) {
-    if (!(BUMPER_CATEGORIES as readonly string[]).includes(item.category)) continue;
-    if (brand && !fold(item.relativePath).includes(fold(brand))) continue;
-    const range = yearRange(item.relativePath.slice(item.category.length));
-    if (range) for (const year of range) years.add(year);
-  }
-  return [...years].sort((a, b) => a - b);
-}
 
 /** Picks a brand. The era is kept only if that brand has it. */
 export function chooseBrand(state: WizardState, library: Library, brand: string): WizardState {

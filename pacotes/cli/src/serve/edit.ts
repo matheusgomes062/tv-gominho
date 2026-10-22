@@ -1,6 +1,7 @@
 // Saving channels through `tv-gominho servir --editar` (docs/ferramentas.md#servir). Off unless asked
 // for. A device pairs once with the PIN shown in the terminal and gets a session cookie; with it, the
-// app may write grades/<nome>.yaml and nao-passar.yaml, and nothing else.
+// app may write grades/<nome>.yaml and nao-passar.yaml, and nothing else. `--ia` uses the same pairing
+// for the AI assistant's route (serve/ia.ts), with or without saving.
 
 import { randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { lstat, mkdir, readdir, realpath, rename, stat, unlink, writeFile } from 'node:fs/promises';
@@ -12,6 +13,7 @@ import { sendJson } from './http';
 export const CAPABILITIES_PATH = '/__tv-gominho/capacidades';
 export const PAIRING_PATH = '/__tv-gominho/pareamento';
 export const WRITE_PATH = '/__tv-gominho/arquivos/';
+export const IA_PATH = '/__tv-gominho/ia/proposta';
 
 /** Largest file the server takes. A week of grade is a few KB. */
 export const MAX_BODY = 256 * 1024;
@@ -36,6 +38,10 @@ const WINDOWS_DEVICES = /^(?:con|prn|aux|nul|com\d|lpt\d)$/i;
 
 export interface EditOptions {
   pin: string;
+  /** Saving channels (--editar). False when only the assistant needs the pairing (--ia alone). Default true. */
+  write?: boolean;
+  /** The AI assistant (--ia, serve/ia.ts): asked for proposals by paired devices only. */
+  assistant?: { handle(req: IncomingMessage, res: ServerResponse): Promise<void> };
   /** Lines for the terminal (lockouts, files written). */
   log(message: string): void;
   now?(): number;
@@ -48,6 +54,8 @@ export function newPin(): string {
 /** The routes of editing, or null when the request is not one of them. */
 export function createEditor(library: string, options: EditOptions) {
   const now = options.now ?? Date.now;
+  const canWrite = options.write ?? true;
+  const { assistant } = options;
   const sessions = new Set<string>();
   let failures = 0;
   let locks = 0;
@@ -99,7 +107,7 @@ export function createEditor(library: string, options: EditOptions) {
       sessions.add(token);
       // No Max-Age: the cookie lasts while the browser is open, the session while this server runs.
       res.setHeader('Set-Cookie', `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict`);
-      options.log('Um aparelho foi pareado e pode salvar canais.');
+      options.log(canWrite ? 'Um aparelho foi pareado e pode salvar canais.' : 'Um aparelho foi pareado e pode usar a IA.');
       sendJson(req, res, { pareado: true });
     } finally {
       pairing = false;
@@ -161,18 +169,23 @@ export function createEditor(library: string, options: EditOptions) {
     /** Handles the request when it is one of the editing routes; false otherwise. */
     async handle(req: IncomingMessage, res: ServerResponse, url: string, query: string): Promise<boolean> {
       if (url === CAPABILITIES_PATH && (req.method === 'GET' || req.method === 'HEAD')) {
-        sendJson(req, res, { editar: true, pareado: hasSession(req) });
+        sendJson(req, res, { editar: canWrite, ia: assistant !== undefined, pareado: hasSession(req) });
         return true;
       }
       const isPair = url === PAIRING_PATH && req.method === 'POST';
-      const isWrite = url.startsWith(WRITE_PATH) && req.method === 'PUT';
-      if (!isPair && !isWrite) return false;
+      const isWrite = canWrite && url.startsWith(WRITE_PATH) && req.method === 'PUT';
+      const isIa = assistant !== undefined && url === IA_PATH && req.method === 'POST';
+      if (!isPair && !isWrite && !isIa) return false;
       // CSRF: a page elsewhere may send a request here, with the cookie even; it cannot fake Origin.
       if (!sameOrigin(req)) {
         fail(req, res, 403, 'Origem não permitida.');
         return true;
       }
       if (isPair) await pair(req, res);
+      else if (isIa) {
+        if (hasSession(req)) await assistant!.handle(req, res);
+        else fail(req, res, 401, 'Digite o PIN que aparece no computador.');
+      }
       else await write(req, res, url.slice(WRITE_PATH.length), new URLSearchParams(query).get('substituir') === '1');
       return true;
     },
@@ -208,7 +221,7 @@ function cookie(req: IncomingMessage, name: string): string | undefined {
 }
 
 /** The body, or null past `limit` bytes. */
-function readBody(req: IncomingMessage, limit: number): Promise<Buffer | null> {
+export function readBody(req: IncomingMessage, limit: number): Promise<Buffer | null> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     let size = 0;
@@ -232,7 +245,7 @@ function readBody(req: IncomingMessage, limit: number): Promise<Buffer | null> {
   });
 }
 
-function fail(req: IncomingMessage, res: ServerResponse, status: number, message: string) {
+export function fail(req: IncomingMessage, res: ServerResponse, status: number, message: string) {
   // Once the answer is out, Node drops whatever of the body is left.
   res.setHeader('Connection', 'close');
   sendJson(req, res, { erro: message }, status);

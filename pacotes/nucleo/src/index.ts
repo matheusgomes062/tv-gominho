@@ -93,9 +93,23 @@ export {
   scheduleToYaml,
   positionsToYaml,
   pickInterstitialRef,
+  bumperBrands,
+  bumperEras,
   yearRange,
   DEFAULT_GENERATE_BLOCK,
   type GenerateOptions,
   type GenerateBlock,
+  type BrandOption,
   type GeneratedSchedule,
 } from './generate';
+export {
+  proposalSchema,
+  validateProposal,
+  parseProposal,
+  proposalToRaw,
+  MAX_REQUEST_LENGTH,
+  MAX_PROPOSAL_TEXT,
+  MAX_PROPOSAL_RANGES,
+  type Proposal,
+  type ProposalResult,
+} from './proposal';

@@ -1,17 +1,18 @@
-import { pairOutcome, writeOutcome } from '../pin-model';
-import type { BrowserLibrary, ServerEditing } from './types';
+import { pairOutcome, writeOutcome, type PairOutcome } from '../pin-model';
+import type { BrowserLibrary, ServerAssistant, ServerEditing } from './types';
 
 const LIST = '/__biblioteca/lista';
 const CAPABILITIES = '/__tv-gominho/capacidades';
 const PAIRING = '/__tv-gominho/pareamento';
 const FILES = '/__tv-gominho/arquivos/';
+const IA = '/__tv-gominho/ia/proposta';
 
 /**
  * The library served over HTTP: by `tv-gominho servir` (PC, Raspberry Pi, other
  * devices on the network) or, in development, by the Vite dev server (see vite.config.ts).
  */
 export async function openServerLibrary(): Promise<BrowserLibrary> {
-  const [response, editing] = await Promise.all([fetch(LIST), serverEditing()]);
+  const [response, offered] = await Promise.all([fetch(LIST), capabilities()]);
   const data = (await response.json()) as { name: string; base: string; files: string[]; error?: string };
   if (!response.ok) throw new Error(data.error ?? 'Biblioteca do servidor indisponível.');
 
@@ -19,7 +20,8 @@ export async function openServerLibrary(): Promise<BrowserLibrary> {
   return {
     name: data.name,
     files: data.files,
-    ...(editing ? { editing } : {}),
+    ...(offered.editar === true ? { editing: serverEditing() } : {}),
+    ...(offered.ia === true ? { assistant: serverAssistant() } : {}),
     async readText(path) {
       return (await fetch(url(path))).text();
     },
@@ -33,24 +35,35 @@ export async function openServerLibrary(): Promise<BrowserLibrary> {
   };
 }
 
-/** Saving through the server, when it was started with --editar (the dev server and older versions answer something else). */
-async function serverEditing(): Promise<ServerEditing | undefined> {
+interface Capabilities {
+  editar?: unknown;
+  ia?: unknown;
+}
+
+/** What the server offers (--editar, --ia); the dev server and older versions answer something else, or nothing. */
+async function capabilities(): Promise<Capabilities> {
   try {
     const response = await fetch(CAPABILITIES);
-    if (!response.ok || !(response.headers.get('content-type') ?? '').includes('json')) return undefined;
-    if ((await response.json() as { editar?: unknown }).editar !== true) return undefined;
+    if (!response.ok || !(response.headers.get('content-type') ?? '').includes('json')) return {};
+    return ((await response.json()) as Capabilities | null) ?? {};
   } catch {
-    return undefined;
+    return {};
   }
+}
+
+async function pair(pin: string): Promise<PairOutcome> {
+  try {
+    const response = await fetch(PAIRING, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin }) });
+    return pairOutcome(response.status);
+  } catch {
+    return 'failed';
+  }
+}
+
+/** Saving through the server, when it was started with --editar. */
+function serverEditing(): ServerEditing {
   return {
-    async pair(pin) {
-      try {
-        const response = await fetch(PAIRING, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin }) });
-        return pairOutcome(response.status);
-      } catch {
-        return 'failed';
-      }
-    },
+    pair,
     async write(path, text, overwrite = false) {
       try {
         const target = FILES + path.split('/').map(encodeURIComponent).join('/') + (overwrite ? '?substituir=1' : '');
@@ -58,6 +71,21 @@ async function serverEditing(): Promise<ServerEditing | undefined> {
         return writeOutcome(response.status);
       } catch {
         return 'failed';
+      }
+    },
+  };
+}
+
+/** The AI assistant, when the server was started with --ia and has a key. */
+function serverAssistant(): ServerAssistant {
+  return {
+    pair,
+    async propose(request) {
+      try {
+        const response = await fetch(IA, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(request) });
+        return { status: response.status, body: await response.json().catch(() => null) };
+      } catch {
+        return { status: 0, body: null };
       }
     },
   };
