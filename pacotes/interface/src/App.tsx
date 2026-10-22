@@ -1,16 +1,18 @@
-import { createAutoSchedule, createShowChannels, findChannelIndex, type Library } from '@tv-gominho/nucleo';
+import { createAutoSchedule, createShowChannels, findChannelIndex, type Library, type Schedule } from '@tv-gominho/nucleo';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Durations } from './media';
 import { LibraryMode } from './screens/LibraryMode';
 import { Menu } from './screens/Menu';
 import { QuickSettings } from './overlays/QuickSettings';
 import { SettingsPanel } from './overlays/SettingsPanel';
+import { WeekWizard } from './overlays/WeekWizard';
 import { Player } from './screens/Player';
 import { ShowPage } from './screens/ShowPage';
 import { TvMode } from './screens/TvMode';
 import { Warnings } from './screens/Warnings';
 import { Welcome } from './screens/Welcome';
 import { SettingsProvider, useSettings } from './settings';
+import { rereadLibrary } from './sources/save';
 import type { BrowserLibrary } from './sources/types';
 
 interface Session {
@@ -29,7 +31,7 @@ type View =
   | { name: 'player'; showId: string; index: number };
 
 /** Layers over the live picture (TV or Player), newest last: Back closes the last one. */
-type Overlay = 'menu' | 'quick' | 'settings';
+type Overlay = 'menu' | 'quick' | 'settings' | 'wizard';
 
 const CHANNEL_KEY = 'tv-gominho.canal';
 
@@ -55,6 +57,7 @@ export function App() {
     <SettingsProvider key={session.id} libraryName={session.source.name} library={session.library}>
       <Main
         session={session}
+        onLibraryChange={(library) => setSession((current) => (current ? { ...current, library } : current))}
         onChangeFolder={() => {
           session.source.dispose();
           setSession(null);
@@ -64,18 +67,18 @@ export function App() {
   );
 }
 
-function Main({ session, onChangeFolder }: { session: Session; onChangeFolder(): void }) {
+/** The channels of a library: its grades, or the automatic channel when it has none, plus one per show if asked. */
+function channelsOf(library: Library, perShow: boolean): Schedule[] {
+  const auto = createAutoSchedule(library);
+  const base = library.schedules.length > 0 ? library.schedules : auto ? [auto] : [];
+  return perShow ? [...base, ...createShowChannels(library)] : base;
+}
+
+function Main({ session, onChangeFolder, onLibraryChange }: { session: Session; onChangeFolder(): void; onLibraryChange(library: Library): void }) {
   const { source, library, durations } = session;
   const { settings } = useSettings();
 
-  const base = useMemo(() => {
-    const auto = createAutoSchedule(library);
-    return library.schedules.length > 0 ? library.schedules : auto ? [auto] : [];
-  }, [library]);
-  const channels = useMemo(
-    () => (settings.channelsPerShow ? [...base, ...createShowChannels(library)] : base),
-    [base, library, settings.channelsPerShow],
-  );
+  const channels = useMemo(() => channelsOf(library, settings.channelsPerShow), [library, settings.channelsPerShow]);
 
   const [view, setView] = useState<View>(settings.startMode === 'library' ? { name: 'library' } : { name: 'tv' });
   // A channel saved by the last visit wins over `canal_inicial`, which only applies the first time.
@@ -96,6 +99,18 @@ function Main({ session, onChangeFolder }: { session: Session; onChangeFolder():
   }, []);
 
   const safeChannel = channel < channels.length ? channel : 0;
+
+  /** After a channel was written into the folder: reads the library again, keeping the channel on air. */
+  const reloadLibrary = useCallback(async () => {
+    const fresh = await rereadLibrary(source);
+    if (!fresh) return false;
+    // A new grade can sort before the one on air, so the index may shift: follow the channel by its id.
+    const onAir = channels[safeChannel]?.id;
+    const moved = onAir === undefined ? -1 : channelsOf(fresh, settings.channelsPerShow).findIndex((entry) => entry.id === onAir);
+    if (moved >= 0) setChannel(moved);
+    onLibraryChange(fresh);
+    return true;
+  }, [source, channels, safeChannel, settings.channelsPerShow, setChannel, onLibraryChange]);
 
   // The overlays keep the picture playing underneath; full screens (library, warnings…) replace it and close them.
   const [overlays, setOverlays] = useState<Overlay[]>([]);
@@ -133,12 +148,28 @@ function Main({ session, onChangeFolder }: { session: Session; onChangeFolder():
           onWarnings={() => goTo({ name: 'warnings' })}
           onQuick={() => openOverlay('quick', true)}
           onSettings={() => openOverlay('settings', true)}
+          onSchedule={() => openOverlay('wizard', true)}
           onChangeFolder={onChangeFolder}
           onBack={closeOverlay}
         />
       )}
       {overlay === 'quick' && <QuickSettings channels={channels} onAll={() => openOverlay('settings', true)} onBack={closeOverlay} />}
       {overlay === 'settings' && <SettingsPanel channels={channels} libraryName={source.name} onBack={closeOverlay} />}
+      {overlay === 'wizard' && (
+        <WeekWizard
+          source={source}
+          library={library}
+          durations={durations}
+          channels={channels}
+          onSaved={reloadLibrary}
+          onWatch={(id) => {
+            const index = findChannelIndex(channels, id);
+            if (index >= 0) setChannel(index);
+            closeOverlays();
+          }}
+          onBack={closeOverlay}
+        />
+      )}
     </>
   );
 

@@ -20,7 +20,7 @@ Menu, ajustes rápidos e configurações são painéis translúcidos **por cima 
 
 | Tecla | O que faz |
 |---|---|
-| Esc / Backspace / Voltar (na TV) | Abre o **menu**: canais, Biblioteca, Ajustes rápidos, Configurações, Avisos, Trocar pasta |
+| Esc / Backspace / Voltar (na TV) | Abre o **menu**: canais, Biblioteca, Programação ([montar um canal novo pela tela](grade.md#montar-a-semana-pelo-app)), Ajustes rápidos, Configurações, Avisos, Trocar pasta |
 | `S`, `←` ou `→` (na TV; `S` também no player) | Abre os **ajustes rápidos** |
 | Esc / Voltar (num painel) | Fecha um nível: lista de valores, depois o painel, depois o painel de baixo (por exemplo, configurações → menu → TV) |
 
