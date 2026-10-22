@@ -71,7 +71,7 @@ Para os blocos fecharem perto do fim de cada faixa, o assistente lê a duração
 
 ## Mudar uma programação pelo app
 
-No PC, **Menu → Programação → Mudar** (ao lado do nome do canal) abre **Mudar uma programação**, com mouse e teclado. Só as grades de verdade (os arquivos de `grades/`) podem ser mudadas; o "Canal Automático" e os canais por programa não têm arquivo. Servido com `--editar`, o PIN é pedido ao abrir.
+No PC, **Menu → Programação → Mudar** (ao lado do nome do canal) abre **Mudar uma programação**, com mouse e teclado. Só as grades de verdade (os arquivos de `grades/`) podem ser mudadas; o "Canal Automático" e os canais por programa não têm arquivo. Servido com `--editar`, o PIN é pedido ao abrir num outro aparelho (no próprio computador do servidor, em `localhost`, não).
 
 A tela abre na **semana do canal**. Para mexer nos horários, nos dias, no nome e no que passa em cada horário, use **Ajustes avançados**.
 
@@ -104,7 +104,7 @@ Itens que não existem na biblioteca (um desenho ou uma vinheta que sumiu) apare
 
 Salvar **troca o arquivo da grade** (`grades/<canal>.yaml`) pelo texto novo, sem pedir uma segunda confirmação, mas **guardando antes uma cópia do arquivo antigo**, do mesmo jeito que o assistente ao [trocar um canal](#criar-uma-programacao-pelo-app): `grades/<canal>.AAAA-MM-DD.yaml.bak` (se já existe uma do dia, `-2`, `-3`...), que a TV não lê como canal. O app confere se a cópia ficou igual antes de gravar; se não consegue fazer a cópia, não mexe no canal. Para **voltar atrás**, apague o canal atual e renomeie a cópia, tirando a data e o `.bak` (`manha.2026-10-22.yaml.bak` vira `manha.yaml`). O arquivo é reescrito pelo app: **os comentários que você escreveu nele não são mantidos** (o app põe só uma linha de comentário no topo), mas o conteúdo, sim; quando o arquivo tem comentários, o editor avisa disso antes de você salvar, e eles continuam na cópia. Fica igual ao formato deste documento.
 
-Onde grava é como no assistente: no Chrome ou no Edge, com a biblioteca aberta por "Escolher biblioteca", o navegador pede permissão de escrita na pasta quando você salva (Ctrl+S também salva) e o canal novo já vale na troca de canais, sem reiniciar. Com `tv-gominho servir --editar`, pede o PIN na primeira vez e o servidor grava o canal e a cópia. Nos outros casos (Firefox, Safari, pasta aberta pelo campo de pasta comum, `tv-gominho servir` sem `--editar`, ou permissão negada), o app **baixa os dois arquivos** (o canal com o mesmo nome e a cópia `.bak`) e mostra onde colocá-los em `grades/`.
+Onde grava é como no assistente: no Chrome ou no Edge, com a biblioteca aberta por "Escolher biblioteca", o navegador pede permissão de escrita na pasta quando você salva (Ctrl+S também salva) e o canal novo já vale na troca de canais, sem reiniciar. Com `tv-gominho servir --editar`, pede o PIN na primeira vez (só nos outros aparelhos, não no próprio computador do servidor) e o servidor grava o canal e a cópia. Nos outros casos (Firefox, Safari, pasta aberta pelo campo de pasta comum, `tv-gominho servir` sem `--editar`, ou permissão negada), o app **baixa os dois arquivos** (o canal com o mesmo nome e a cópia `.bak`) e mostra onde colocá-los em `grades/`.
 
 ## Exemplo
 

@@ -42,7 +42,8 @@ Opções:
                         este computador abre o endereço
   --abrir               abre o navegador neste computador
   --editar              deixa salvar canais pelo app ("Criar uma programação"). Mostra um PIN aqui;
-                        cada aparelho digita o PIN uma vez. Só grava grades/<nome>.yaml e
+                        cada outro aparelho digita o PIN uma vez (neste computador, pelo
+                        localhost, não precisa). Só grava grades/<nome>.yaml e
                         nao-passar.yaml, nada mais
   --ia-modelo <id>      outro modelo Claude para o "Pedir para a IA". Padrão: ${ANTHROPIC_MODEL}
   --ia                  liga a IA já ao abrir, sem passar pelas configurações (precisa de chave)
@@ -91,13 +92,14 @@ export const servirCommand: Command = {
     }
 
     // Pairing is always there: the AI can be turned on from the app while the server runs, and then only a paired
-    // device (or this computer's own browser) may spend the key.
+    // device (or this computer's own browser, which never needs the PIN) may spend the key.
     const pin = newPin();
     let pinShown = false;
     const showPin = () => {
       if (pinShown) return;
       pinShown = true;
-      console.log(`PIN para parear um aparelho: ${pin}`);
+      console.log(`PIN para parear outro aparelho (TV, celular): ${pin}`);
+      console.log(`  Neste computador, em http://localhost:${port}/, não precisa de PIN.`);
     };
     const ia = await createIaConfig({
       store: createKeyStore(appDataDir()),
@@ -108,7 +110,7 @@ export const servirCommand: Command = {
       provider: (apiKey) => createAnthropicProvider({ apiKey, model, url }),
       log,
       onAvailable: () => {
-        console.log(`IA: LIGADA. Só aparelhos pareados pedem, no máximo ${IA_PER_HOUR} por hora.`);
+        console.log(`IA: LIGADA. Só este computador e aparelhos pareados pedem, no máximo ${IA_PER_HOUR} por hora.`);
         showPin();
       },
     });
@@ -127,11 +129,11 @@ export const servirCommand: Command = {
     if (values.rede) for (const address of lanAddresses()) console.log(`  Na rede:          http://${address}:${port}/`);
     if (values.editar) {
       console.log(`Salvar canais pelo app: LIGADO.`);
-      console.log(`  Só quem digitar o PIN grava, e só grades/<nome>.yaml e nao-passar.yaml (até ${MAX_BODY / 1024} KB).`);
+      console.log(`  Grava este computador e quem digitar o PIN, e só grades/<nome>.yaml e nao-passar.yaml (até ${MAX_BODY / 1024} KB).`);
     }
     if (ia.available()) {
       console.log(`IA: LIGADA (Anthropic, modelo ${model ?? ANTHROPIC_MODEL}). Cada pedido custa dinheiro na sua conta.`);
-      console.log(`  Só aparelhos pareados pedem, no máximo ${IA_PER_HOUR} por hora. Saem títulos, durações, a lista de programas e o pedido; nunca vídeos.`);
+      console.log(`  Só este computador e aparelhos pareados pedem, no máximo ${IA_PER_HOUR} por hora. Saem títulos, durações, a lista de programas e o pedido; nunca vídeos.`);
     } else if (values.ia) {
       console.log('IA: sem chave. Coloque a chave em Configurações, Assistente de IA, no navegador deste computador (veja docs/ferramentas.md).');
     }

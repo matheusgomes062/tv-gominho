@@ -1,7 +1,8 @@
 // Saving channels through `tv-gominho servir --editar` (docs/ferramentas.md#servir). Off unless asked
 // for. A device pairs once with the PIN shown in the terminal and gets a session cookie; with it, the
 // app may write grades/<nome>.yaml and nao-passar.yaml, and nothing else. The AI assistant's route
-// (serve/ia.ts) uses the same pairing, with or without saving; this computer's own browser needs no PIN for it.
+// (serve/ia.ts) uses the same pairing, with or without saving. This computer's own browser (a loopback
+// connection, by the socket's address) counts as paired: it needs no PIN, and every other check still applies.
 
 import { randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { constants } from 'node:fs';
@@ -45,7 +46,7 @@ export interface EditOptions {
   write?: boolean;
   /** The AI assistant (serve/ia.ts): asked for proposals by paired devices and this computer, while it is available. */
   assistant?: { available(): boolean; handle(req: IncomingMessage, res: ServerResponse): Promise<void> };
-  /** The request comes from this computer (serve/ia-config.ts isLoopback): it may use the AI without the PIN. */
+  /** The request comes from this computer (serve/ia-config.ts isLoopback): it counts as paired, without the PIN. */
   isLocal?(req: IncomingMessage): boolean;
   /** Lines for the terminal (lockouts, files written). */
   log(message: string): void;
@@ -73,6 +74,8 @@ export function createEditor(library: string, options: EditOptions) {
     const token = cookie(req, COOKIE);
     return token !== undefined && sessions.has(token);
   };
+  /** Paired with the PIN, or this computer itself. Origin, Host and the rest are checked all the same. */
+  const isPaired = (req: IncomingMessage) => hasSession(req) || (options.isLocal?.(req) ?? false);
 
   /** Answers 429 while pairing is locked. */
   const refuseIfLocked = (req: IncomingMessage, res: ServerResponse) => {
@@ -127,7 +130,7 @@ export function createEditor(library: string, options: EditOptions) {
   }
 
   async function write(req: IncomingMessage, res: ServerResponse, raw: string, overwrite: boolean, backup: boolean) {
-    if (!hasSession(req)) return fail(req, res, 401, 'Digite o PIN que aparece no computador.');
+    if (!isPaired(req)) return fail(req, res, 401, 'Digite o PIN que aparece no computador.');
     const match = ALLOWED.exec(raw);
     if (!match || (match[3] && WINDOWS_DEVICES.test(match[3]))) return fail(req, res, 400, 'Só dá para gravar grades/<nome>.yaml e nao-passar.yaml.');
     const [, nested, , gradeName] = match;
@@ -181,7 +184,7 @@ export function createEditor(library: string, options: EditOptions) {
     /** Handles the request when it is one of the editing routes; false otherwise. */
     /** What CAPABILITIES_PATH says about saving, the assistant and this device's pairing. */
     capabilities(req: IncomingMessage) {
-      return { editar: canWrite, ia: assistant?.available() ?? false, pareado: hasSession(req) };
+      return { editar: canWrite, ia: assistant?.available() ?? false, pareado: isPaired(req) };
     },
     async handle(req: IncomingMessage, res: ServerResponse, url: string, query: string): Promise<boolean> {
       const isPair = url === PAIRING_PATH && req.method === 'POST';
@@ -195,7 +198,7 @@ export function createEditor(library: string, options: EditOptions) {
       }
       if (isPair) await pair(req, res);
       else if (isIa) {
-        if (hasSession(req) || options.isLocal?.(req)) await assistant!.handle(req, res);
+        if (isPaired(req)) await assistant!.handle(req, res);
         else fail(req, res, 401, 'Digite o PIN que aparece no computador.');
       }
       else await write(req, res, url.slice(WRITE_PATH.length), new URLSearchParams(query).get('substituir') === '1', new URLSearchParams(query).get('copia') === '1');
