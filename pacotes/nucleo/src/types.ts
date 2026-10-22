@@ -75,6 +75,19 @@ export interface AgendaPick {
   episode: string;
 }
 
+/**
+ * A saved position (`posicoes` in the grade file): on `date`, `show` starts its day with `episode`, and
+ * goes on from there. The app writes these when a channel is edited, so the show does not jump.
+ */
+export interface SavedPosition {
+  /** "YYYY-MM-DD": an airing day of the schedule. */
+  date: string;
+  /** The show as written in the file (folder name; matched ignoring case). */
+  show: string;
+  /** Same form as `AgendaPick.episode`. */
+  episode: string;
+}
+
 export interface Schedule {
   /** File name without extension; also the channel identifier. */
   id: string;
@@ -97,6 +110,8 @@ export interface Schedule {
   adBreaks?: Partial<AdBreakSettings>;
   /** Episodes picked by hand for a date, in date order. Absent: every episode follows the count from `startDate`. */
   agenda?: AgendaPick[];
+  /** Where each show stood on a date (see `SavedPosition`), in date order. Absent: no saved positions. */
+  positions?: SavedPosition[];
 }
 
 /**

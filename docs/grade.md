@@ -73,13 +73,14 @@ blocos:
 | `vinhetas_intervalo` | Opcional. De onde vêm as vinhetas que abrem e fecham os intervalos comerciais (veja "Intervalos comerciais" abaixo). |
 | `intervalos` | Opcional. Regras de intervalo só deste canal, com os mesmos nomes da configuração geral (veja "Intervalos por canal" abaixo). |
 | `agenda` | Opcional. Episódios escolhidos à mão para datas específicas (veja "Agenda" abaixo). |
+| `posicoes` | Opcional. Em que episódio cada programa estava numa data; o app grava ao editar o canal (veja "Posições salvas" abaixo). |
 | `blocos` | Os blocos de horário, com seus itens. |
 
 ## Regras do motor
 
 1. **Os blocos começam no horário definido.** Se os itens de um bloco terminam até 10 minutos antes do próximo bloco, o espaço é preenchido com vinhetas de `intervalos` e `comerciais` (se estiverem ligados); o que sobrar vira chuvisco. Espaços maiores são pulados e o próximo bloco começa logo em seguida, para o canal estar sempre no ar (`horario: continuo`, o padrão, e `do_inicio`, que pula todos os espaços). Só com `horario: real` os espaços grandes são respeitados: o canal fica fora do ar até o próximo bloco.
 2. **Atrasos:** se um bloco passa do horário do próximo, o episódio não é cortado e o próximo bloco começa atrasado, como na TV de verdade. Isso vale em todos os modos de `horario`, inclusive no `real`: o bloco seguinte entra assim que o atrasado termina, sem tela de fora do ar no meio.
-3. **Qual episódio passa:** cada exibição de um programa avança um episódio. O motor conta quantas vezes o programa já foi exibido desde `data_inicio` e escolhe o episódio por essa conta. Ao chegar ao fim, volta ao primeiro. Isso não depende de estado salvo, então dois aparelhos mostram o mesmo episódio. Um episódio escolhido na [agenda](#agenda) muda o ponto de partida dessa conta. Episódios da lista [não passar](biblioteca.md#não-passar-nao-passaryaml) ficam de fora dessa conta: a sequência anda só pelos episódios permitidos (e o sorteio não os escolhe). Um programa inteiro na lista é pulado com aviso, como na regra 6.
+3. **Qual episódio passa:** cada exibição de um programa avança um episódio. O motor conta quantas vezes o programa já foi exibido desde `data_inicio` e escolhe o episódio por essa conta. Ao chegar ao fim, volta ao primeiro. Isso não depende de estado salvo, então dois aparelhos mostram o mesmo episódio. Um episódio escolhido na [agenda](#agenda) ou uma [posição salva](#posições-salvas) muda o ponto de partida dessa conta. Episódios da lista [não passar](biblioteca.md#não-passar-nao-passaryaml) ficam de fora dessa conta: a sequência anda só pelos episódios permitidos (e o sorteio não os escolhe). Um programa inteiro na lista é pulado com aviso, como na regra 6.
 4. **Sorteios** (vinhetas, comerciais, programas com `ordem: aleatoria`) usam uma semente baseada na data. São variados, mas reproduzíveis.
 5. **Dias fora de `dias`** (por exemplo, sábado e domingo numa grade de segunda a sexta). O comportamento depende da configuração `horario` (veja [configuracoes.md](configuracoes.md)):
    - `continuo` (padrão): o canal reprisa o último dia de exibição (a sexta-feira), então sempre há algo no ar.
@@ -117,6 +118,25 @@ agenda:
 - **Dias fora da grade:** a data tem que ser um dos `dias` da grade. Num dia de folga que repete o último dia de exibição (`horario: continuo`), a repetição traz também a escolha.
 - **Tudo vale em todos os aparelhos e no `tv-gominho pendrive`**, em todos os modos de `horario`, porque só depende do arquivo.
 - **Erros não travam a grade:** data inválida, bloco ou item que não existe, item que não é um programa, episódio que o programa não tem (ou que existe em mais de uma temporada) geram um aviso e a escolha é ignorada. A grade sem `agenda` passa exatamente como antes.
+
+## Posições salvas
+
+Mudar os blocos de um canal (mais ou menos exibições de um programa por dia, outra ordem) muda a conta da regra 3 e os episódios pulariam ou voltariam ao começo. Para isso não acontecer, **quando você edita um canal que já existia, o app grava a seção `posicoes`**: para cada programa, o episódio com que ele começa o dia da edição. Dali em diante cada exibição avança um episódio, como sempre. **Você raramente escreve esta seção à mão**; ela existe para o app e para quem quiser ler ou ajustar o arquivo.
+
+```yaml
+posicoes:
+  2026-10-22:            # a data (AAAA-MM-DD), entre os dias da grade
+    dragon-ball-z: 13    # a pasta do programa e o episódio com que ele começa esse dia
+    digimon: temporada-02/3
+```
+
+- **Qual episódio:** o mesmo formato da [agenda](#agenda): o número do arquivo (`13`) ou `temporada-02/3` quando o número se repete entre temporadas.
+- **Continuação:** na data, a **primeira exibição do dia** do programa é esse episódio, e as seguintes avançam a partir dele (voltando ao primeiro no fim). Valem sempre a âncora mais recente que já passou, seja uma posição salva ou uma escolha da [agenda](#agenda); não muda o que passou *antes* da data.
+- **A escolha à mão vence:** se a agenda escolhe um episódio do programa na mesma data, vale a agenda. Uma posição mais antiga que uma escolha da agenda perde para ela, e uma posição mais nova que a escolha perde a escolha, como entre duas escolhas.
+- **Lista "não passar":** uma posição não é uma escolha à mão. Se o episódio salvo entrou em [`nao-passar.yaml`](biblioteca.md#não-passar-nao-passaryaml), o programa começa o dia pelo próximo episódio permitido e segue dali. O app grava a posição com a lista antiga e o canal continua sem pulos quando a lista muda.
+- **O que o app grava:** o episódio que o canal *antigo* passaria primeiro naquele dia (com a agenda e as posições antigas valendo). Programas que só existem na grade nova não ganham posição (começam pela conta normal), e programas com `ordem: aleatoria` também não, porque sorteiam. Se o dia da edição não é um dia da grade, vale o próximo dia da grade. As posições mais antigas dos mesmos programas saem do arquivo (a nova as substitui daquela data em diante), o que mantém o arquivo curto; a agenda fica como está.
+- **Erros não travam a grade:** data inválida ou fora dos `dias`, programa que não está nos blocos, episódio inválido, que o programa não tem ou que existe em mais de uma temporada geram um aviso e a posição é ignorada. Uma grade sem `posicoes` passa exatamente como antes.
+- Vale em todos os aparelhos, em todos os modos de `horario` e no `tv-gominho pendrive`, porque só depende do arquivo.
 
 ## Intervalos comerciais
 

@@ -300,6 +300,7 @@ function validateReferences(schedule: Schedule, library: Library) {
     });
   }
   validateAgenda(schedule, library);
+  validatePositions(schedule, library);
   const showIds = new Set(library.shows.map((show) => show.id.toLowerCase()));
   for (const block of schedule.blocks) {
     for (const item of block.items) {
@@ -343,6 +344,27 @@ function validateAgenda(schedule: Schedule, library: Library) {
     return false;
   });
   if (schedule.agenda.length === 0) delete schedule.agenda;
+}
+
+/** Drops (with a warning) the saved positions whose episode is not in the show. A position of a missing show stays: that show is already reported. */
+function validatePositions(schedule: Schedule, library: Library) {
+  if (!schedule.positions) return;
+  schedule.positions = schedule.positions.filter((position) => {
+    const show = findShow(library, position.show);
+    if (!show) return true;
+    const found = findEpisodeByRef(show, position.episode);
+    if (!('error' in found)) return true;
+    const where = `Posições de ${position.date}, ${show.id}`;
+    library.warnings.push({
+      path: schedule.path,
+      message:
+        found.error === 'ambiguous'
+          ? `${where}: o programa "${show.id}" tem mais de um episódio ${position.episode} (temporadas). Escreva a temporada, por exemplo "temporada-01/${position.episode}". A posição foi ignorada.`
+          : `${where}: o programa "${show.id}" não tem o episódio ${position.episode}. A posição foi ignorada.`,
+    });
+    return false;
+  });
+  if (schedule.positions.length === 0) delete schedule.positions;
 }
 
 export function findShow(library: Library, id: string): Show | undefined {

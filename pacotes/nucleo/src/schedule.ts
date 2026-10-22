@@ -3,7 +3,7 @@ import { normalizeEpisodeRef } from './agenda';
 import { WEEKDAYS, isIsoDate, isoToDayNumber, parseTimeOfDay, weekdayOf, type Weekday } from './dates';
 import { basename, fold, stripExtension } from './paths';
 import { parseAdBreaks } from './settings';
-import type { AgendaPick, LibraryWarning, Schedule, ScheduleBlock, ScheduleItem } from './types';
+import type { AgendaPick, LibraryWarning, SavedPosition, Schedule, ScheduleBlock, ScheduleItem } from './types';
 
 const DEFAULT_START_DATE = '2000-01-01';
 
@@ -62,6 +62,8 @@ export function parseSchedule(path: string, text: string, warnings: LibraryWarni
 
   const agenda = raw.agenda === undefined || raw.agenda === null ? [] : parseAgenda(raw.agenda, parsed, days, warn);
 
+  const positions = raw.posicoes === undefined || raw.posicoes === null ? [] : parsePositions(raw.posicoes, blocks, days, warn);
+
   return {
     id,
     path,
@@ -73,6 +75,7 @@ export function parseSchedule(path: string, text: string, warnings: LibraryWarni
     ...(breakBumpersRef !== undefined ? { breakBumpersRef } : {}),
     ...(Object.keys(adBreaks).length > 0 ? { adBreaks } : {}),
     ...(agenda.length > 0 ? { agenda } : {}),
+    ...(positions.length > 0 ? { positions } : {}),
   };
 }
 
@@ -196,6 +199,55 @@ function parsePick(raw: unknown, date: string, label: string, blocks: ParsedBloc
     return null;
   }
   return { date, blockStart: block.block.start, item: parsedAt + 1, episode };
+}
+
+/**
+ * `posicoes`: { "2026-10-22": { "dragon-ball-z": 13 } }, the episode each show starts that date with. The app writes it;
+ * a show must be in the blocks and the date one of the grade's days. Whether the episode exists is checked when the
+ * library is scanned.
+ */
+function parsePositions(raw: unknown, blocks: ScheduleBlock[], days: Weekday[], warn: (message: string) => void): SavedPosition[] {
+  if (!isRecord(raw)) {
+    warn('"posicoes" deve ser uma lista de datas, cada uma com seus programas. Ela foi ignorada.');
+    return [];
+  }
+  const inBlocks = new Set(blocks.flatMap((block) => block.items.flatMap((item) => (item.type === 'show' ? [item.show.toLowerCase()] : []))));
+  const positions: SavedPosition[] = [];
+  for (const [key, entries] of Object.entries(raw)) {
+    const date = String(key);
+    const label = `Posições de ${date}`;
+    if (!isIsoDate(date)) {
+      warn(`${label}: data inválida. Use o formato AAAA-MM-DD, por exemplo 2026-10-22. Ela foi ignorada.`);
+      continue;
+    }
+    const weekday = weekdayOf(isoToDayNumber(date));
+    if (!days.includes(weekday)) {
+      warn(`${label}: cai num dia (${weekday}) que não está em "dias" da grade. Ela foi ignorada.`);
+      continue;
+    }
+    if (!isRecord(entries)) {
+      warn(`${label}: deve ser uma lista de programas, cada um com o número do episódio. Ela foi ignorada.`);
+      continue;
+    }
+    for (const [name, value] of Object.entries(entries)) {
+      const show = String(name).trim();
+      if (!inBlocks.has(show.toLowerCase())) {
+        warn(`${label}: o programa "${show}" não está nos blocos da grade. Ele foi ignorado.`);
+        continue;
+      }
+      const episode = normalizeEpisodeRef(value);
+      if (episode === null) {
+        warn(`${label}, ${show}: o episódio deve ser o número (12) ou "temporada-02/12". Ele foi ignorado.`);
+        continue;
+      }
+      if (positions.some((other) => other.date === date && other.show.toLowerCase() === show.toLowerCase())) {
+        warn(`${label}, ${show}: esse programa já tem uma posição nessa data. Vale a primeira.`);
+        continue;
+      }
+      positions.push({ date, show, episode });
+    }
+  }
+  return positions.sort((a, b) => a.date.localeCompare(b.date) || a.show.localeCompare(b.show));
 }
 
 function parseItem(raw: unknown, label: string, warn: (message: string) => void): ScheduleItem | null {
