@@ -76,6 +76,8 @@ const ROLE_CRITERIA: Record<Role, unknown> = {
   extra: 'Material que não vai ao ar no canal: amostra (sample), making of, trailer, música de abertura de um desenho, bastidores.',
 };
 
+export const ROLES: ReadonlySet<string> = new Set(Object.keys(ROLE_CRITERIA));
+
 /** Subfolders of vinhetas/intervalos/ (docs/biblioteca.md); "outra" when no brand is clear. */
 export const BRANDS: Record<string, string> = {
   'tv-globinho': 'TV Globinho ou Rede Globo',

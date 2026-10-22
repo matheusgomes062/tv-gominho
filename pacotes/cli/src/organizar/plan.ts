@@ -5,7 +5,7 @@
 
 import { bumperRole, type BumperRole } from '@tv-gominho/nucleo';
 import type { ChoiceAnswer } from '../jev/client';
-import { BRANDED_ROLES, LISTED_SHOWS, OTHER_SHOW, slugify, type Role } from './questions';
+import { BRANDED_ROLES, BRANDS, LISTED_SHOWS, OTHER_SHOW, ROLES, slugify, type Role } from './questions';
 
 export interface Thresholds {
   /** Below this confidence the role is a guess: the file waits for a person. */
@@ -94,6 +94,13 @@ export function planOrganize(files: readonly ClassifiedFile[], exists: (libraryP
 
   for (const file of files) {
     const review = (reason: string) => entries.push({ status: 'revisar', from: file.path, reason });
+    // Answers become path parts, and the cache they come from sits in the downloads folder: only
+    // options the questions offered are accepted.
+    const unexpected = () => review('resposta inesperada do Jev; confira este arquivo à mão');
+    if (!ROLES.has(file.role.choice)) {
+      unexpected();
+      continue;
+    }
     const role = file.role.choice as Role;
     if (file.role.confidence < thresholds.role) {
       review(`não sei o que é: ${topTwo(file.role)}`);
@@ -121,9 +128,13 @@ export function planOrganize(files: readonly ClassifiedFile[], exists: (libraryP
           continue;
         }
       } else {
-        show = file.show.choice;
-        const listed = LISTED_SHOWS.find((candidate) => candidate.slug === show);
-        if (listed && !exists(`programas/${show}`)) newShows.set(show, listed);
+        const listed = LISTED_SHOWS.find((candidate) => candidate.slug === file.show!.choice);
+        if (!listed) {
+          unexpected();
+          continue;
+        }
+        show = listed.slug;
+        if (!exists(`programas/${show}`)) newShows.set(show, listed);
       }
       const season = seasonOf(file.path);
       to = `programas/${show}/episodios/${season !== null ? `temporada-${String(season).padStart(2, '0')}/` : ''}${name}`;
@@ -132,6 +143,10 @@ export function planOrganize(files: readonly ClassifiedFile[], exists: (libraryP
       if (BRANDED_ROLES.has(role)) {
         if (!file.brand || file.brand.confidence < thresholds.brand) {
           review(file.brand ? `não sei de qual emissora é: ${topTwo(file.brand)}` : 'não sei de qual emissora é');
+          continue;
+        }
+        if (!Object.hasOwn(BRANDS, file.brand.choice)) {
+          unexpected();
           continue;
         }
         brand = file.brand.choice;

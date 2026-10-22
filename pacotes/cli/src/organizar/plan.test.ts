@@ -150,3 +150,16 @@ describe('planOrganize', () => {
     expect(topTwo(answer('a', 0.7, ['b', 0.2]))).toBe('a 70% ou b 20%');
   });
 });
+
+describe('planOrganize with answers outside the offered options', () => {
+  it('sends them to review instead of building paths from them (the cache file can be edited by hand)', () => {
+    const result = plan([
+      { path: 'a/ep 1.avi', role: answer('episodio'), show: answer('../../fora') },
+      { path: 'a/ep 2.avi', role: answer('../vinhetas') },
+      { path: 'v/bumper.mp4', role: answer('intervalo_generico'), brand: answer('../../x') },
+    ]);
+    expect(result.entries.map((entry) => entry.status)).toEqual(['revisar', 'revisar', 'revisar']);
+    expect(result.entries[0]).toMatchObject({ reason: 'resposta inesperada do Jev; confira este arquivo à mão' });
+    expect(result.newShows).toEqual([]);
+  });
+});
