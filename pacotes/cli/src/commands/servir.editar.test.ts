@@ -3,6 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { request, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { isGradeBackup } from '@tv-gominho/nucleo';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { LOCK_MS, MAX_ATTEMPTS, MAX_BODY } from '../serve/edit';
 import { createLibraryServer } from './servir';
@@ -288,5 +289,72 @@ describe('servir --editar', () => {
     } finally {
       await rm(nested, { recursive: true, force: true });
     }
+  });
+
+  describe('?substituir=1&copia=1 (backup before overwriting a grade)', () => {
+    const g = (name: string) => GRADE.replace('Manhã', name);
+    const OLD = '# a comment written by hand\nnome: Velho\nblocos: []\n';
+    const backups = async (prefix: string) => (await readdir(path.join(library, 'grades'))).filter((name) => name.startsWith(`${prefix}.`) && name.endsWith('.bak')).sort();
+
+    it('copies the old file to <name>.AAAA-MM-DD.yaml.bak with the same content, then overwrites, and says where', async () => {
+      const cookie = await session();
+      await writeFile(path.join(library, 'grades/copiada.yaml'), OLD);
+      const res = await put(cookie, 'grades/copiada.yaml?substituir=1&copia=1');
+      expect(res.status).toBe(200);
+      const [name] = await backups('copiada');
+      expect(name).toMatch(/^copiada\.\d{4}-\d{2}-\d{2}\.yaml\.bak$/);
+      expect(JSON.parse(res.body)).toEqual({ caminho: 'grades/copiada.yaml', copia: `grades/${name}` });
+      expect(await readFile(path.join(library, 'grades', name!), 'utf8')).toBe(OLD);
+      expect(await readFile(path.join(library, 'grades/copiada.yaml'), 'utf8')).toBe(GRADE);
+      expect(isGradeBackup(name!)).toBe(true);
+      expect(logs).toContain(`Cópia de segurança: grades/${name}`);
+      expect((await readdir(path.join(library, 'grades'))).filter((entry) => entry.startsWith('.'))).toEqual([]);
+    });
+
+    it('never reuses a backup name: the next copy the same day gets -2, and the earlier copy stays as it was', async () => {
+      const cookie = await session();
+      await writeFile(path.join(library, 'grades/varias.yaml'), g('Um'));
+      await put(cookie, 'grades/varias.yaml?substituir=1&copia=1', g('Dois'));
+      await put(cookie, 'grades/varias.yaml?substituir=1&copia=1', g('Tres'));
+      const names = await backups('varias');
+      expect(names).toHaveLength(2);
+      expect(names.some((name) => /-2\.yaml\.bak$/.test(name))).toBe(true);
+      const texts = await Promise.all(names.map((name) => readFile(path.join(library, 'grades', name), 'utf8')));
+      expect(texts.sort()).toEqual([g('Dois'), g('Um')]);
+    });
+
+    it('does not overwrite a backup that already has the first name', async () => {
+      const cookie = await session();
+      await writeFile(path.join(library, 'grades/ocupada.yaml'), g('Atual'));
+      const first = await put(cookie, 'grades/ocupada.yaml?substituir=1&copia=1', GRADE);
+      const taken = path.basename(JSON.parse(first.body).copia as string);
+      await writeFile(path.join(library, 'grades', taken), 'keep me');
+      await put(cookie, 'grades/ocupada.yaml?substituir=1&copia=1', g('Outra'));
+      expect(await readFile(path.join(library, 'grades', taken), 'utf8')).toBe('keep me');
+      expect(await backups('ocupada')).toHaveLength(2);
+    });
+
+    it('makes no copy for a new file, and none without copia=1', async () => {
+      const cookie = await session();
+      const fresh = await put(cookie, 'grades/semcopia.yaml?substituir=1&copia=1');
+      expect(fresh.status).toBe(201);
+      expect(JSON.parse(fresh.body)).toEqual({ caminho: 'grades/semcopia.yaml' });
+      await put(cookie, 'grades/semcopia.yaml?substituir=1');
+      expect(await backups('semcopia')).toEqual([]);
+    });
+
+    it('takes a copy only with ?substituir=1 and for a grade, not for nao-passar.yaml (no backup of the list)', async () => {
+      const cookie = await session();
+      expect((await put(cookie, 'grades/existente.yaml?copia=1')).status).toBe(400);
+      expect((await put(cookie, 'nao-passar.yaml?substituir=1&copia=1', 'programas: []\n')).status).toBe(400);
+      expect((await readdir(library)).filter((name) => name.endsWith('.bak'))).toEqual([]);
+    });
+
+    it('still takes no path for a .bak or outside grades/: the client cannot name a backup', async () => {
+      const cookie = await session();
+      for (const file of ['grades/x.2026-10-22.yaml.bak', 'grades/x.yaml.bak', 'grades/../x.yaml', 'grades/%2e%2e/x.yaml', 'grades/a.yaml/../../b.yaml']) {
+        expect((await put(cookie, `${file}?substituir=1&copia=1`)).status).toBe(400);
+      }
+    });
   });
 });

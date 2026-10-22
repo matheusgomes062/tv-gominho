@@ -73,6 +73,18 @@ function serverEditing(): ServerEditing {
         return 'failed';
       }
     },
+    async replaceWithBackup(path, text) {
+      try {
+        const target = FILES + path.split('/').map(encodeURIComponent).join('/') + '?substituir=1&copia=1';
+        const response = await fetch(target, { method: 'PUT', headers: { 'Content-Type': 'text/yaml; charset=utf-8' }, body: text });
+        const status = writeOutcome(response.status);
+        if (status !== 'written') return { status };
+        const body = (await response.json().catch(() => ({}))) as { copia?: unknown };
+        return typeof body.copia === 'string' ? { status, backup: body.copia } : { status };
+      } catch {
+        return { status: 'failed' };
+      }
+    },
   };
 }
 

@@ -378,7 +378,7 @@ export interface ReplacePlan {
  * Where the new channel goes when it replaces `channel`: over the same file, after the old one is copied to a backup named
  * with `today`. `inGrades` lists the file names already in grades/, so the backup never takes a name that is in use.
  */
-export function planReplace(channel: Schedule, today: string, inGrades: Iterable<string>, root: string): ReplacePlan {
+export function planReplace(channel: Pick<Schedule, 'path'>, today: string, inGrades: Iterable<string>, root: string): ReplacePlan {
   const fileName = gradeFileBase(channel.path);
   const backupName = gradeBackupName(fileName, today, inGrades);
   return { fileName, path: gradePath(root, fileName), backupName, backupPath: `${root}grades/${backupName}` };

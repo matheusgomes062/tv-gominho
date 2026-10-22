@@ -19,7 +19,8 @@ import type { Durations } from '../media';
 import { useSettings } from '../settings';
 import { clickDirection } from '../settings-model';
 import { PAIR_MESSAGES, PIN_LENGTH, pinComplete, typePin, type PairOutcome } from '../pin-model';
-import { downloadText, replaceGrade, requestWriteAccess, saveGrade, saveThroughServer, type ReplaceResult, type SaveResult } from '../sources/save';
+import { overwriteWithBackup, type ReplaceResult } from '../sources/overwrite';
+import { downloadText, requestWriteAccess, saveGrade, saveThroughServer, type SaveResult, type WriteAccess } from '../sources/save';
 import type { BrowserLibrary, ServerAssistant, ServerEditing } from '../sources/types';
 import { EXAMPLES, MAX_REQUEST_LENGTH, NOTICE, NOTICE_KEY, applyProposal, currentChoices, iaReply, requestProblem, typicalMinutes } from '../ia-model';
 import {
@@ -88,7 +89,7 @@ type Phase =
   | { name: 'ia' }
   | { name: 'saving' }
   // Saving through `tv-gominho servir --editar` and this device is not paired yet: the PIN, then the same file.
-  | { name: 'pin'; editing: ServerEditing; yaml: string; message?: string }
+  | { name: 'pin'; editing: ServerEditing; again(message: string): Promise<void>; message?: string }
   | { name: 'done'; result: SaveResult | ReplaceResult; reread: boolean };
 
 /** The channel the answers build, kept from the preview to the save so both show and write the same thing. */
@@ -224,24 +225,29 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
         'Os horários nos comentários são estimativas, com os intervalos comerciais.',
         ...(built.replaces ? ['Troca a grade anterior, que ficou guardada ao lado, com a data no nome e a terminação .bak.'] : []),
       ]);
-      // The server only creates files (it refuses to overwrite), so replacing a channel goes through the folder or downloads.
-      if (source.editing && !built.replaces) return await saveToServer(source.editing, yaml);
-      await finish(
-        built.replaces
-          ? await replaceGrade(source, library, access, built.replaces, today, yaml)
-          : await saveGrade(source, library, access, state.name.trim(), yaml, taken),
-      );
+      if (built.replaces) return await replaceChannel(access, built.replaces.path, today, yaml);
+      if (source.editing) return await saveToServer(source.editing, yaml);
+      await finish(await saveGrade(source, library, access, state.name.trim(), yaml, taken));
     } catch (failure) {
       setError(`Não foi possível montar o canal: ${(failure as Error).message}`);
       setPhase({ name: 'editing' });
     }
   }
 
-  async function saveToServer(editing: ServerEditing, yaml: string, message?: string) {
+  async function saveToServer(editing: ServerEditing, yaml: string, message?: string): Promise<void> {
     setPhase({ name: 'saving' });
     const result = await saveThroughServer(editing, library, state.name.trim(), yaml, taken);
-    if (result === 'needs-pin') setPhase({ name: 'pin', editing, yaml, message });
+    if (result === 'needs-pin') setPhase({ name: 'pin', editing, again: (again) => saveToServer(editing, yaml, again), message });
     else await finish(result);
+  }
+
+  /** Trocar canal: over the same file, after the copy of the old one (folder, server with PIN, or download). */
+  async function replaceChannel(access: WriteAccess, path: string, today: string, yaml: string, message?: string): Promise<void> {
+    setPhase({ name: 'saving' });
+    const result = await overwriteWithBackup(source, library, access, path, today, yaml);
+    if (result === 'needs-pin' && source.editing) {
+      setPhase({ name: 'pin', editing: source.editing, again: (again) => replaceChannel(access, path, today, yaml, again), message });
+    } else if (result !== 'needs-pin') await finish(result);
   }
 
   async function finish(result: SaveResult | ReplaceResult) {
@@ -280,7 +286,7 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
               editing={phase.editing}
               message={phase.message}
               onPaired={() =>
-                void saveToServer(phase.editing, phase.yaml, 'O computador pediu o PIN de novo. Confira o número no terminal.').catch((failure) => {
+                void phase.again('O computador pediu o PIN de novo. Confira o número no terminal.').catch((failure) => {
                   setError(`Não foi possível salvar o canal: ${(failure as Error).message}`);
                   setPhase({ name: 'editing' });
                 })

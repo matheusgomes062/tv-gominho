@@ -1,4 +1,5 @@
-import { downloadText, type DownloadReason, type WriteAccess } from './save';
+import { writeText } from './overwrite';
+import { downloadText,type DownloadReason, type WriteAccess } from './save';
 import type { BrowserLibrary, ServerEditing } from './types';
 
 // Writing several existing files of the library in a row (the "Não passar" list and the grades whose
@@ -26,13 +27,7 @@ async function overwriteInFolder(handle: FileSystemDirectoryHandle, path: string
   if (!name) throw new Error('empty path');
   let dir = handle;
   for (const part of parts) dir = await dir.getDirectoryHandle(part, { create: true });
-  const file = await dir.getFileHandle(name, { create: true });
-  const writable = await file.createWritable();
-  try {
-    await writable.write(text);
-  } finally {
-    await writable.close();
-  }
+  await writeText(await dir.getFileHandle(name, { create: true }), text);
 }
 
 /**

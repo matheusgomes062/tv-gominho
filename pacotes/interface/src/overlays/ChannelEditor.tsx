@@ -11,6 +11,7 @@ import {
   checkEditor,
   defaultItem,
   editedYaml,
+  hasHandComments,
   interstitialCategories,
   isDirty,
   moveItem,
@@ -33,9 +34,10 @@ import {
   type EditorState,
 } from '../editor-model';
 import { AgendaWeek } from './AgendaWeek';
-import { downloadText, requestWriteAccess, type SaveResult } from '../sources/save';
-import { overwriteGrade } from '../sources/overwrite';
-import type { BrowserLibrary } from '../sources/types';
+import { downloadText, requestWriteAccess, type WriteAccess } from '../sources/save';
+import { expectedBackupName, overwriteWithBackup, type ReplaceResult } from '../sources/overwrite';
+import type { BrowserLibrary, ServerEditing } from '../sources/types';
+import { PinPage } from './WeekWizard';
 import { DAY_LABELS, DAY_ORDER } from '../wizard-model';
 
 interface Props {
@@ -50,7 +52,12 @@ interface Props {
   onBack(): void;
 }
 
-type Phase = { name: 'editing' } | { name: 'saving' } | { name: 'done'; result: SaveResult; reread: boolean; dropped: number };
+type Phase =
+  | { name: 'editing' }
+  | { name: 'saving' }
+  // Saving through `tv-gominho servir --editar` and this device is not paired yet: the PIN, then the same save.
+  | { name: 'pin'; editing: ServerEditing; again(message: string): Promise<void>; message?: string }
+  | { name: 'done'; result: ReplaceResult; reread: boolean; dropped: number };
 
 const KIND_LABEL: Record<ScheduleItem['type'], string> = { show: 'Programa', interstitial: 'Vinheta', commercials: 'Comerciais' };
 const KIND_ICON: Record<ScheduleItem['type'], IconName> = { show: 'episode', interstitial: 'interstitials', commercials: 'ads' };
@@ -67,6 +74,17 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
   const [leaving, setLeaving] = useState(false);
   const [tab, setTab] = useState<'blocks' | 'agenda'>('blocks');
   const today = useMemo(() => localIsoDate(new Date()), []);
+  // The file as it is on disk now: saving rewrites it from the model, which drops the comments written by hand.
+  const [original, setOriginal] = useState<string | null>(null);
+  useEffect(() => {
+    let current = true;
+    source.readText(schedule.path).then((text) => current && setOriginal(text), () => {});
+    return () => {
+      current = false;
+    };
+  }, [source, schedule.path]);
+  const loosesComments = original !== null && hasHandComments(original);
+  const backupName = useMemo(() => expectedBackupName(source, library, schedule.path, today), [source, library, schedule.path, today]);
   const refocus = useRef<string | null>(null);
   const body = useRef<HTMLDivElement>(null);
 
@@ -87,6 +105,7 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
 
   const goBack = () => {
     if (phase.name === 'saving') return;
+    if (phase.name === 'pin') return setPhase({ name: 'editing' });
     if (phase.name === 'done' || !dirty || leaving) return onBack();
     setLeaving(true);
   };
@@ -100,13 +119,23 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
     try {
       const today = localIsoDate(new Date());
       const { schedule: edited, droppedPicks } = prepareSave(state, library, today);
-      const result = await overwriteGrade(source, access, state.path, editedYaml(edited, today));
-      const reread = result.kind === 'written' ? await onSaved().catch(() => false) : true;
-      setPhase({ name: 'done', result, reread, dropped: droppedPicks.length });
+      await write(access, today, editedYaml(edited, today), droppedPicks.length);
     } catch (failure) {
       setError(`Não foi possível salvar o canal: ${(failure as Error).message}`);
       setPhase({ name: 'editing' });
     }
+  }
+
+  /** Over the same file, after the copy of the old one (folder, server with PIN, or download). */
+  async function write(access: WriteAccess, today: string, yaml: string, dropped: number, message?: string): Promise<void> {
+    setPhase({ name: 'saving' });
+    const result = await overwriteWithBackup(source, library, access, state.path, today, yaml);
+    if (result === 'needs-pin') {
+      if (!source.editing) throw new Error('o servidor não está disponível.');
+      return setPhase({ name: 'pin', editing: source.editing, again: (again) => write(access, today, yaml, dropped, again), message });
+    }
+    const reread = result.kind === 'written' ? await onSaved().catch(() => false) : true;
+    setPhase({ name: 'done', result, reread, dropped });
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -143,6 +172,18 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
         <div className="editor-body" ref={body}>
           {phase.name === 'done' ? (
             <DonePage result={phase.result} reread={phase.reread} dropped={phase.dropped} onWatch={() => onWatch(schedule.id)} onClose={onBack} />
+          ) : phase.name === 'pin' ? (
+            <PinPage
+              editing={phase.editing}
+              message={phase.message}
+              onPaired={() =>
+                void phase.again('O computador pediu o PIN de novo. Confira o número no terminal.').catch((failure) => {
+                  setError(`Não foi possível salvar o canal: ${(failure as Error).message}`);
+                  setPhase({ name: 'editing' });
+                })
+              }
+              onCancel={goBack}
+            />
           ) : phase.name === 'saving' ? (
             <p className="wizard-busy" role="status">
               Salvando o canal…
@@ -211,6 +252,11 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
             {error && (
               <p className="wizard-problem" role="alert">
                 {error}
+              </p>
+            )}
+            {loosesComments && (
+              <p className="panel-note" data-comments-notice>
+                Os comentários que você escreveu à mão neste arquivo (linhas com <code>#</code>) não são mantidos ao salvar. Antes de salvar, o app guarda uma cópia do arquivo atual em <code>grades/</code>, por exemplo <code>{backupName}</code>.
               </p>
             )}
             {leaving && (
@@ -593,13 +639,15 @@ function CountField({ label, value, focus, onChange }: { label: string; value: n
 
 // ---------------------------------------------------------------- result
 
+const fileOf = (path: string) => path.slice(path.lastIndexOf('/') + 1);
+
 const REASONS: Record<'no-folder' | 'denied' | 'failed', string> = {
   'no-folder': 'Este navegador, ou o jeito como a biblioteca foi aberta, não deixa o app gravar na pasta.',
   denied: 'A permissão para gravar na pasta não foi dada.',
   failed: 'Não deu para gravar na pasta.',
 };
 
-function DonePage({ result, reread, dropped, onWatch, onClose }: { result: SaveResult; reread: boolean; dropped: number; onWatch(): void; onClose(): void }): ReactNode {
+function DonePage({ result, reread, dropped, onWatch, onClose }: { result: ReplaceResult; reread: boolean; dropped: number; onWatch(): void; onClose(): void }): ReactNode {
   const note =
     dropped > 0 ? (
       <p>
@@ -615,6 +663,11 @@ function DonePage({ result, reread, dropped, onWatch, onClose }: { result: SaveR
           {reread ? 'A troca de canais já usa a versão nova.' : 'Não consegui reler a biblioteca: escolha a pasta de novo para ver as mudanças.'}
         </p>
         {note}
+        {result.backupPath && (
+          <p data-backup={result.backupPath}>
+            O arquivo antigo está guardado em <code>{result.backupPath}</code>. A TV não o lê como canal. Para voltar atrás, apague o canal novo e tire o <code>.bak</code> e a data do nome da cópia.
+          </p>
+        )}
         <div className="wizard-footer">
           {reread && (
             <button data-nav data-autofocus data-watch className="action-tile primary" onClick={onWatch}>
@@ -633,13 +686,13 @@ function DonePage({ result, reread, dropped, onWatch, onClose }: { result: SaveR
     <div className="wizard-done" data-result="downloaded">
       <h2>Arquivo baixado</h2>
       <p>
-        {REASONS[result.reason]} Então o app baixou o canal editado como arquivo: <code>{result.fileName}.yaml</code>.
+        {REASONS[result.reason]} Então o app baixou o canal editado como arquivo: <code>{fileOf(result.path)}</code>{result.backupName && <>, e a cópia do arquivo antigo: <code>{result.backupName}</code></>}.
       </p>
       {note}
       <p>Para valer:</p>
       <ol className="wizard-instructions">
         <li>
-          Copie <code>{result.fileName}.yaml</code> (na pasta de downloads) por cima do arquivo <code>{result.path}</code> da biblioteca. Guarde uma cópia do antigo se quiser.
+          Copie <code>{result.backupName ?? 'a cópia'}</code> e <code>{fileOf(result.path)}</code> (na pasta de downloads) para a pasta <code>grades</code> da biblioteca, aceitando trocar <code>{fileOf(result.path)}</code>. O antigo continua na cópia <code>.bak</code>, que a TV não lê como canal.
         </li>
         <li>No pendrive ou no Raspberry Pi, é a mesma pasta <code>grades</code> da biblioteca.</li>
         <li>Abra a biblioteca de novo (recarregue a página ou escolha a pasta outra vez).</li>
@@ -648,7 +701,10 @@ function DonePage({ result, reread, dropped, onWatch, onClose }: { result: SaveR
         <button data-nav data-autofocus className="action-tile primary" onClick={onClose}>
           <span>Entendi</span>
         </button>
-        <button data-nav className="action-tile" onClick={() => downloadText(`${result.fileName}.yaml`, result.yaml)}>
+        <button data-nav className="action-tile" onClick={() => {
+            downloadText(fileOf(result.path), result.yaml);
+            if (result.backupName && result.backupYaml) downloadText(result.backupName, result.backupYaml);
+          }}>
           <Icon name="download" className="action-icon" />
           <span>Baixar de novo</span>
         </button>

@@ -269,8 +269,10 @@ Salvar canais pelo app: LIGADO. PIN para parear um aparelho: 482913
 - Ao salvar pela primeira vez, o app pede o **PIN de 6 números** que aparece no terminal. Dá para digitar com os números do controle remoto ou com o teclado na tela (setas e OK). O aparelho fica pareado até o navegador fechar ou o servidor desligar; cada vez que o servidor liga, o PIN é outro.
 - Só dá para gravar `grades/<nome>.yaml` (nome com letras, números, `-` e `_`) e `nao-passar.yaml`, na raiz da biblioteca (ou dentro de `biblioteca/`, se o servidor foi aberto na pasta acima dela). Nada mais: nem vídeos, nem configurações, nem outras pastas.
 - A grade precisa ser uma grade válida (a mesma leitura do app), em UTF-8, com até 256 KB. A lista "não passar" precisa ser lida pelo app sem nenhum aviso (só `programas` e `episodios`, veja [biblioteca.md](biblioteca.md)).
-- Nunca substitui um arquivo que já existe: o assistente sempre cria um canal novo. Quem quiser substituir (um editor, no futuro) precisa pedir explicitamente, com `?substituir=1` no endereço.
-- Cada arquivo gravado aparece no terminal (`Gravado: grades/manha.yaml`).
+- Nunca substitui um arquivo que já existe sem pedir: o assistente cria um canal novo, e quem quer substituir pede explicitamente, com `?substituir=1` no endereço.
+- **Cópia de segurança de uma grade** (`?substituir=1&copia=1`): o **próprio servidor** copia a grade atual para `grades/<nome>.AAAA-MM-DD.yaml.bak` (pela data do computador; `-2`, `-3`... se o nome já existe, e uma cópia que já existe nunca é trocada) antes de gravar por cima. A cópia nunca troca uma que já existe (sem links, então funciona em pendrive FAT32/exFAT) e é lida de volta e conferida byte a byte antes de gravar; se algo falha, a grade fica como estava e o pedido dá erro. O app nunca grava um caminho `.bak`: o servidor segue recusando qualquer caminho que não seja `grades/<nome>.yaml` ou `nao-passar.yaml`. A TV não lê o `.bak` como canal. Para **restaurar**, renomeie a cópia, tirando a data e o `.bak` (`manha.2026-10-22.yaml.bak` vira `manha.yaml`, no lugar do atual). É o que o editor de canal e o "Trocar o canal" do assistente usam.
+- `nao-passar.yaml` **não** tem cópia de segurança (`copia=1` nele é recusado): é uma lista curta que o app reescreve inteira a cada mudança, sem comentários seus para perder, e dá para refazê-la na própria tela "Não passar".
+- Cada arquivo gravado aparece no terminal (`Gravado: grades/manha.yaml`), e cada cópia de segurança também (`Cópia de segurança: grades/manha.2026-10-22.yaml.bak`).
 
 Segurança:
 
@@ -288,7 +290,7 @@ Para quem integra (rotas, todas sob o mesmo endereço do app):
 |---|---|
 | `GET /__tv-gominho/capacidades` | `{"editar": true/false, "ia": true/false, "pareado": true/false}` |
 | `POST /__tv-gominho/pareamento` | JSON `{"pin": "123456"}` → 200 e o cookie; 403 PIN errado; 429 travado (`Retry-After`) |
-| `PUT /__tv-gominho/arquivos/<caminho>` | corpo = o arquivo. 201 criado, 200 substituído, 401 sem pareamento, 403 origem, 400 caminho ou conteúdo inválido, 409 já existe, 413 grande demais |
+| `PUT /__tv-gominho/arquivos/<caminho>` | corpo = o arquivo. 201 criado, 200 substituído (`?substituir=1`; com `&copia=1` a resposta traz `"copia"`, o caminho do `.bak`), 401 sem pareamento, 403 origem, 400 caminho ou conteúdo inválido (ou `copia=1` fora de uma substituição de grade), 409 já existe, 413 grande demais |
 | `POST /__tv-gominho/ia/proposta` | só com `--ia` (abaixo). JSON `{"pedido": "...", "atual"?: {...}, "duracoes"?: {"id": minutos}}` → 200 `{"proposta": {...}}`; 401 sem pareamento, 403 origem, 400 pedido inválido, 413 grande demais, 422 proposta que não serve, 429 cedo demais (`Retry-After`), 502/504 falha da IA |
 
 ### Assistente de IA (`--ia`)
