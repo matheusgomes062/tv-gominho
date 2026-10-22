@@ -27,7 +27,8 @@ import type { OsdState } from '../components/osd-painter';
 import { Static } from '../components/Static';
 import { useFileUrl } from '../components/useFileUrl';
 // Inlined (a data: URL) so the OSD canvas is never tainted when the app is opened from file:// (USB stick).
-import bundledWatermark from '../assets/tv-gominho-logo.webp?inline';
+// A 224 px copy of the logo: the watermark is never drawn wider than that, and it keeps the bundle small.
+import bundledWatermark from '../assets/tv-gominho-marca-dagua.webp?inline';
 import { glassDataUrl } from '../components/glass-watermark';
 import { watermarkSource } from '../settings-model';
 import { useFlash } from '../components/useFlash';
