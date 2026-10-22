@@ -12,6 +12,7 @@ import {
   validateProposal,
   type Library,
 } from '@tv-gominho/nucleo';
+import { browserKeyAllowed, FILE_ORIGIN_BLOCKED } from '../ai-settings-model';
 import { requestProblem } from '../ia-model';
 import type { AiBackend, AiChange, AiStatus, IaRequest } from './types';
 
@@ -33,8 +34,9 @@ export interface BrowserAiOptions {
   fetch?: typeof fetch;
   now?(): number;
   timeoutMs?: number;
-  /** The page's address scheme, for tests. Default: location.protocol. */
+  /** The page's address scheme and origin, for tests. Default: location's. */
   protocol?: string;
+  origin?: string;
 }
 
 const STORAGE_FAILED = 'Este navegador não deixou guardar a chave (janela anônima ou dados do site bloqueados).';
@@ -51,7 +53,9 @@ export function browserAi(options: BrowserAiOptions = {}): AiBackend {
   const storage = options.storage === undefined ? defaultStorage() : options.storage;
   const send = options.fetch ?? ((...args: Parameters<typeof fetch>) => fetch(...args));
   const now = options.now ?? Date.now;
-  const fileOrigin = (options.protocol ?? (typeof location === 'undefined' ? '' : location.protocol)) === 'file:';
+  const here = typeof location === 'undefined' ? { protocol: '', origin: '' } : location;
+  // Opened from a file: a key is neither saved nor used, and one stored earlier is only offered for removal.
+  const fileOrigin = !browserKeyAllowed(options.protocol ?? here.protocol, options.origin ?? here.origin);
   let last = -Infinity;
   let busy = false;
 
@@ -72,20 +76,22 @@ export function browserAi(options: BrowserAiOptions = {}): AiBackend {
       return false;
     }
   };
-  const key = () => {
+  const stored = () => {
     const value = read(KEY_ITEM);
     return value !== null && apiKeyProblem(value) === null ? value.trim() : undefined;
   };
+  /** The key the requests may use: none when opened from a file. */
+  const key = () => (fileOrigin ? undefined : stored());
 
   function status(): AiStatus {
-    const saved = key();
+    const saved = stored();
     const enabled = read(ENABLED_ITEM) === '1';
     return {
       place: 'browser',
       key: saved ? 'saved' : 'none',
       ...(saved ? { ending: keyEnding(saved) } : {}),
       enabled,
-      available: enabled && saved !== undefined,
+      available: !fileOrigin && enabled && saved !== undefined,
       canManage: storage !== null,
       model: ANTHROPIC_MODEL,
       ...(fileOrigin ? { fileOrigin } : {}),
@@ -100,6 +106,7 @@ export function browserAi(options: BrowserAiOptions = {}): AiBackend {
       return status();
     },
     async saveKey(value) {
+      if (fileOrigin) return { ok: false, message: FILE_ORIGIN_BLOCKED };
       const problem = apiKeyProblem(value);
       if (problem) return { ok: false, message: problem };
       return changed(write(KEY_ITEM, value.trim()));
@@ -108,11 +115,13 @@ export function browserAi(options: BrowserAiOptions = {}): AiBackend {
       return changed(write(KEY_ITEM, null));
     },
     async setEnabled(on) {
+      if (fileOrigin) return { ok: false, message: FILE_ORIGIN_BLOCKED };
       return changed(write(ENABLED_ITEM, on ? '1' : null));
     },
     async propose(request: IaRequest, library: Library) {
       const apiKey = key();
-      // No key or off: nothing leaves the browser.
+      // No key, off or opened from a file: nothing leaves the browser.
+      if (fileOrigin) return failure(409, FILE_ORIGIN_BLOCKED);
       if (!apiKey || read(ENABLED_ITEM) !== '1') return failure(409, 'A IA está desligada. Ligue em Configurações, Assistente de IA.');
       const text = typeof request.pedido === 'string' ? request.pedido : '';
       const invalid = requestProblem(text);

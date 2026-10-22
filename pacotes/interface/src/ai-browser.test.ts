@@ -68,7 +68,24 @@ describe('browserAi settings', () => {
     expect(await ai.setEnabled(true)).toMatchObject({ ok: true, status: { enabled: true, available: true } });
     expect(await ai.removeKey()).toMatchObject({ ok: true, status: { key: 'none', available: false } });
     expect(storage.items.has(KEY_ITEM)).toBe(false);
-    expect((await browserAi({ storage, protocol: 'file:' }).status())!.fileOrigin).toBe(true);
+  });
+
+  it('opened from a file, neither saves nor uses a key, and only offers to remove one stored earlier', async () => {
+    const storage = on();
+    const { send, calls } = fakeFetch(ok);
+    for (const where of [{ protocol: 'file:', origin: 'null' }, { protocol: 'http:', origin: 'null' }]) {
+      const ai = browserAi({ storage, fetch: send, ...where });
+      expect(await ai.status()).toMatchObject({ key: 'saved', ending: '…WXYZ', fileOrigin: true, available: false });
+      expect(await ai.propose({ pedido: 'manhã' }, library)).toMatchObject({ status: 409 });
+      expect(await ai.saveKey(KEY)).toMatchObject({ ok: false, message: expect.stringMatching(/file:\/\//) });
+      expect(await ai.setEnabled(true)).toMatchObject({ ok: false });
+    }
+    expect(calls).toHaveLength(0);
+    const ai = browserAi({ storage, protocol: 'file:', origin: 'null' });
+    expect(await ai.removeKey()).toMatchObject({ ok: true, status: { key: 'none' } });
+    expect(storage.items.has(KEY_ITEM)).toBe(false);
+    expect(await ai.saveKey(KEY)).toMatchObject({ ok: false });
+    expect(storage.items.has(KEY_ITEM)).toBe(false);
   });
 
   it('says so when the browser keeps nothing, without failing', async () => {

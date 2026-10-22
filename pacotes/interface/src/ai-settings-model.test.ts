@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aiControls, aiNotices, aiStatusFromServer, keyLabel, stateLabel } from './ai-settings-model';
+import { aiControls, aiNotices, aiStatusFromServer, browserKeyAllowed, keyLabel, stateLabel } from './ai-settings-model';
 import type { AiStatus } from './sources/types';
 
 const base: AiStatus = { place: 'server', key: 'none', enabled: false, available: false, canManage: true, model: 'claude-opus-5-5' };
@@ -42,12 +42,32 @@ describe('labels', () => {
   });
 });
 
+describe('browserKeyAllowed', () => {
+  it('keeps no key in a page opened from a file', () => {
+    expect(browserKeyAllowed('https:', 'https://tv.example')).toBe(true);
+    expect(browserKeyAllowed('http:', 'http://localhost:5173')).toBe(true);
+    expect(browserKeyAllowed('file:', 'null')).toBe(false);
+    expect(browserKeyAllowed('file:', 'file://')).toBe(false);
+    expect(browserKeyAllowed('http:', 'null')).toBe(false);
+  });
+});
+
 describe('aiControls', () => {
   it('lets this computer paste, remove and switch', () => {
     expect(aiControls(base)).toEqual({ editKey: true, remove: false, toggle: true, readOnly: null });
     expect(aiControls({ ...base, key: 'saved' })).toMatchObject({ editKey: true, remove: true });
     // ANTHROPIC_API_KEY: neither replaced nor removed from the app.
     expect(aiControls({ ...base, key: 'env' })).toMatchObject({ editKey: false, remove: false, toggle: true });
+  });
+
+  it('from a file, offers nothing but removing a key stored earlier, and says why', () => {
+    const browser: AiStatus = { ...base, place: 'browser', fileOrigin: true };
+    const empty = aiControls(browser);
+    expect(empty).toMatchObject({ editKey: false, remove: false, toggle: false });
+    expect(empty.readOnly).toMatch(/file:\/\/.*tv-gominho servir.*http/);
+    expect(aiControls({ ...browser, key: 'saved', ending: '…WXYZ' })).toMatchObject({ editKey: false, remove: true, toggle: false });
+    expect(keyLabel({ ...browser, key: 'saved', ending: '…WXYZ' })).toMatch(/ignorada/);
+    expect(stateLabel({ ...browser, key: 'saved', enabled: true })).toMatch(/Indisponível/);
   });
 
   it('only shows the state on a TV, and says where to go', () => {
@@ -60,7 +80,5 @@ describe('aiControls', () => {
     expect(aiNotices({ ...base, place: 'browser' }).join(' ')).toMatch(/só neste navegador/);
     expect(aiNotices(base).join(' ')).toMatch(/nunca na biblioteca/);
     expect(aiNotices(base).join(' ')).toMatch(/custa/);
-    expect(aiNotices({ ...base, place: 'browser', fileOrigin: true }).join(' ')).toMatch(/file:\/\//);
-    expect(aiNotices({ ...base, place: 'browser' }).join(' ')).not.toMatch(/file:\/\//);
   });
 });

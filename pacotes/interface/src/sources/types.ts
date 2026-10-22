@@ -39,7 +39,7 @@ export interface AiStatus {
   /** This screen may change the key: the server's own computer, or this browser for its own key. */
   canManage: boolean;
   model: string;
-  /** The app was opened from a file (file://): every page opened from the disk shares this browser's storage. */
+  /** The app was opened from a file (file://): no key is kept or used here (ai-settings-model.ts browserKeyAllowed). */
   fileOrigin?: boolean;
 }
 
