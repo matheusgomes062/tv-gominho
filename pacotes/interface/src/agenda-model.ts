@@ -138,13 +138,19 @@ function usable(state: EditorState): EditorState | null {
   return blocks.length > 0 && state.days.length > 0 && checkEditor(next).errors.length === 0 ? next : null;
 }
 
-/**
- * The Schedule the TV would play after saving the state as it is (with the saved positions `prepareSave` adds when
- * the edit changes what airs), or null when nothing in it is usable yet. `today` is "YYYY-MM-DD".
- */
-export function airingSchedule(state: EditorState, library: Library, today: string): Schedule | null {
+/** What the TV would play after saving the state as it is, and which editor item is behind each item of that grade. */
+export interface AiringGrade {
+  /** With the saved positions `prepareSave` adds when the edit changes what airs, and the picks of the agenda. */
+  schedule: Schedule;
+  /** The `EditorItem.key` of the item at `block` and `item` (both from 0) of `schedule`: what a pick is tied to. */
+  itemKeyAt(block: number, item: number): number | undefined;
+}
+
+/** The grade the editor describes right now, or null when nothing in it is usable yet. `today` is "YYYY-MM-DD". */
+export function airingOf(state: EditorState, library: Library, today: string): AiringGrade | null {
   const clean = usable(state);
-  return clean ? prepareSave(clean, library, today).schedule : null;
+  if (!clean) return null;
+  return { schedule: prepareSave(clean, library, today).schedule, itemKeyAt: (block, item) => clean.blocks[block]?.items[item]?.key };
 }
 
 // ---------------------------------------------------------------- the week

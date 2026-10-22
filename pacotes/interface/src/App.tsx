@@ -206,6 +206,7 @@ function Main({ session, onChangeFolder, onLibraryChange }: { session: Session; 
         <ChannelEditor
           source={source}
           library={library}
+          durations={durations}
           schedule={editedSchedule}
           onSaved={reloadLibrary}
           onWatch={(id) => {

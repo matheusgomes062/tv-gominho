@@ -59,6 +59,8 @@ describe('previewDay', () => {
       [1, 10 * 3600, 3],
     ]);
     expect(preview.rows[1]!.end).toBe(8 * 3600 + 2 * EPISODE);
+    // The item of the block that plays each episode: both episodes of `episodios: 2` come from the same one.
+    expect(preview.rows.map((row) => [row.block, row.item])).toEqual([[0, 0], [0, 0], [1, 0]]);
 
     // Same episodes as planDay, same layout as buildTimeline.
     const plan = planDay(schedule, library, '2003-03-03', { commercials: false });

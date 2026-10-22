@@ -155,8 +155,8 @@ export function parseTime(text: string): number | null {
 
 /** Why a typed time is not usable, in Portuguese, or null. */
 export function timeProblem(text: string): string | null {
-  if (text.trim() === '') return 'Escreva o horário do bloco, por exemplo 08:00.';
-  return parseTime(text) === null ? `“${text.trim()}” não é um horário. Use HH:MM, por exemplo 08:00.` : null;
+  if (text.trim() === '') return 'Escreva a hora em que começa, por exemplo 08:00.';
+  return parseTime(text) === null ? `“${text.trim()}” não é uma hora. Use HH:MM, por exemplo 08:00.` : null;
 }
 
 // ---------------------------------------------------------------- editing: the channel
@@ -312,7 +312,7 @@ export function refChoices(library: Library, category: string): RefChoice[] {
   const key = category.toLowerCase();
   const inside = library.interstitials.filter((item) => item.category === key);
   const choices: RefChoice[] = [
-    { ref: category, kind: 'category', label: `Sortear de toda a pasta ${category}`, count: inside.length },
+    { ref: category, kind: 'category', label: 'Sortear entre todas', count: inside.length },
   ];
   const folders = new Map<string, number>();
   const files: RefChoice[] = [];
@@ -322,10 +322,10 @@ export function refChoices(library: Library, category: string): RefChoice[] {
       const folder = parts.slice(0, depth).join('/');
       folders.set(folder, (folders.get(folder) ?? 0) + 1);
     }
-    files.push({ ref: item.relativePath, kind: 'file', label: `Arquivo ${parts.slice(1).join('/')}`, count: 1 });
+    files.push({ ref: item.relativePath, kind: 'file', label: `Só ${parts.slice(1).join('/')}`, count: 1 });
   }
   const byPath = (a: { ref: string }, b: { ref: string }) => naturalCompare(a.ref, b.ref);
-  const folderChoices = [...folders].map(([ref, count]): RefChoice => ({ ref, kind: 'folder', label: `Sortear da pasta ${ref.split('/').slice(1).join('/')}`, count }));
+  const folderChoices = [...folders].map(([ref, count]): RefChoice => ({ ref, kind: 'folder', label: `Sortear entre as de ${ref.split('/').slice(1).join('/')}`, count }));
   return [...choices, ...folderChoices.sort(byPath), ...files.sort(byPath)];
 }
 
@@ -341,6 +341,8 @@ export interface EditorCheck {
   errors: string[];
   /** Per block key: a problem with its time or its content. */
   blocks: Record<number, string>;
+  /** Per block key: the part of `blocks` that is about its time (not a valid time, or the same as another block's). */
+  times: Record<number, string>;
   /** Per item key: a problem with its values (a quantity that is not a number...). */
   items: Record<number, string>;
   /** Per item key: it points at something the library does not have. The grade skips it, so saving is still allowed. */
@@ -356,7 +358,7 @@ function wholeCount(value: number): boolean {
  * stop the grade from being saved, the engine just skips them.
  */
 export function checkEditor(state: EditorState, library?: Library): EditorCheck {
-  const check: EditorCheck = { errors: [], blocks: {}, items: {}, warnings: {} };
+  const check: EditorCheck = { errors: [], blocks: {}, times: {}, items: {}, warnings: {} };
   const fail = (message: string) => {
     if (!check.errors.includes(message)) check.errors.push(message);
   };
@@ -366,29 +368,32 @@ export function checkEditor(state: EditorState, library?: Library): EditorCheck 
   else if (name.length > MAX_NAME_LENGTH) fail(`Use no máximo ${MAX_NAME_LENGTH} letras no nome.`);
   if (state.description.length > MAX_DESCRIPTION_LENGTH) fail(`Use no máximo ${MAX_DESCRIPTION_LENGTH} letras na descrição.`);
   if (state.days.length === 0) fail('Escolha pelo menos um dia da semana.');
-  if (state.blocks.length === 0) fail('O canal precisa de pelo menos um bloco.');
+  if (state.blocks.length === 0) fail('O canal precisa de pelo menos um horário.');
 
   const starts = new Map<number, number>();
   for (const block of state.blocks) {
     const problem = timeProblem(block.time);
     if (problem) {
       check.blocks[block.key] = problem;
+      check.times[block.key] = problem;
       fail(problem);
     } else {
       const start = parseTime(block.time)!;
       const other = starts.get(start);
       if (other !== undefined) {
-        const message = `Dois blocos começam às ${formatTimeOfDay(start)}. Cada bloco precisa de um horário só dele.`;
+        const message = `Dois horários começam às ${formatTimeOfDay(start)}. Cada um precisa de uma hora só dele.`;
         check.blocks[block.key] = message;
         check.blocks[other] ??= message;
+        check.times[block.key] = message;
+        check.times[other] ??= message;
         fail(message);
       }
       starts.set(start, block.key);
     }
     if (block.items.length === 0) {
-      const label = problem ? 'Um bloco' : `O bloco das ${timeText(parseTime(block.time)!)}`;
-      check.blocks[block.key] ??= `${label} está sem itens: acrescente um programa, uma vinheta ou comerciais.`;
-      fail(`${label} está sem itens.`);
+      const label = problem ? 'Um horário' : `O horário das ${timeText(parseTime(block.time)!)}`;
+      check.blocks[block.key] ??= `${label} está sem nada passando: acrescente um desenho, uma abertura ou um intervalo.`;
+      fail(`${label} está sem nada passando.`);
     }
     for (const item of block.items) checkItem(item, library, check, fail);
   }
@@ -398,10 +403,10 @@ export function checkEditor(state: EditorState, library?: Library): EditorCheck 
 function checkItem(item: EditorItem, library: Library | undefined, check: EditorCheck, fail: (message: string) => void) {
   let problem: string | null = null;
   if (item.type === 'show') {
-    if (item.show.trim() === '') problem = 'Escolha o programa.';
+    if (item.show.trim() === '') problem = 'Escolha o desenho.';
     else if (!wholeCount(item.count)) problem = `Use de 1 a ${MAX_COUNT} episódios.`;
   } else if (item.type === 'interstitial') {
-    if (item.ref.trim() === '') problem = 'Escolha a vinheta.';
+    if (item.ref.trim() === '') problem = 'Escolha a abertura ou o encerramento.';
   } else if (!wholeCount(item.count)) {
     problem = `Use de 1 a ${MAX_COUNT} comerciais.`;
   }
@@ -498,16 +503,71 @@ export function prepareSave(state: EditorState, library: Library, date: string):
   return { ...built, schedule: preservePositions(state.base, built.schedule, library, date) };
 }
 
-/** The tabs of the editor, left to right. */
-export const TABS = ['blocks', 'agenda'] as const;
-export type EditorTab = (typeof TABS)[number];
+// ---------------------------------------------------------------- the advanced settings
 
-/** The tab a key on a tab leads to: ← and → move to the neighbour and stop at the ends; any other key stays. */
-export function tabAfterKey(tab: EditorTab, key: string): EditorTab {
-  const index = TABS.indexOf(tab);
-  if (key === 'ArrowLeft') return TABS[Math.max(0, index - 1)]!;
-  if (key === 'ArrowRight') return TABS[Math.min(TABS.length - 1, index + 1)]!;
-  return tab;
+/** The sections of "Ajustes avançados", top to bottom: each can be folded, and the outline at the top jumps to them. */
+export const SECTIONS = [
+  { id: 'basics', title: 'Nome e dias' },
+  { id: 'times', title: 'Horários' },
+  { id: 'items', title: 'O que passa em cada horário' },
+] as const;
+export type SectionId = (typeof SECTIONS)[number]['id'];
+
+/** The folded sections after `id` was clicked: a folded one opens, an open one folds. */
+export function toggleSection(folded: ReadonlySet<SectionId>, id: SectionId): Set<SectionId> {
+  const next = new Set(folded);
+  if (!next.delete(id)) next.add(id);
+  return next;
+}
+
+/** Which sections have something to fix or to look at, so a folded one does not hide it. */
+export function sectionAttention(state: EditorState, check: EditorCheck): Record<SectionId, boolean> {
+  const name = state.name.trim();
+  return {
+    basics: name === '' || name.length > MAX_NAME_LENGTH || state.description.length > MAX_DESCRIPTION_LENGTH || state.days.length === 0,
+    times: Object.keys(check.times).length > 0 || state.blocks.length === 0,
+    items:
+      Object.keys(check.items).length > 0 ||
+      Object.keys(check.warnings).length > 0 ||
+      Object.keys(check.blocks).some((key) => check.times[Number(key)] === undefined),
+  };
+}
+
+// ---------------------------------------------------------------- plain words
+
+const CATEGORY_KIND: Record<string, string> = {
+  aberturas: 'Abertura',
+  encerramentos: 'Encerramento',
+  chamadas: 'Chamada',
+  intervalos: 'Vinheta de intervalo',
+};
+
+const CATEGORY_NAME: Record<string, string> = {
+  aberturas: 'Aberturas',
+  encerramentos: 'Encerramentos',
+  chamadas: 'Chamadas',
+  intervalos: 'Vinhetas de intervalo',
+};
+
+/** What an item is called on screen, in the words of a viewer and not of the grade file ("programa", "vinheta", "comerciais"). */
+export function itemKindLabel(item: { type: ScheduleItem['type']; ref?: string }): string {
+  if (item.type === 'show') return 'Desenho';
+  if (item.type === 'commercials') return 'Intervalo';
+  return CATEGORY_KIND[refCategory(item.ref ?? '')] ?? 'Abertura/Encerramento';
+}
+
+/** What each kind of item is called on the button that adds one (no category chosen yet). */
+export const ADD_LABEL: Record<ScheduleItem['type'], string> = { show: 'Desenho', interstitial: 'Abertura/Encerramento', commercials: 'Intervalo' };
+
+/** A category of vinhetas/ by its plain name: "aberturas" is "Aberturas"; one the app does not know is the folder name, capitalized. */
+export function categoryName(category: string): string {
+  return CATEGORY_NAME[category.toLowerCase()] ?? category.charAt(0).toUpperCase() + category.slice(1);
+}
+
+/** The name of a show in a list: its title alone, with the id only when two shows would read the same. */
+export function showOptionLabel(show: { id: string; title: string }, library: Pick<Library, 'shows'>): string {
+  const same = library.shows.filter((other) => other.title.toLowerCase() === show.title.toLowerCase()).length;
+  return same > 1 ? `${show.title} (${show.id})` : show.title;
 }
 
 /** Whether the file has a comment written by hand: a line whose first non-space character is `#`. Saving rewrites the file and drops them. */

@@ -4,39 +4,46 @@ import { Icon, type IconName } from '../components/Icon';
 import { KeyHints, Overlay } from '../components/Overlay';
 import { ScrollBody } from '../components/ScrollBody';
 import {
+  ADD_LABEL,
   MAX_COUNT,
   MAX_DESCRIPTION_LENGTH,
   MAX_NAME_LENGTH,
+  SECTIONS,
   addBlock,
   addItem,
+  categoryName,
   checkEditor,
   defaultItem,
   editedYaml,
   hasHandComments,
   interstitialCategories,
   isDirty,
+  itemKindLabel,
   moveItem,
   newestBlock,
-  TABS,
   openEditor,
   prepareSave,
   refCategory,
   refChoices,
   removeBlock,
   removeItem,
+  sectionAttention,
   setBlockTime,
-  tabAfterKey,
   setDescription,
   setName,
   settleBlocks,
+  showOptionLabel,
   toggleDay,
+  toggleSection,
   updateItem,
   type EditorBlock,
   type EditorCheck,
   type EditorItem,
   type EditorState,
+  type SectionId,
 } from '../editor-model';
-import { AgendaWeek } from './AgendaWeek';
+import type { Durations } from '../media';
+import { ChannelWeek } from './ChannelWeek';
 import { downloadText, requestWriteAccess, type WriteAccess } from '../sources/save';
 import { expectedBackupName, overwriteWithBackup, type ReplaceResult } from '../sources/overwrite';
 import type { BrowserLibrary, ServerEditing } from '../sources/types';
@@ -46,6 +53,8 @@ import { DAY_LABELS, DAY_ORDER } from '../wizard-model';
 interface Props {
   source: BrowserLibrary;
   library: Library;
+  /** Video durations, for the times of the week. */
+  durations: Durations;
   /** The grade to edit, as the library read it. */
   schedule: Schedule;
   /** Reads the library again after the file was written into the folder; false if that failed. */
@@ -65,20 +74,25 @@ type Phase =
   | { name: 'pin'; editing: ServerEditing; again(message: string): Promise<void>; message?: string; start?: boolean }
   | { name: 'done'; result: ReplaceResult; reread: boolean; dropped: number };
 
-const KIND_LABEL: Record<ScheduleItem['type'], string> = { show: 'Programa', interstitial: 'Vinheta', commercials: 'Comerciais' };
 const KIND_ICON: Record<ScheduleItem['type'], IconName> = { show: 'episode', interstitial: 'interstitials', commercials: 'ads' };
 
+/** What the editor shows: the week of the channel (the first thing) or the schedule editor behind "Ajustes avançados". */
+type View = 'week' | 'advanced';
+
 /**
- * The channel editor, for the computer (mouse and keyboard; the arrows and Back of the remote still work): the
- * blocks of a grade and the items in each, the name, description and days. The model is editor-model.ts; this
- * only draws it and saves. Saving writes the grade file over the old one, keeping every show where it was.
+ * "Mudar uma programação", for the computer (mouse and keyboard; the arrows and Back of the remote still work). It opens
+ * on the week of the channel, with the time of each episode; there an episode can be picked for a day. "Ajustes
+ * avançados" opens the schedule itself: the name, the days, the times and what airs at each. The model is
+ * editor-model.ts; this only draws it and saves. Saving writes the grade file over the old one, keeping every show
+ * where it was.
  */
-export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onBack }: Props) {
+export function ChannelEditor({ source, library, durations, schedule, onSaved, onWatch, onBack }: Props) {
   const [state, setState] = useState<EditorState>(() => openEditor(schedule));
   const [phase, setPhase] = useState<Phase>(() => (source.editing ? { name: 'checking' } : { name: 'editing' }));
   const [error, setError] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
-  const [tab, setTab] = useState<'blocks' | 'agenda'>('blocks');
+  const [view, setView] = useState<View>('week');
+  const [folded, setFolded] = useState<ReadonlySet<SectionId>>(new Set());
 
   // Served with --editar: the PIN comes first, not after the changes are made.
   useEffect(() => {
@@ -114,6 +128,7 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
   const body = useRef<HTMLDivElement>(null);
 
   const check = useMemo(() => checkEditor(state, library), [state, library]);
+  const attention = useMemo(() => sectionAttention(state, check), [state, check]);
   const dirty = isDirty(state);
   const edit = (change: (current: EditorState) => EditorState) => {
     setLeaving(false);
@@ -128,10 +143,19 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
     target?.focus();
   });
 
+  const show = (next: View) => {
+    refocus.current = next === 'advanced' ? 'name' : 'open-advanced';
+    if (next === 'advanced') setFolded(new Set());
+    setView(next);
+  };
+
   const goBack = () => {
     if (phase.name === 'saving' || phase.name === 'checking') return;
     if (phase.name === 'pin') return phase.start ? onBack() : setPhase({ name: 'editing' });
-    if (phase.name === 'done' || !dirty || leaving) return onBack();
+    if (phase.name === 'done') return onBack();
+    // From the schedule editor, Back goes to the week; the changes stay.
+    if (view === 'advanced') return show('week');
+    if (!dirty || leaving) return onBack();
     setLeaving(true);
   };
 
@@ -178,14 +202,28 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
     });
   };
 
+  /** The outline: open the section if it is folded, and go to it. */
+  const jump = (id: SectionId) => {
+    setFolded((current) => (current.has(id) ? toggleSection(current, id) : current));
+    requestAnimationFrame(() => {
+      const section = body.current?.querySelector<HTMLElement>(`[data-section="${id}"]`);
+      section?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      section?.querySelector<HTMLElement>(`[data-focus="section-${id}"]`)?.focus({ preventScroll: true });
+    });
+  };
+
   // The result page starts on its first button; the editor, once the pairing check is over, on its first control.
   useEffect(() => {
     if (phase.name === 'done') body.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus();
-    else if (phase.name === 'editing' && !body.current?.contains(document.activeElement)) body.current?.querySelector<HTMLElement>('[data-nav]')?.focus();
+    else if (phase.name === 'editing' && !body.current?.contains(document.activeElement)) {
+      (body.current?.querySelector<HTMLElement>('[data-autofocus]') ?? body.current?.querySelector<HTMLElement>('[data-nav]'))?.focus();
+    }
   }, [phase.name]);
 
+  const editing = phase.name === 'editing';
+
   return (
-    <Overlay edge="left" label={`Editar o canal ${schedule.name}`} onBack={goBack} className="wizard-overlay editor-overlay">
+    <Overlay edge="left" label={`Editar o canal ${schedule.name}`} onBack={goBack} className="wizard-overlay">
       <div className="editor" onKeyDown={onKeyDown}>
         <header className="panel-header">
           <Icon name="clock" />
@@ -219,70 +257,65 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
             <p className="wizard-busy" role="status">
               Salvando o canal…
             </p>
+          ) : view === 'week' ? (
+            <>
+              <div className="editor-top">
+                <p className="editor-channel">{state.name.trim() || schedule.name}</p>
+                <button data-nav data-focus="open-advanced" data-advanced className="action-tile small" onClick={() => show('advanced')}>
+                  <Icon name="settings" className="action-icon" />
+                  <span>Ajustes avançados</span>
+                </button>
+              </div>
+              {check.errors.length > 0 && <p className="panel-note">Falta acertar algo nos ajustes avançados (veja os avisos embaixo).</p>}
+              <ChannelWeek state={state} library={library} durations={durations} today={today} edit={edit} />
+            </>
           ) : (
             <>
-              <p className="editor-file">
-                Arquivo <code>{state.path}</code>
-              </p>
-              <div className="editor-tabs" role="tablist" aria-label="Partes do canal">
-                {TABS.map((id) => (
-                  <button
-                    key={id}
-                    // Only the open tab is a stop for the arrows (Up from the fields lands on it); ← → switch tabs.
-                    data-nav={tab === id ? '' : undefined}
-                    data-nav-adjust
-                    data-focus={`tab-${id}`}
-                    data-tab={id}
-                    role="tab"
-                    tabIndex={tab === id ? 0 : -1}
-                    aria-selected={tab === id}
-                    className="action-tile small"
-                    onClick={() => setTab(id)}
-                    onKeyDown={(event) => {
-                      const next = tabAfterKey(tab, event.key);
-                      if (next === tab) return;
-                      event.preventDefault();
-                      refocus.current = `tab-${next}`;
-                      setTab(next);
-                    }}
-                  >
-                    <Icon name={id === 'blocks' ? 'clock' : 'calendar'} className="action-icon" />
-                    <span>{id === 'blocks' ? 'Blocos' : `Agenda${state.picks.length > 0 ? ` (${state.picks.length})` : ''}`}</span>
-                  </button>
-                ))}
+              <div className="editor-top">
+                <button data-nav data-focus="back-week" data-back-week className="action-tile small" onClick={() => show('week')}>
+                  <Icon name="calendar" className="action-icon" />
+                  <span>Ver a semana</span>
+                </button>
+                <div className="editor-outline" role="group" aria-label="Ir para" data-nav-row="outline">
+                  <span className="row-meta">Ir para</span>
+                  {SECTIONS.map(({ id, title }) => (
+                    <button key={id} data-nav data-outline={id} className="action-tile small" onClick={() => jump(id)}>
+                      <span>{title}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {tab === 'agenda' ? (
-                <AgendaWeek state={state} library={library} today={today} edit={edit} />
-              ) : (
-                <>
-                  <Fields state={state} edit={edit} />
+              <Section id="basics" open={!folded.has('basics')} attention={attention.basics} onToggle={() => setFolded(toggleSection(folded, 'basics'))}>
+                <Fields state={state} edit={edit} />
+                <p className="editor-file">
+                  Arquivo <code>{state.path}</code>
+                </p>
+              </Section>
 
-                  <h2>Blocos</h2>
-                  {state.blocks.map((block) => (
-                    <BlockCard
-                      key={block.key}
-                      block={block}
-                      check={check}
-                      library={library}
-                      edit={edit}
-                      refocus={refocus}
-                    />
-                  ))}
-                  <button data-nav data-focus="add-block" className="action-tile small" onClick={addNewBlock}>
-                    <Icon name="plus" className="action-icon" />
-                    <span>Adicionar bloco</span>
-                  </button>
-                  <p className="panel-note">
-                    Os blocos ficam em ordem de horário. Um bloco começa no horário dele; se o anterior passar do horário, o bloco atrasa (veja docs/grade.md).
-                  </p>
-                </>
-              )}
+              <Section id="times" open={!folded.has('times')} attention={attention.times} onToggle={() => setFolded(toggleSection(folded, 'times'))}>
+                {state.blocks.map((block) => (
+                  <TimeRow key={block.key} block={block} problem={check.times[block.key]} edit={edit} refocus={refocus} />
+                ))}
+                <button data-nav data-focus="add-block" className="action-tile small" onClick={addNewBlock}>
+                  <Icon name="plus" className="action-icon" />
+                  <span>Adicionar horário</span>
+                </button>
+                <p className="panel-note">
+                  Os horários ficam em ordem. Cada um começa na hora dele; se o anterior passar da hora, ele atrasa (veja docs/grade.md).
+                </p>
+              </Section>
+
+              <Section id="items" open={!folded.has('items')} attention={attention.items} onToggle={() => setFolded(toggleSection(folded, 'items'))}>
+                {state.blocks.map((block) => (
+                  <BlockItems key={block.key} block={block} check={check} library={library} edit={edit} refocus={refocus} />
+                ))}
+              </Section>
             </>
           )}
         </ScrollBody>
 
-        {phase.name === 'editing' && (
+        {editing && (
           <div className="editor-foot">
             {check.errors.length > 0 && (
               <ul className="editor-errors wizard-problem" role="alert">
@@ -334,12 +367,25 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
                   ['OK', 'confirmar'],
                   ['Esc', 'fechar'],
                 ]
-              : [
-                  ['↑ ↓ ← →', 'mover entre os controles'],
-                  ['Ctrl+S', 'salvar'],
-                  ['Alt+↑ ↓', 'mover o item'],
-                  ['Esc', 'voltar'],
-                ]
+              : !editing
+                ? [
+                    ['↑ ↓ ← →', 'escolher'],
+                    ['OK', 'confirmar'],
+                    ['Esc', 'voltar'],
+                  ]
+              : view === 'week'
+                ? [
+                    ['↑ ↓ ← →', 'mover entre os controles'],
+                    ['OK', 'escolher o episódio'],
+                    ['Ctrl+S', 'salvar'],
+                    ['Esc', 'fechar'],
+                  ]
+                : [
+                    ['↑ ↓ ← →', 'mover entre os controles'],
+                    ['Ctrl+S', 'salvar'],
+                    ['Alt+↑ ↓', 'mover o item'],
+                    ['Esc', 'ver a semana'],
+                  ]
           }
         />
       </div>
@@ -354,6 +400,27 @@ const keepBackspace = (event: KeyboardEvent<HTMLElement>) => {
   if (event.key === 'Backspace') event.stopPropagation();
 };
 
+/** A part of the schedule editor that can be folded. A folded part with something to fix says so on its title. */
+function Section({ id, open, attention, onToggle, children }: { id: SectionId; open: boolean; attention: boolean; onToggle(): void; children: ReactNode }) {
+  const title = SECTIONS.find((section) => section.id === id)!.title;
+  return (
+    <section className="editor-section" data-section={id} aria-labelledby={`section-title-${id}`}>
+      <h2 id={`section-title-${id}`}>
+        <button data-nav data-focus={`section-${id}`} className="editor-section-head" aria-expanded={open} aria-controls={`section-body-${id}`} onClick={onToggle}>
+          <Icon name={open ? 'chevronDown' : 'chevronRight'} className="action-icon" />
+          <span>{title}</span>
+          {attention && <span className="editor-attention">precisa de atenção</span>}
+        </button>
+      </h2>
+      {open && (
+        <div id={`section-body-${id}`} className="editor-section-body">
+          {children}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function Fields({ state, edit }: { state: EditorState; edit(change: (current: EditorState) => EditorState): void }) {
   return (
     <div className="editor-fields">
@@ -363,6 +430,7 @@ function Fields({ state, edit }: { state: EditorState; edit(change: (current: Ed
           data-nav
           data-nav-adjust
           data-autofocus
+          data-focus="name"
           data-name
           type="text"
           value={state.name}
@@ -415,15 +483,67 @@ function Fields({ state, edit }: { state: EditorState; edit(change: (current: Ed
 
 interface BlockProps {
   block: EditorBlock;
-  check: EditorCheck;
-  library: Library;
   edit(change: (current: EditorState) => EditorState): void;
   refocus: { current: string | null };
 }
 
-function BlockCard({ block, check, library, edit, refocus }: BlockProps) {
-  const problem = check.blocks[block.key];
+/** One time of the day (a block of the grade): when it starts. What airs at it is in `BlockItems`. */
+function TimeRow({ block, problem, edit, refocus }: BlockProps & { problem?: string }) {
   const settle = () => edit(settleBlocks);
+  return (
+    <div className="editor-block-head" data-block-time={block.time}>
+      <label className="editor-time">
+        <span className="row-label">Começa às</span>
+        <input
+          data-nav
+          data-nav-adjust
+          data-time
+          data-focus={`time-${block.key}`}
+          className="editor-input"
+          type="text"
+          inputMode="numeric"
+          value={block.time}
+          size={8}
+          maxLength={8}
+          placeholder="08:00"
+          autoComplete="off"
+          aria-invalid={problem ? true : undefined}
+          onChange={(event) => edit((current) => setBlockTime(current, block.key, event.target.value))}
+          onBlur={settle}
+          onKeyDown={(event) => {
+            keepBackspace(event);
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              settle();
+            }
+          }}
+        />
+      </label>
+      <button
+        data-nav
+        data-remove-block
+        className="action-tile small"
+        onClick={() => {
+          refocus.current = 'add-block';
+          edit((current) => removeBlock(current, block.key));
+        }}
+      >
+        <Icon name="close" className="action-icon" />
+        <span>Remover horário</span>
+      </button>
+      {problem && (
+        <p className="editor-problem" role="alert">
+          {problem}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** What airs at one time of the day: its items, in order. */
+function BlockItems({ block, check, library, edit, refocus }: BlockProps & { check: EditorCheck; library: Library }) {
+  // The problems of the time are on the "Horários" part; here only an empty time.
+  const problem = check.times[block.key] === undefined ? check.blocks[block.key] : undefined;
   const add = (kind: ScheduleItem['type']) => {
     edit((current) => {
       const next = addItem(current, block.key, defaultItem(kind, library));
@@ -432,48 +552,8 @@ function BlockCard({ block, check, library, edit, refocus }: BlockProps) {
     });
   };
   return (
-    <section className="editor-block" data-block={block.time} aria-label={`Bloco das ${block.time}`}>
-      <div className="editor-block-head">
-        <label className="editor-time">
-          <span className="row-label">Começa às</span>
-          <input
-            data-nav
-            data-nav-adjust
-            data-time
-            data-focus={`time-${block.key}`}
-            className="editor-input"
-            type="text"
-            inputMode="numeric"
-            value={block.time}
-            size={8}
-            maxLength={8}
-            placeholder="08:00"
-            autoComplete="off"
-            aria-invalid={problem ? true : undefined}
-            onChange={(event) => edit((current) => setBlockTime(current, block.key, event.target.value))}
-            onBlur={settle}
-            onKeyDown={(event) => {
-              keepBackspace(event);
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                settle();
-              }
-            }}
-          />
-        </label>
-        <button
-          data-nav
-          data-remove-block
-          className="action-tile small"
-          onClick={() => {
-            refocus.current = 'add-block';
-            edit((current) => removeBlock(current, block.key));
-          }}
-        >
-          <Icon name="close" className="action-icon" />
-          <span>Remover bloco</span>
-        </button>
-      </div>
+    <section className="editor-block" data-block={block.time} aria-label={`Horário das ${block.time}`}>
+      <h3 className="editor-block-title">Às {block.time}</h3>
       {problem && (
         <p className="editor-problem" role="alert">
           {problem}
@@ -486,11 +566,11 @@ function BlockCard({ block, check, library, edit, refocus }: BlockProps) {
         ))}
       </ol>
 
-      <div className="editor-add" role="group" aria-label="Acrescentar ao bloco">
+      <div className="editor-add" role="group" aria-label={`Acrescentar às ${block.time}`}>
         {(['show', 'interstitial', 'commercials'] as const).map((kind) => (
           <button key={kind} data-nav data-add={kind} className="action-tile small" onClick={() => add(kind)}>
             <Icon name="plus" className="action-icon" />
-            <span>{KIND_LABEL[kind]}</span>
+            <span>{ADD_LABEL[kind]}</span>
           </button>
         ))}
       </div>
@@ -537,7 +617,7 @@ function ItemRow({ block, item, index, check, library, edit, refocus }: ItemProp
     >
       <span className="editor-item-kind">
         <Icon name={KIND_ICON[item.type]} className="row-lead" />
-        <span className="row-label">{KIND_LABEL[item.type]}</span>
+        <span className="row-label">{itemKindLabel(item)}</span>
       </span>
 
       <div className="editor-item-controls">
@@ -603,11 +683,11 @@ function ShowSelect({ library, value, focus, onChange }: { library: Library; val
   const known = library.shows.some((show) => show.id.toLowerCase() === value.toLowerCase());
   const current = library.shows.find((show) => show.id.toLowerCase() === value.toLowerCase())?.id ?? value;
   return (
-    <select data-nav data-focus={focus} className="editor-input editor-select" aria-label="Programa" value={current} onChange={(event) => onChange(event.target.value)}>
-      {!known && <option value={value}>{value.trim() === '' ? 'Escolha o programa' : `${value} (não existe na biblioteca)`}</option>}
+    <select data-nav data-focus={focus} className="editor-input editor-select" aria-label="Desenho" value={current} onChange={(event) => onChange(event.target.value)}>
+      {!known && <option value={value}>{value.trim() === '' ? 'Escolha o desenho' : `${value} (não existe na biblioteca)`}</option>}
       {library.shows.map((show) => (
         <option key={show.id} value={show.id}>
-          {show.title === show.id ? show.id : `${show.title} (${show.id})`}
+          {showOptionLabel(show, library)}
         </option>
       ))}
     </select>
@@ -626,14 +706,14 @@ function RefSelects({ library, value, focus, onChange }: { library: Library; val
         data-focus={focus}
         data-category
         className="editor-input editor-select"
-        aria-label="Categoria da vinheta"
+        aria-label="Tipo"
         value={category}
         onChange={(event) => onChange(event.target.value)}
       >
-        {category === '' && <option value="">Escolha a categoria</option>}
+        {category === '' && <option value="">Escolha o tipo</option>}
         {categories.map((entry) => (
           <option key={entry} value={entry}>
-            {entry}
+            {categoryName(entry)}
           </option>
         ))}
       </select>
@@ -641,7 +721,7 @@ function RefSelects({ library, value, focus, onChange }: { library: Library; val
         data-nav
         data-ref
         className="editor-input editor-select"
-        aria-label="Qual vinheta"
+        aria-label="Qual"
         value={chosen?.ref ?? value}
         onChange={(event) => onChange(event.target.value)}
       >
@@ -693,7 +773,7 @@ function DonePage({ result, reread, dropped, onWatch, onClose }: { result: Repla
   const note =
     dropped > 0 ? (
       <p>
-        {dropped === 1 ? 'Uma escolha da agenda' : `${dropped} escolhas da agenda`} apontava para um item, bloco ou dia que saiu do canal e não foi mantida.
+        {dropped === 1 ? 'Uma escolha de episódio' : `${dropped} escolhas de episódio`} apontava para um desenho, horário ou dia que saiu do canal e não foi mantida.
       </p>
     ) : null;
   if (result.kind === 'written') {
