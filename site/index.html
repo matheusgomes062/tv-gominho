@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TV Gominho</title>
+<meta name="description" content="Liga a TV e o desenho já está passando. Um canal infantil como nos anos 2000, com os desenhos que você escolher, sem internet e sem algoritmo.">
+<meta property="og:title" content="TV Gominho">
+<meta property="og:description" content="Liga a TV e o desenho já está passando. Um canal infantil como nos anos 2000, com os desenhos que você escolher.">
+<meta property="og:image" content="https://matheusgomes062.github.io/tv-gominho/img/sala.jpg">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0d1020">
+<link rel="icon" href="img/logo.webp" type="image/webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Lilita+One&family=Press+Start+2P&display=swap">
+<style>
+/* Layout: the hero is a photo of a Brazilian living room in the 2000s, with the cartoon playing inside
+   the real TV in it. Text sits on the empty wall to the left, over a navy scrim; on phones the photo
+   comes first and the text below it. The rest of the page uses the app's own tokens
+   (pacotes/interface/src/styles.css): navy, cream, yellow for actions, OSD green. */
+:root {
+  --bg: #0d1020;
+  --bg-deep: #080a16;
+  --surface: #161b33;
+  --surface-strong: #232a4d;
+  --line: #2c3460;
+  --text: #f6f2e9;
+  --muted: #b3b1c6;
+  --faint: #8a89a3;
+  --accent: #ffc928;
+  --accent-text: #241a00;
+  --osd: #5dff6a;
+  --focus: #ffffff;
+  --font-display: 'Lilita One', 'Arial Rounded MT Bold', 'Figtree', system-ui, sans-serif;
+  --font-body: 'Figtree', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-osd: 'Press Start 2P', ui-monospace, Consolas, monospace;
+  --font-mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  /* Type scale: display, h2, h3, lead, body, small, caption. */
+  --text-display: clamp(3.4rem, 7vw, 5.4rem);
+  --text-h2: clamp(2.1rem, 4.4vw, 2.9rem);
+  --text-h3: 1.35rem;
+  --text-lead: clamp(1.25rem, 2.2vw, 1.5rem);
+  --text-body: 1.0625rem;
+  --text-small: 0.9375rem;
+  --text-caption: 0.8125rem;
+  --radius: 14px;
+  --radius-small: 9px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { font-synthesis: none; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.wrap {
+  max-width: 1160px;
+  margin-inline: auto;
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
+}
+h1, h2, h3 { margin: 0; font-family: var(--font-display); text-wrap: balance; }
+h2 { font-size: var(--text-h2); font-weight: 400; line-height: 1.02; letter-spacing: 0.005em; }
+h3 { font-size: var(--text-h3); font-weight: 400; line-height: 1.15; letter-spacing: 0.01em; }
+p { margin: 0; }
+a { color: var(--accent); text-decoration-thickness: from-font; text-underline-offset: 3px; }
+code, pre { font-family: var(--font-mono); }
+:not(pre) > code { font-size: 0.88em; background: var(--surface-strong); padding: 0.08em 0.38em; border-radius: 5px; white-space: nowrap; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+::selection { background: rgba(255, 201, 40, 0.3); }
+[id] { scroll-margin-top: 24px; }
+.eyebrow { font-size: var(--text-caption); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.lede { color: var(--muted); max-width: 62ch; text-wrap: pretty; }
+.section-head { display: grid; gap: 14px; max-width: 64ch; }
+
+.btn {
+  appearance: none; border: 0; cursor: pointer; text-decoration: none;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; min-width: 44px; padding-inline: 18px; border-radius: 999px;
+  font: 600 var(--text-small)/1 var(--font-body); white-space: nowrap;
+  background: rgba(35, 42, 77, 0.92); color: var(--text);
+  transition-property: background-color, color, transform;
+  transition-duration: 150ms; transition-timing-function: ease-out;
+  -webkit-tap-highlight-color: transparent; user-select: none;
+}
+.btn:hover { background: #313a69; }
+.btn:active { transform: scale(0.96); }
+.btn.primary { background: var(--accent); color: var(--accent-text); }
+.btn.primary:hover { background: #ffd54f; }
+.btn.icon { padding-inline: 0; }
+.btn[aria-pressed="true"] { background: var(--osd); color: #052b08; }
+.btn svg { width: 18px; height: 18px; flex: none; }
+
+/* ---------- Hero ---------- */
+.hero { position: relative; isolation: isolate; overflow: hidden; background: #3a2d20; }
+/* Starts a little to the right so the estante clears the text; the left edge fades into the wall tone. */
+.scene { position: absolute; inset: 0 0 0 20%; z-index: -2; overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 10%); mask-image: linear-gradient(90deg, transparent 0, #000 10%); }
+.scene img { width: 100%; height: 100%; object-fit: cover; object-position: 40% 50%; display: block; }
+/* The picture is mapped onto the TV's screen in the photo; see placeScreen(). */
+/* The <video> itself sits on the screen (Chrome won't autoplay a muted video that isn't visible);
+   the canvas above it only draws the OSD, the scanlines and the static. */
+.screen, .osd, .glass { position: absolute; left: 0; top: 0; width: 640px; height: 480px; transform-origin: 0 0; border-radius: 22px / 18px; pointer-events: none; }
+.screen { background: #050608; overflow: hidden; }
+.screen video { display: block; width: 100%; height: 100%; object-fit: fill; }
+.glass {
+  background:
+    radial-gradient(120% 90% at 30% 10%, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0) 45%),
+    radial-gradient(90% 90% at 50% 50%, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, 0.45) 100%);
+  box-shadow: inset 0 0 18px 6px rgba(0, 0, 0, 0.55);
+}
+.scrim { position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(8, 10, 22, 0.94) 0%, rgba(8, 10, 22, 0.86) 30%, rgba(8, 10, 22, 0.35) 46%, rgba(8, 10, 22, 0) 58%),
+    linear-gradient(0deg, rgba(8, 10, 22, 0.6), rgba(8, 10, 22, 0) 28%),
+    rgba(8, 10, 22, 0.12); }
+.hero-inner { min-height: clamp(600px, 88svh, 860px); display: grid; align-items: center; padding-block: 72px 112px; }
+.hero-copy { display: grid; gap: 18px; max-width: 29rem; }
+/* The logo is a crayon drawing; on the dark scrim its blue letters would vanish, so it sits on a
+   sheet of notebook paper taped to the wall, where a kid's drawing reads clearly. */
+.hero h1 { justify-self: start; padding-top: 10px; }
+.logo-paper {
+  position: relative; display: block; width: clamp(210px, 21vw, 280px); padding: 14px 14px 10px;
+  background:
+    linear-gradient(90deg, transparent 18px, rgba(214, 74, 74, 0.32) 18px 19px, transparent 19px),
+    repeating-linear-gradient(180deg, transparent 0 21px, rgba(86, 136, 204, 0.18) 21px 22px),
+    #fbf8ef;
+  border-radius: 2px; transform: rotate(-2.5deg);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 32px rgba(0, 0, 0, 0.45);
+}
+.logo-paper::before {
+  content: ""; position: absolute; top: -11px; left: 50%; width: 86px; height: 24px; pointer-events: none;
+  transform: translateX(-50%) rotate(3deg);
+  background: rgba(255, 244, 205, 0.78); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+.logo-paper img { display: block; width: 100%; height: auto; filter: saturate(1.15) contrast(1.12); }
+.tagline { font-family: var(--font-display); font-size: var(--text-lead); font-weight: 400; line-height: 1.2; letter-spacing: 0.01em; text-wrap: balance; }
+.hero .lede { color: #d9d6e4; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+.hero-foot {
+  position: absolute; inset-inline: 0; bottom: 20px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+}
+.credit { font-size: var(--text-caption); color: #b9b7cb; max-width: 40rem; text-wrap: pretty; }
+.remote { display: flex; align-items: center; gap: 8px; padding: 8px; background: rgba(8, 10, 22, 0.78); border-radius: 999px; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.remote .ch { font-family: var(--font-osd); font-size: 0.7rem; color: var(--osd); min-width: 6.4em; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* ---------- Sections ---------- */
+main section { padding-block: 76px; border-top: 1px solid var(--line); }
+main section .wrap { display: grid; gap: 32px; }
+
+.why { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr); gap: 16px; align-items: start; }
+.reasons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 28px; }
+.reason { border-top: 2px solid var(--line); padding-top: 16px; display: grid; gap: 8px; align-content: start; }
+.reason p { color: var(--muted); font-size: var(--text-small); text-wrap: pretty; }
+.guide { margin: 0; background: var(--bg-deep); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; display: grid; gap: 14px; }
+.guide figcaption { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.guide-note { font-size: var(--text-caption); color: var(--faint); }
+.guide ol { list-style: none; margin: 0; padding: 0; display: grid; }
+.guide li { display: grid; grid-template-columns: 4.2rem minmax(0, 1fr); gap: 12px; padding-block: 9px; border-top: 1px solid var(--line); font-size: var(--text-small); }
+.guide li:first-child { border-top: 0; }
+.guide time { font-family: var(--font-osd); font-size: 0.72rem; color: var(--osd); padding-top: 0.2em; font-variant-numeric: tabular-nums; }
+.guide li.off span { color: var(--muted); }
+.guide li.off time { color: var(--muted); }
+
+.flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.step { background: var(--surface); border-radius: var(--radius); padding: 22px; display: grid; gap: 12px; grid-template-rows: auto auto 1fr; min-width: 0; }
+.step-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.step-num { font-family: var(--font-display); font-weight: 400; font-size: 1.1rem; color: var(--osd); font-variant-numeric: tabular-nums; }
+.step p { color: var(--muted); font-size: var(--text-small); text-wrap: pretty; }
+pre {
+  margin: 0; background: var(--bg-deep); border-radius: var(--radius-small); padding: 14px 16px;
+  overflow-x: auto; font-size: var(--text-caption); line-height: 1.6; color: #d9d6cb; align-self: end;
+}
+pre::-webkit-scrollbar { height: 8px; }
+pre::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.18); border-radius: 4px; }
+pre .c { color: var(--faint); }
+pre .k { color: var(--accent); }
+pre .g { color: var(--osd); }
+
+.places { margin: 0; display: grid; }
+.places div { display: grid; grid-template-columns: minmax(0, 16rem) minmax(0, 1fr); gap: 8px 28px; padding-block: 16px; border-top: 1px solid var(--line); }
+.places div:last-child { border-bottom: 1px solid var(--line); }
+.places dt { font-weight: 600; }
+.places dd { margin: 0; color: var(--muted); max-width: 62ch; text-wrap: pretty; }
+
+.tools { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 28px; align-items: start; }
+.terminal { background: var(--bg-deep); border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); min-width: 0; }
+.terminal pre { border-radius: 0; background: transparent; padding: 16px 18px 20px; }
+.tool { display: grid; gap: 4px; padding-block: 14px; border-top: 1px solid var(--line); }
+.tool:first-child { border-top: 0; padding-top: 0; }
+.tool b { font-family: var(--font-mono); font-weight: 600; color: var(--accent); font-size: var(--text-small); }
+.tool p { color: var(--muted); font-size: var(--text-small); text-wrap: pretty; }
+.tool small { color: var(--faint); font-size: var(--text-caption); }
+
+
+.start { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 28px; align-items: start; }
+
+footer { border-top: 1px solid var(--line); background: var(--bg-deep); }
+footer .wrap { padding-block: 36px 44px; display: grid; gap: 10px; color: var(--muted); font-size: var(--text-small); }
+footer p { max-width: 82ch; text-wrap: pretty; }
+footer strong { color: var(--text); font-weight: 600; }
+
+@media (max-width: 900px) {
+  .flow, .tools, .start, .why { grid-template-columns: minmax(0, 1fr); }
+  main section { padding-block: 56px; }
+}
+@media (max-width: 560px) {
+  .reasons, .places div { grid-template-columns: minmax(0, 1fr); }
+}
+/* Phones: the photo first, cropped around the TV; the text below it on the page colour. */
+@media (max-width: 720px) {
+  .hero { display: grid; background: var(--bg); }
+  .scene { position: relative; inset: auto; z-index: 0; aspect-ratio: 4 / 3.4; -webkit-mask-image: none; mask-image: none; }
+  .scene img { object-position: 60% 40%; }
+  .scene::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(0deg, var(--bg) 0%, rgba(13, 16, 32, 0) 22%); }
+  .scrim { display: none; }
+  .hero-inner { min-height: 0; padding-block: 8px 28px; }
+  .hero-foot { position: static; padding-bottom: 28px; flex-direction: column-reverse; align-items: stretch; }
+  .remote { align-self: center; }
+  .credit { text-align: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn:active { transform: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="scene" id="scene">
+    <img src="img/sala.jpg" width="1536" height="864" alt="Duas crianças de pijama, sentadas de costas no tapete, assistindo à TV de tubo prata na estante de mogno de uma sala brasileira dos anos 2000.">
+    <div class="screen" id="screen" aria-hidden="true"></div>
+    <canvas class="osd" id="osd" width="640" height="480" aria-hidden="true"></canvas>
+    <div class="glass" id="glass" aria-hidden="true"></div>
+  </div>
+  <div class="scrim" aria-hidden="true"></div>
+  <div class="wrap hero-inner">
+    <div class="hero-copy">
+      <p class="eyebrow">Para quem cresceu nos anos 2000</p>
+      <h1><span class="logo-paper"><img src="img/logo.webp" width="640" height="634" alt="TV Gominho"></span></h1>
+      <p class="tagline">Liga a TV e o desenho já está passando.</p>
+      <p class="lede">Lembra de acordar, ligar a TV e o desenho já estar passando? Sem escolher episódio, sem fila de próximo vídeo, sem algoritmo. A TV Gominho traz aquela manhã de volta para os seus filhos, com os desenhos que você escolher.</p>
+      <div class="actions">
+        <a class="btn primary" href="#porque">Por que funciona</a>
+        <a class="btn" href="#comecar">Instalar</a>
+      </div>
+    </div>
+  </div>
+  <div class="wrap hero-foot">
+    <p class="credit">Na TV: <em>Felix</em> (1919 e 1922) e <em>Superman</em> da Fleischer (1941), em domínio público. A sala é uma imagem ilustrativa gerada por IA.</p>
+    <div class="remote" role="group" aria-label="Controle da TV">
+      <button class="btn icon" id="prev" type="button" aria-label="Canal anterior">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <span class="ch" id="chLabel" aria-live="polite">CH 03</span>
+      <button class="btn icon" id="next" type="button" aria-label="Próximo canal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
+      <button class="btn" id="sound" type="button" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
+        <span id="soundText">Ligar o som</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="porque" aria-labelledby="porque-t">
+    <div class="wrap">
+      <div class="section-head">
+                <h2 id="porque-t">A TV tinha hora. E isso era bom.</h2>
+        <p class="lede">A gente não escolhia o que ia passar. Ligava a TV, pegava o desenho no meio, esperava o intervalo e, quando o bloco acabava, ia brincar. Era mais simples, e sobrava tempo para o resto do dia. A TV Gominho devolve esse ritmo para quem está crescendo agora.</p>
+      </div>
+      <div class="why">
+        <div class="reasons">
+          <article class="reason">
+            <h3>Ligou, está passando</h3>
+            <p>Nada de menu, catálogo ou dez minutos escolhendo. A criança liga a TV e o canal já está no ar, no meio do desenho, como era.</p>
+          </article>
+          <article class="reason">
+            <h3>Tem hora para acabar</h3>
+            <p>Os desenhos passam no horário da grade. Quando o bloco termina, a TV sai do ar e mostra a que horas volta. Não tem próximo episódio automático.</p>
+          </article>
+          <article class="reason">
+            <h3>Só passa o que você escolheu</h3>
+            <p>O canal toca só o que está na pasta: os desenhos que você aprovou. Nenhuma recomendação, nenhum vídeo estranho no meio.</p>
+          </article>
+          <article class="reason">
+            <h3>Sem internet e sem conta</h3>
+            <p>Funciona num pendrive, no Raspberry Pi ou no computador ligado na TV. Não pede login e não envia nada para a internet.</p>
+          </article>
+        </div>
+        <figure class="guide" aria-labelledby="guide-t">
+          <figcaption id="guide-t"><span class="eyebrow">Uma manhã na TV Gominho</span><span class="guide-note">Exemplo de grade</span></figcaption>
+          <ol>
+            <li><time>08:00</time><span>Abertura</span></li>
+            <li><time>08:01</time><span>O Gato Félix</span></li>
+            <li><time>08:09</time><span>Intervalo: “já voltamos” e três comerciais</span></li>
+            <li><time>08:12</time><span>Popeye</span></li>
+            <li><time>08:28</time><span>Chamada: amanhã tem Superman</span></li>
+            <li><time>08:29</time><span>Superman</span></li>
+            <li><time>08:39</time><span>Encerramento</span></li>
+            <li class="off"><time>08:40</time><span>Fora do ar. Volta amanhã às 08:00.</span></li>
+          </ol>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="como" aria-labelledby="como-t">
+    <div class="wrap">
+      <div class="section-head">
+                <h2 id="como-t">Da pasta para a TV em três passos</h2>
+        <p class="lede">Nada vai para a internet. O app lê a pasta direto do computador, do Raspberry Pi ou do pendrive.</p>
+      </div>
+      <div class="flow">
+        <article class="step">
+          <div class="step-top"><h3>A biblioteca</h3><span class="step-num">01</span></div>
+          <p>Uma pasta com os seus episódios e vinhetas. Nomes baixados, como <code>DBZ_Episodio 001</code> ou <code>S01E05</code>, já são entendidos.</p>
+<pre><span class="c">biblioteca/</span>
+  programas/
+    gato-felix/
+      programa.yaml
+      episodios/
+        001 - Loucuras de Gato.mp4
+  vinhetas/
+    aberturas/  intervalos/
+    comerciais/</pre>
+        </article>
+        <article class="step">
+          <div class="step-top"><h3>A grade</h3><span class="step-num">02</span></div>
+          <p><code>tv-gominho grade</code> monta o canal: abertura, desenhos em rodízio, chamadas entre eles e encerramento, no tamanho do bloco.</p>
+<pre><span class="k">blocos:</span>
+  - horario: <span class="g">"08:00"</span>
+    itens:
+      - vinheta: aberturas
+      - programa: gato-felix
+      - vinheta: intervalos
+      - comerciais: 3
+      - programa: superman-fleischer</pre>
+        </article>
+        <article class="step">
+          <div class="step-top"><h3>A TV</h3><span class="step-num">03</span></div>
+          <p>O canal segue o relógio, como uma TV ao vivo: ligou às 8h10, pega o desenho no meio. No modo Biblioteca, você escolhe o episódio.</p>
+<pre><span class="c"># configuracoes.yaml: só o
+# que muda em relação ao padrão</span>
+<span class="k">horario:</span> real
+<span class="k">crt:</span>
+  intensidade: suave
+  curvatura: 30</pre>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="onde" aria-labelledby="onde-t">
+    <div class="wrap">
+      <div class="section-head">
+                <h2 id="onde-t">Na TV que você tiver</h2>
+      </div>
+      <dl class="places">
+        <div><dt>PC ou notebook</dt><dd>No Chrome ou no Edge, escolhendo a pasta da biblioteca, ou com <code>tv-gominho servir</code>, que já abre com ela.</dd></div>
+        <div><dt>Raspberry Pi</dt><dd>Modo quiosque ligado na TV: o Pi liga direto no canal, em tela cheia.</dd></div>
+        <div><dt>Qualquer TV com USB</dt><dd>Pendrive com a programação pronta em MP4, com intervalos e efeito de tubo. <code>tv-gominho verificar</code> confere se a TV vai tocar.</dd></div>
+        <div><dt>Outros aparelhos da casa</dt><dd><code>tv-gominho servir --rede</code> e o navegador do celular, da TV ou de outro PC.</dd></div>
+        <div><dt>TV Box Android</dt><dd>Ainda não: um app para Android TV lendo os episódios do pendrive está nos planos.</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section id="ferramentas" aria-labelledby="ferramentas-t">
+    <div class="wrap">
+      <div class="section-head">
+                <h2 id="ferramentas-t">Um comando para o trabalho pesado</h2>
+        <p class="lede">O <code>tv-gominho</code> faz o que o navegador não faz. É um arquivo só, e usa o ffmpeg.</p>
+      </div>
+      <div class="tools">
+        <div class="terminal" aria-label="Saída do comando tv-gominho ajuda">
+<pre><span class="g">$</span> tv-gominho ajuda
+TV Gominho: ferramentas de linha de comando
+
+Comandos:
+  <span class="k">converter</span>  Converte vídeos antigos para MP4
+  <span class="k">organizar</span>  Arruma vídeos baixados na biblioteca
+  <span class="k">grade</span>      Monta a grade com os programas
+  <span class="k">pendrive</span>   Grava a programação em MP4
+  <span class="k">verificar</span>  Confere se uma TV vai tocar
+  <span class="k">servir</span>     Abre a TV Gominho no navegador
+
+<span class="g">$</span> tv-gominho grade ./biblioteca --epoca 2004
+<span class="c">Lendo a duração de 48 vídeos… pronto.</span></pre>
+        </div>
+        <div>
+          <div class="tool"><b>converter</b><p>AVI, MKV e outros formatos antigos viram MP4 que o app toca. Os originais vão para uma pasta à parte; nada é apagado sem você pedir.</p></div>
+          <div class="tool"><b>organizar</b><p>Arruma uma pasta de downloads: reconhece o desenho, a vinheta e a emissora pelo nome do arquivo.</p><small>Opcional. Usa o Jev, uma IA da TypeSafe; só os nomes dos arquivos saem do computador.</small></div>
+          <div class="tool"><b>grade</b><p>Monta a programação no estilo da época, com as vinhetas do ano que você escolher.</p></div>
+          <div class="tool"><b>pendrive</b><p>Grava os dias da grade em MP4, em partes de menos de 4&nbsp;GB, para qualquer TV com USB.</p></div>
+          <div class="tool"><b>verificar</b><p>Confere um pendrive como o player USB da TV: codecs, níveis, FAT32 e nomes.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="comecar" aria-labelledby="comecar-t">
+    <div class="wrap">
+      <div class="start">
+        <div class="section-head">
+                    <h2 id="comecar-t">Para começar</h2>
+          <p class="lede">Precisa do Node.js 22.9 ou mais novo e, para a biblioteca de exemplo, do ffmpeg. Tudo cabe no pendrive, ao lado dos desenhos: o app tem uns 1&nbsp;MB e a ferramenta, 245&nbsp;KB. O código está no <a href="https://github.com/matheusgomes062/tv-gominho">GitHub</a>, com licença GPL-3.0.</p>
+        </div>
+<pre><span class="g">$</span> git clone https://github.com/matheusgomes062/tv-gominho.git
+<span class="g">$</span> cd tv-gominho
+<span class="g">$</span> npm install
+<span class="g">$</span> npm run exemplo:real   <span class="c"># desenhos em domínio público</span>
+<span class="g">$</span> npm run dev            <span class="c"># abre em localhost:5173</span></pre>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>A TV Gominho não distribui episódios, vinhetas nem marcas da Globo.</strong> Cada pessoa usa os próprios arquivos.</p>
+    <p>É um projeto independente de fãs, sem afiliação com a Globo. “TV Globinho” é marca de seus donos e aparece aqui só para descrever o estilo que o projeto recria.</p>
+    <p>Software livre, GPL-3.0. Código no <a href="https://github.com/matheusgomes062/tv-gominho">GitHub</a>. Os desenhos desta página estão em domínio público no Brasil; os nomes dos personagens continuam sendo marcas dos donos. A foto da sala é ilustrativa, gerada por IA.</p>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const CHANNELS = [
+    { ch: '03', show: 'O GATO FÉLIX', ep: 'Loucuras de Gato · 1919', src: 'videos/felix.mp4' },
+    { ch: '04', show: 'O GATO FÉLIX', ep: 'A Idade da Pedra · 1922', src: 'videos/felix-1922.mp4' },
+    { ch: '05', show: 'SUPERMAN', ep: 'O Cientista Maluco · 1941', src: 'videos/superman.mp4' },
+  ];
+  // The TV screen's corners in the photo (img/sala.jpg, 1536×864), traced against the silver bezel.
+  const PHOTO = { w: 1536, h: 864 };
+  const SCREEN_CORNERS = [[800, 150], [1106, 143], [800, 366], [1104, 371]]; // top-left, top-right, bottom-left, bottom-right
+
+  const scene = document.getElementById('scene');
+  const img = scene.querySelector('img');
+  const screen = document.getElementById('screen');
+  const osd = document.getElementById('osd');
+  const glass = document.getElementById('glass');
+  const g = osd.getContext('2d');
+
+  // ---------- Picture ----------
+  const noise = document.createElement('canvas');
+  noise.width = 160; noise.height = 120;
+  const ng = noise.getContext('2d');
+  const noiseImage = ng.createImageData(160, 120);
+  const scan = document.createElement('canvas');
+  scan.width = 4; scan.height = 4;
+  scan.getContext('2d').fillStyle = 'rgba(0,0,0,0.25)';
+  scan.getContext('2d').fillRect(0, 2, 4, 2);
+  const scanPattern = g.createPattern(scan, 'repeat');
+
+  const videos = CHANNELS.map((c, i) => {
+    const v = document.createElement('video');
+    v.src = c.src; v.muted = true; v.loop = true; v.playsInline = true; v.preload = i === 0 ? 'auto' : 'metadata';
+    v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
+    v.hidden = i !== 0;
+    screen.append(v);
+    return v;
+  });
+
+  // `blocked`: the browser refused even a muted autoplay (iOS low-power mode, some settings).
+  let current = 0, tuningUntil = 0, osdUntil = 0, soundOn = false, soundChosen = false, blocked = false, audio = null;
+  const pad = (n) => String(n).padStart(2, '0');
+
+  function drawStatic() {
+    const d = noiseImage.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const v = (Math.random() * 235) | 0;
+      d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255;
+    }
+    ng.putImageData(noiseImage, 0, 0);
+    g.imageSmoothingEnabled = false;
+    g.drawImage(noise, 0, 0, 640, 480);
+    g.imageSmoothingEnabled = true;
+  }
+  function osdText(text, x, y, size, align) {
+    g.font = `${size}px "Press Start 2P", monospace`;
+    g.textAlign = align; g.textBaseline = 'top';
+    g.fillStyle = '#000'; g.fillText(text, x + 3, y + 3);
+    g.shadowColor = 'rgba(93,255,106,0.8)'; g.shadowBlur = 8;
+    g.fillStyle = '#5dff6a'; g.fillText(text, x, y);
+    g.shadowBlur = 0;
+  }
+  function paint(now) {
+    const tuning = now < tuningUntil;
+    g.clearRect(0, 0, 640, 480);
+    if (tuning) drawStatic();
+    else if (blocked) {
+      g.fillStyle = 'rgba(5,6,8,0.85)'; g.fillRect(0, 0, 640, 480);
+      osdText('TOQUE PARA LIGAR', 320, 226, 20, 'center');
+    }
+    if (!tuning) {
+      const c = CHANNELS[current];
+      const t = new Date();
+      osdText(`CH ${c.ch}`, 44, 40, 28, 'left');
+      osdText(`${pad(t.getHours())}:${pad(t.getMinutes())}`, 596, 40, 28, 'right');
+      if (now < osdUntil) {
+        osdText(c.show, 44, 372, 22, 'left');
+        osdText(c.ep, 44, 408, 13, 'left');
+      }
+    }
+    g.fillStyle = scanPattern; g.fillRect(0, 0, 640, 480);
+  }
+
+  // ---------- Fitting the picture onto the screen in the photo ----------
+  // Solves the projective transform taking the canvas rectangle onto the four screen corners.
+  function homography(from, to) {
+    const A = [], b = [];
+    for (let i = 0; i < 4; i++) {
+      const [x, y] = from[i], [u, v] = to[i];
+      A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); b.push(u);
+      A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); b.push(v);
+    }
+    for (let c = 0; c < 8; c++) {
+      let p = c;
+      for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+      [A[c], A[p]] = [A[p], A[c]]; [b[c], b[p]] = [b[p], b[c]];
+      for (let r = 0; r < 8; r++) {
+        if (r === c) continue;
+        const f = A[r][c] / A[c][c];
+        for (let k = c; k < 8; k++) A[r][k] -= f * A[c][k];
+        b[r] -= f * b[c];
+      }
+    }
+    const h = b.map((value, i) => value / A[i][i]);
+    return `matrix3d(${h[0]},${h[3]},0,${h[6]},${h[1]},${h[4]},0,${h[7]},0,0,1,0,${h[2]},${h[5]},0,1)`;
+  }
+  function placeScreen() {
+    const box = scene.getBoundingClientRect();
+    const scale = Math.max(box.width / PHOTO.w, box.height / PHOTO.h);
+    const [posX, posY] = getComputedStyle(img).objectPosition.split(' ').map((p) => parseFloat(p) / 100);
+    const offsetX = (box.width - PHOTO.w * scale) * posX;
+    const offsetY = (box.height - PHOTO.h * scale) * posY;
+    const corners = SCREEN_CORNERS.map(([x, y]) => [x * scale + offsetX, y * scale + offsetY]);
+    const transform = homography([[0, 0], [640, 0], [0, 480], [640, 480]], corners);
+    screen.style.transform = transform;
+    osd.style.transform = transform;
+    glass.style.transform = transform;
+  }
+  new ResizeObserver(placeScreen).observe(scene);
+  placeScreen();
+
+  // ---------- Channel and sound ----------
+  const chLabel = document.getElementById('chLabel');
+  const soundBtn = document.getElementById('sound');
+  const soundText = document.getElementById('soundText');
+  function playCurrent() {
+    videos.forEach((v, i) => {
+      v.hidden = i !== current;
+      if (i !== current) v.pause();
+    });
+    const v = videos[current];
+    v.preload = 'auto';
+    v.muted = !soundOn;
+    v.play().then(() => { blocked = false; }, () => { blocked = true; });
+  }
+  function staticSound() {
+    if (!soundOn) return;
+    audio = audio || new AudioContext();
+    const length = audio.sampleRate * 0.45;
+    const buffer = audio.createBuffer(1, length, audio.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * 0.18 * (1 - i / length);
+    const src = audio.createBufferSource();
+    src.buffer = buffer; src.connect(audio.destination); src.start();
+  }
+  function tune(step, quiet = false) {
+    current = (current + step + CHANNELS.length) % CHANNELS.length;
+    const now = performance.now();
+    // The first picture shows the cartoon at once; a channel change shows static first, like the app.
+    tuningUntil = reduceMotion || quiet ? now : now + 550;
+    osdUntil = tuningUntil + 4000;
+    chLabel.textContent = `CH ${CHANNELS[current].ch}`;
+    staticSound();
+    playCurrent();
+  }
+  function setSound(on) {
+    soundOn = on;
+    soundChosen = true;
+    soundBtn.setAttribute('aria-pressed', String(soundOn));
+    soundText.textContent = soundOn ? 'Som ligado' : 'Ligar o som';
+    playCurrent();
+  }
+  document.getElementById('prev').addEventListener('click', () => tune(-1));
+  document.getElementById('next').addEventListener('click', () => tune(1));
+  soundBtn.addEventListener('click', () => setSound(!soundOn));
+  // Browsers only allow sound after the visitor interacts, so the first click, tap or key anywhere turns it
+  // on (and starts the picture if autoplay was refused). A first click on the sound button decides by itself.
+  function firstGesture(event) {
+    if (soundChosen) return;
+    if (event.target instanceof Element && event.target.closest('#sound')) return;
+    setSound(true);
+  }
+  document.addEventListener('click', firstGesture, true);
+  document.addEventListener('keydown', firstGesture, true);
+
+  // ---------- Loop, only while the hero is on screen ----------
+  let visible = true, running = false, started = false;
+  function frame(now) {
+    if (!visible) { running = false; return; }
+    paint(now);
+    requestAnimationFrame(frame);
+  }
+  function start() {
+    if (running || !visible || !started) return;
+    running = true;
+    requestAnimationFrame(frame);
+  }
+  new IntersectionObserver(([entry]) => {
+    visible = entry.isIntersecting;
+    if (!visible) videos[current].pause();
+    else if (started) { playCurrent(); start(); }
+  }).observe(scene);
+  document.fonts.load('20px "Press Start 2P"').finally(() => { started = true; tune(0, true); start(); });
+})();
+</script>
+
+</body>
+</html>

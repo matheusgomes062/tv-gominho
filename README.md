@@ -4,6 +4,8 @@ Um player de vídeo livre (FOSS) para reviver as manhãs de desenho como na **TV
 
 Você coloca os seus próprios episódios em pastas organizadas e a TV Gominho monta o canal: `tv-gominho grade` cria a programação no estilo da TV Globinho (abertura, desenhos, chamadas, intervalos com comerciais e vinhetas da época, encerramento), e o app passa tudo como uma TV ao vivo.
 
+> **Site:** https://matheusgomes062.github.io/tv-gominho/
+>
 > **Status:** em desenvolvimento. Roda no navegador (Chrome/Edge), num Raspberry Pi ligado na TV e em qualquer TV com USB (pendrive com a programação pronta). Veja o [roteiro](docs/roteiro.md).
 
 ## Duas formas de assistir
@@ -21,7 +23,7 @@ Você coloca os seus próprios episódios em pastas organizadas e a TV Gominho m
 | Qualquer TV com USB | Pendrive com a programação já pronta em MP4 ([pendrive.md](docs/pendrive.md)), conferido com `tv-gominho verificar` |
 | TV Box (Android TV) | App para Android TV lendo os episódios de um pendrive (planejado) |
 
-Leve: o app tem ~1 MB e a ferramenta é um arquivo de ~220 KB. `npm run pacote` junta tudo numa pasta de ~1,2 MB que cabe no pendrive ao lado da biblioteca.
+Leve: o app tem ~1 MB e a ferramenta é um arquivo de ~245 KB. `npm run pacote` junta tudo numa pasta de ~1,2 MB que cabe no pendrive ao lado da biblioteca.
 
 ## Documentação
 
@@ -37,7 +39,7 @@ Leve: o app tem ~1 MB e a ferramenta é um arquivo de ~220 KB. `npm run pacote` 
 
 ## Rodando o projeto
 
-Requisitos: [Node.js](https://nodejs.org) 22 ou mais novo. Para gerar a biblioteca de exemplo, também o [ffmpeg](https://ffmpeg.org).
+Requisitos: [Node.js](https://nodejs.org) 22.9 ou mais novo (o pacote portátil roda com 22). Para gerar a biblioteca de exemplo, também o [ffmpeg](https://ffmpeg.org).
 
 ```sh
 npm install
@@ -51,7 +53,8 @@ No navegador, clique em **Escolher biblioteca** e selecione a sua pasta `bibliot
 |---|---|
 | `npm run exemplo:real` | Baixa desenhos clássicos em domínio público (~570 MB) para `exemplo/dominio-publico/biblioteca` |
 | `npm run cli -- converter <biblioteca>` | Converte AVI, MKV e outros vídeos que o app não toca para MP4 (precisa do ffmpeg). Veja [ferramentas](docs/ferramentas.md) |
-| `npm run cli -- grade <biblioteca> --epoca 2004` | Monta o canal TV Globinho com os programas da biblioteca (`grades/tv-globinho.yaml`) |
+| `npm run cli -- organizar <downloads> <biblioteca> --simular` | Arruma vídeos baixados na biblioteca com a ajuda do Jev (IA da TypeSafe; opcional, precisa de chave em `.env`, veja [ferramentas](docs/ferramentas.md#organizar)) |
+| `npm run cli -- grade <biblioteca> --epoca 2004` | Monta o canal TV Gominho, no estilo da TV Globinho, com os programas da biblioteca (`grades/tv-gominho.yaml`) |
 | `npm run cli -- servir <biblioteca> --abrir` | Abre o app já com a biblioteca (`--rede` para outros aparelhos da casa) |
 | `npm run cli -- pendrive <biblioteca> -d E:\ -r 480` | Grava a programação em MP4 para tocar em qualquer TV; `verificar E:\` confere o resultado |
 | `npm run pacote` | Monta o pacote portátil em `pacote/tv-gominho` (app, ferramenta, atalhos e instalador do Raspberry Pi) |

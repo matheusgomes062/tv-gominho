@@ -13,3 +13,7 @@ exemplo/
 
 # Full-size original of the app logo; the app ships the WebP next to it.
 /pacotes/interface/src/assets/tv-gominho-logo.png
+
+# Answers cache and work folder the CLI writes next to the files it reads.
+.tv-gominho/
+.tv-gominho-tmp/
