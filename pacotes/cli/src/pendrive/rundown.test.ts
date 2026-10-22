@@ -98,6 +98,14 @@ describe('rundown', () => {
     expect(turma).toEqual(['003.mp4', '002.mp4', '003.mp4']);
   });
 
+  it('skips the episodes of nao-passar.yaml, so the rundown never has them', async () => {
+    const library = await load({ ...FILES, 'nao-passar.yaml': 'episodios:\n  turma: [3]\n' });
+    const rundown = await rundownOf('2026-10-12', 3, SETTINGS, 30, library); // Monday to Wednesday
+    const turma = rundown.days.map((day) => day.pieces.find((piece) => piece.path.includes('turma'))!.path.slice(-7));
+    // Without the list it would be 003, 001, 002: the sequence now runs over 001 and 002 only.
+    expect(turma).toEqual(['002.mp4', '001.mp4', '002.mp4']);
+  });
+
   it('starts every day with its first block and skips the gap to the next block (do_inicio)', async () => {
     const { days } = await rundownOf('2026-10-12', 1);
     const paths = days[0]!.pieces.map((piece) => piece.path);

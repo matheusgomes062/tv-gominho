@@ -35,6 +35,7 @@ biblioteca/
   grades/
     gominho-2003.yaml        # grades de programação (veja grade.md)
   configuracoes.yaml         # configurações padrão (opcional, veja configuracoes.md)
+  nao-passar.yaml            # programas e episódios que o app nunca escolhe sozinho (opcional)
 ```
 
 ## Regras
@@ -106,6 +107,25 @@ Por padrão, o app divide cada episódio em atos iguais e coloca um intervalo co
 ```
 
 O episódio passa até 7:32, vêm os comerciais, e ele continua de 7:32 até 14:10, e assim por diante. Esses pontos valem no lugar da divisão automática; só são ignorados se os intervalos no meio do episódio estiverem desligados (`intervalos.a_cada: 0`) ou os comerciais estiverem desligados. Pontos fora da duração do episódio são ignorados, e tempos que não fazem sentido geram um aviso na tela de Avisos.
+
+## Não passar (`nao-passar.yaml`)
+
+Para um episódio impróprio, ou um programa que as crianças ainda não podem ver, nunca passar sozinho: coloque-o em `nao-passar.yaml`, **na raiz da biblioteca** (ao lado de `configuracoes.yaml`). Nenhum arquivo é apagado.
+
+```yaml
+programas: [dragon-ball-z]          # programas inteiros (o nome da pasta)
+episodios:
+  pica-pau: [3, "temporada-02/12"]  # episódios de um programa
+  bob-esponja: 7                    # um só pode ser escrito sem lista
+```
+
+- **Programas:** o nome da pasta do programa, como na grade. **Episódios:** o programa e, para cada episódio, o número que está no começo do nome do arquivo (`012 - Título.mp4` é o `12`), o mesmo das chaves de `episodios.yaml`. Se o programa tem temporadas que repetem números, escreva a pasta da temporada antes: `"temporada-02/12"`. Um número sem temporada vale para todas as temporadas que o têm (e o app avisa).
+- **Vale para todos os canais:** as grades, o Canal Automático e os canais por programa. Só vale quando o app escolhe sozinho (o modo dinâmico); um episódio escolhido à mão na [agenda](grade.md#agenda) passa mesmo estando na lista, porque a escolha explícita vale mais.
+- **Programas em sequência:** a sequência passa a andar **só pelos episódios permitidos**. Com 5 episódios e o 2 e o 4 na lista, o programa passa 1, 3, 5, 1, 3, 5... Quem lê os mesmos arquivos vê a mesma coisa em todo aparelho, mas atenção: mudar a lista muda a contagem desde o `data_inicio`, então os episódios que passam daí em diante podem mudar. Depois de um episódio da agenda, o programa continua pelo próximo episódio **permitido** depois dele (se o escolhido estava na lista, o primeiro permitido que vem depois).
+- **Programas com `ordem: aleatoria`:** o sorteio nunca escolhe um episódio da lista. Os outros sorteios do dia (vinhetas, comerciais, outros programas) continuam iguais.
+- **Programa inteiro na lista (ou todos os episódios dele):** o item da grade é pulado, com um aviso, como um programa que não existe. O Canal Automático e os canais por programa nem incluem esse programa.
+- **Avisos, nunca erros:** programa ou episódio que não existe na biblioteca, chave desconhecida ou arquivo mal escrito geram um aviso na tela de Avisos e a entrada é ignorada; o resto da lista vale. Um arquivo com erro de sintaxe é ignorado por inteiro.
+- O `tv-gominho pendrive` também respeita a lista.
 
 ## Formatos
 

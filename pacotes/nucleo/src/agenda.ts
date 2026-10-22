@@ -63,6 +63,13 @@ export type EpisodeLookup = { index: number } | { error: 'missing' | 'ambiguous'
  * "<season folder>/<number>" when the show has seasons that repeat numbers (as in episodios.yaml).
  */
 export function findEpisodeByRef(show: Show, ref: string): EpisodeLookup {
+  const found = findEpisodesByRef(show, ref);
+  if (found.length === 0) return { error: 'missing' };
+  return found.length === 1 ? { index: found[0]! } : { error: 'ambiguous' };
+}
+
+/** Every episode a reference points at: more than one when seasons repeat the number and the reference has no season. */
+export function findEpisodesByRef(show: Show, ref: string): number[] {
   const slash = ref.lastIndexOf('/');
   const season = slash >= 0 ? ref.slice(0, slash).toLowerCase() : null;
   const number = Number(slash >= 0 ? ref.slice(slash + 1) : ref);
@@ -72,8 +79,7 @@ export function findEpisodeByRef(show: Show, ref: string): EpisodeLookup {
     if (season !== null && (episode.season ?? '').toLowerCase() !== season) return;
     found.push(index);
   });
-  if (found.length === 0) return { error: 'missing' };
-  return found.length === 1 ? { index: found[0]! } : { error: 'ambiguous' };
+  return found;
 }
 
 function agendaAnchors(schedule: Schedule, library: Library): Anchor[] {
@@ -94,10 +100,14 @@ function agendaAnchors(schedule: Schedule, library: Library): Anchor[] {
 /**
  * Which episode a show airs at its `ordinal`-th airing (0 = the first one since `data_inicio`):
  * the latest anchor at or before it, plus the airings since, wrapping at the end of the show.
- * Without anchors that is `ordinal` itself, as it always was. Null for a random show
- * (`random`) that no pick pins: the engine draws one.
+ * `allowed` are the episodes the dynamic mode may choose (ascending indices of `Show.episodes`; all of
+ * them without a nao-passar.yaml): the count runs over those only, which is how blocked episodes are
+ * skipped. An anchor airs as it is, blocked or not, and the airings after it go on with the allowed
+ * episodes that follow it. Without anchors that is `allowed[ordinal]`, as it always was.
+ * Null for a random show (`random`) that no pick pins: the engine draws one. Also null when nothing
+ * is allowed and no pick pins the airing: the engine skips the item.
  */
-export type EpisodeIndexOf = (show: string, ordinal: number, episodes: number, random: boolean) => number | null;
+export type EpisodeIndexOf = (show: string, ordinal: number, allowed: readonly number[], random: boolean) => number | null;
 
 export function createEpisodeIndexOf(schedule: Schedule, library: Library, days: ReadonlySet<Weekday>): EpisodeIndexOf {
   const start = isoToDayNumber(schedule.startDate);
@@ -122,11 +132,21 @@ export function createEpisodeIndexOf(schedule: Schedule, library: Library, days:
   // Stable: on the same ordinal the anchor of the later source stays last, and wins.
   for (const list of byShow.values()) list.sort((a, b) => a.ordinal - b.ordinal);
 
-  return (show, ordinal, episodes, random) => {
+  /** The `since`-th airing after the anchor `episode` (0 = the anchor itself): the allowed episodes that follow it, wrapping. */
+  const after = (episode: number, since: number, allowed: readonly number[]): number | null => {
+    if (since === 0) return episode;
+    if (allowed.length === 0) return null;
+    const before = allowed.filter((index) => index < episode).length;
+    // A blocked anchor is not in `allowed`: the first airing after it is the first allowed episode past it.
+    return allowed[mod(before + since - (allowed.includes(episode) ? 0 : 1), allowed.length)]!;
+  };
+
+  return (show, ordinal, allowed, random) => {
     let latest: Placed | undefined;
     for (const anchor of byShow.get(show) ?? []) if (anchor.ordinal <= ordinal) latest = anchor;
     const since = latest ? ordinal - latest.ordinal : 0;
-    if (random) return latest && since < latest.pinned ? mod(latest.episodeIndex + since, episodes) : null;
-    return mod(latest ? latest.episodeIndex + since : ordinal, episodes);
+    if (random) return latest && since < latest.pinned ? after(latest.episodeIndex, since, allowed) : null;
+    if (latest) return after(latest.episodeIndex, since, allowed);
+    return allowed.length > 0 ? allowed[mod(ordinal, allowed.length)]! : null;
   };
 }

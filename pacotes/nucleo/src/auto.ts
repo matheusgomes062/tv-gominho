@@ -1,6 +1,10 @@
+import { allowedEpisodes } from './blocklist';
 import { WEEKDAYS } from './dates';
 import { generateSchedule } from './generate';
-import type { Library, Schedule, ScheduleItem } from './types';
+import type { Library, Schedule, ScheduleItem, Show } from './types';
+
+/** The shows with something the dynamic mode may air: a show that is all in nao-passar.yaml has no channel and no slot. */
+const airable = (library: Library): Show[] => library.shows.filter((show) => allowedEpisodes(library, show).length > 0);
 
 export const AUTO_SCHEDULE_ID = '__automatico';
 
@@ -11,8 +15,9 @@ export const AUTO_SCHEDULE_ID = '__automatico';
  * What goes inside and after the episodes is up to the commercial breaks.
  */
 export function createAutoSchedule(library: Library): Schedule | null {
-  if (!library.shows.some((show) => show.episodes.length > 0)) return null;
-  const { schedule } = generateSchedule(library, () => undefined, {
+  const shows = airable(library);
+  if (shows.length === 0) return null;
+  const { schedule } = generateSchedule({ ...library, shows }, () => undefined, {
     startDate: '2000-01-01',
     days: [...WEEKDAYS],
     blocks: [{ start: 0, length: 0 }],
@@ -42,10 +47,9 @@ const MAX_EPISODES_PER_DAY = 40;
  * Shows are in library order; the id is stable (`__programa:<folder>`).
  */
 export function createShowChannels(library: Library): Schedule[] {
-  return library.shows
-    .filter((show) => show.episodes.length > 0)
+  return airable(library)
     .map((show) => {
-      const count = Math.min(show.episodes.length, MAX_EPISODES_PER_DAY);
+      const count = Math.min(allowedEpisodes(library, show).length, MAX_EPISODES_PER_DAY);
       const items: ScheduleItem[] = [];
       for (let i = 0; i < count; i++) {
         items.push({ type: 'show', show: show.id, count: 1 });

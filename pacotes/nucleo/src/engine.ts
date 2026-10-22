@@ -14,6 +14,7 @@ import {
   type Weekday,
 } from './dates';
 import { createEpisodeIndexOf, showAirings } from './agenda';
+import { allowedEpisodes } from './blocklist';
 import { bumpersOf, groupBumpers, NO_BUMPERS, type BreakBumpers } from './bumpers';
 import { findShow, resolveInterstitials } from './library';
 import { createRng, hashString, pick, shuffled, type Rng } from './random';
@@ -83,6 +84,7 @@ export function planDay(schedule: Schedule, library: Library, date: string, opti
   // episode picked in the agenda (see agenda.ts).
   const airingsBefore = countDaysInSet(isoToDayNumber(schedule.startDate), airingDay, days);
   const episodeIndexOf = createEpisodeIndexOf(schedule, library, days);
+  const allowedOf = new Map<Show, number[]>();
   const counters = new Map<string, number>();
   for (const [show, count] of showAirings(schedule).perDay) counters.set(show, airingsBefore * count);
 
@@ -96,10 +98,15 @@ export function planDay(schedule: Schedule, library: Library, date: string, opti
           const counter = counters.get(key) ?? 0;
           counters.set(key, counter + 1);
           if (!show || show.episodes.length === 0) continue;
+          // What the dynamic mode may choose (nao-passar.yaml takes episodes out); the count runs over those.
+          let allowed = allowedOf.get(show);
+          if (!allowed) allowedOf.set(show, (allowed = allowedEpisodes(library, show)));
           const random = show.order === 'aleatoria';
-          // A random show always draws, even when a pick decides, so the day's other draws don't change.
-          const drawn = random ? Math.floor(rng() * show.episodes.length) : 0;
-          const episodeIndex = episodeIndexOf(key, counter, show.episodes.length, random) ?? drawn;
+          // A random show always draws, even when a pick decides or nothing is allowed, so the day's other draws don't change.
+          const drawn = random ? Math.floor(rng() * allowed.length) : 0;
+          // Nothing left to air (all blocked, no pick): the item is skipped, like a missing show.
+          const episodeIndex = episodeIndexOf(key, counter, allowed, random) ?? allowed[drawn];
+          if (episodeIndex === undefined) continue;
           const episode = show.episodes[episodeIndex]!;
           items.push({ kind: 'episode', path: episode.path, show, episode, episodeIndex });
         }
