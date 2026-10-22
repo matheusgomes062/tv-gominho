@@ -45,7 +45,7 @@ scripts/raspberry-pi/  # instalador do modo quiosque (usa o `tv-gominho servir`)
 
 - **`nucleo`** recebe a lista de arquivos por um "adaptador" (pasta escolhida no navegador, sistema de arquivos do Node, pendrive no Android). Assim, a mesma lógica roda em todo lugar.
 - **Primeira versão:** a `interface` roda sozinha no navegador e lê a pasta da biblioteca direto do computador, sem servidor (também abrindo o `index.html` direto de um pendrive). Com o `tv-gominho servir`, o mesmo app recebe a biblioteca pela rede e abre sozinho no canal.
-- **Leve:** o app inteiro tem ~1 MB (o JavaScript viaja comprimido, ~120 KB); a ferramenta é um arquivo de ~220 KB. No efeito CRT, o quadro só é redesenhado quando o vídeo tem quadro novo, e a resolução interna do tubo cai sozinha (100%, 75%, 50%) se o vídeo começar a perder quadros, para aparelhos fracos como o Raspberry Pi.
+- **Leve:** o app inteiro tem ~1 MB (o JavaScript viaja comprimido, ~120 KB); a ferramenta é um arquivo de ~245 KB. No efeito CRT, o quadro só é redesenhado quando o vídeo tem quadro novo, e a resolução interna do tubo cai sozinha (100%, 75%, 50%) se o vídeo começar a perder quadros, para aparelhos fracos como o Raspberry Pi.
 - **Efeito CRT:** shader WebGL sobre o vídeo na interface. No pendrive, o efeito é aplicado com filtros do ffmpeg na hora de gerar os arquivos.
 - **Formatos de vídeo:** a interface toca MP4 (H.264 + AAC). Arquivos antigos (AVI, MKV, etc.) são convertidos uma vez pela `cli` (`tv-gominho converter`, veja [ferramentas.md](ferramentas.md)). O Raspberry Pi e as TV Boxes não têm força para converter em tempo real.
 

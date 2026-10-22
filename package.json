@@ -6,11 +6,15 @@
   "workspaces": [
     "pacotes/*"
   ],
+  "engines": {
+    "node": ">=22.9"
+  },
   "scripts": {
     "dev": "npm run dev -w @tv-gominho/interface --",
     "build": "npm run build --workspaces --if-present",
-    "cli": "npm run build -w @tv-gominho/cli --silent && node pacotes/cli/dist/tv-gominho.mjs",
+    "cli": "npm run build -w @tv-gominho/cli --silent && node --env-file-if-exists=.env pacotes/cli/dist/tv-gominho.mjs",
     "test": "vitest run",
+    "avaliar:jev": "node scripts/avaliar-jev.mjs",
     "typecheck": "tsc -p pacotes/nucleo && tsc -p pacotes/interface && tsc -p pacotes/cli",
     "exemplo": "node scripts/gerar-exemplo.mjs",
     "exemplo:real": "node scripts/baixar-exemplo.mjs",

@@ -31,7 +31,8 @@ Sem servidor e sem instalação: uma página que lê a pasta `biblioteca` direto
 ### Fase 3: Ferramentas e pendrive
 - Ferramenta `converter` (ffmpeg) ✅ (pacote `cli`; detecta formatos antigos e codecs incompatíveis, só troca o contêiner quando dá, originais vão para `.originais`, normalização de áudio opcional; veja [ferramentas.md](ferramentas.md))
 - Ferramenta `pendrive` na linha de comando ✅ (`tv-gominho pendrive`: dias da grade no estilo `do_inicio`, intervalos comerciais, partes de menos de 4 GB, `--simular`, cópia da biblioteca, retomada, `--resolucao 480`; veja [pendrive.md](pendrive.md)). Falta a tela "Criar pendrive" na interface
-- Ferramenta `grade` ✅: monta o canal TV Globinho (aberturas, chamadas, encerramentos e vinhetas de intervalo da época) com os programas da biblioteca; o Canal Automático usa o mesmo motor
+- Ferramenta `organizar` ✅: arruma vídeos baixados na biblioteca com o Jev (TypeSafe), que reconhece programa, tipo de vídeo e emissora pelo nome; opcional, só os nomes saem do computador
+- Ferramenta `grade` ✅: monta o canal TV Gominho no estilo da TV Globinho (aberturas, chamadas, encerramentos e vinhetas de intervalo da época) com os programas da biblioteca; o Canal Automático usa o mesmo motor
 - Ferramenta `verificar` ✅: confere um pendrive como o player USB da TV (codecs, níveis, FAT32, nomes)
 - Efeito CRT em ffmpeg, divisão em partes < 4 GB, normalização de áudio ✅
 - Teste em pelo menos 3 modelos de TV (até lá, o `verificar` compara com os limites publicados pelos fabricantes)
@@ -55,4 +56,8 @@ Sem servidor e sem instalação: uma página que lê a pasta `biblioteca` direto
 ## Em aberto
 
 1. **Fontes das grades históricas.** Onde pesquisar a programação de cada ano (acervos de jornais, guias de TV, fóruns e gravações de fãs). Ponto de partida: [lista de programas da TV Globinho](programas-tv-globinho.md).
-2. ~~**Biblioteca de exemplo.**~~ Primeira versão: `npm run exemplo:real` baixa Superman (Fleischer), Popeye e Gato Félix em domínio público do Internet Archive (fontes em `CREDITOS.txt`). Falta confirmar o status de cada título com mais cuidado antes de divulgar.
+2. ~~**Biblioteca de exemplo.**~~ Primeira versão: `npm run exemplo:real` baixa Superman (Fleischer), Popeye e Gato Félix em domínio público do Internet Archive (fontes em `CREDITOS.txt`). Conferido em 2026-10-21 (levantamento, não parecer jurídico):
+   - **Brasil:** obras audiovisuais ficam protegidas por 70 anos contados de 1º de janeiro do ano seguinte à divulgação (Lei 9.610/98, art. 44). Os 12 desenhos são de 1919 a 1942, então estão em domínio público no Brasil desde 2013 ou antes.
+   - **EUA:** os Gato Félix (1919–1923) são anteriores a 1929. Os Superman da Fleischer (1941–1942) e os três especiais coloridos do Popeye (1936–1939) não tiveram o copyright renovado; no caso do Popeye a fonte é secundária (sem registro oficial encontrado). "O Pequeno Zezinho" (*Little Swee'Pea*, 1936) circula como domínio público, mas não achei fonte que confirme.
+   - **Outros países:** alguns (Alemanha, Suíça, Canadá) não aplicam a regra americana da não renovação, e os Superman ainda podem estar protegidos lá. O `CREDITOS.txt` já pede para conferir a lei local antes de redistribuir.
+   - **Marcas:** os nomes e personagens (Superman, Popeye, Gato Félix) continuam sendo marcas dos donos. O projeto não distribui os vídeos: o script baixa do Internet Archive quando a pessoa pede, e só as versões originais em inglês (dublagens têm direitos próprios).

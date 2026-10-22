@@ -5,7 +5,8 @@ A TV Gominho tem uma ferramenta de linha de comando, o `tv-gominho`, para o trab
 | Comando | O que faz | Status |
 |---|---|---|
 | `converter` | Converte vídeos antigos ou incompatíveis da biblioteca para MP4 (H.264 + AAC) | Pronto |
-| `grade` | Monta o canal TV Globinho (a grade) com os programas da biblioteca | Pronto |
+| `organizar` | Arruma vídeos baixados na biblioteca, reconhecidos pelo Jev (IA, opcional, precisa de internet e chave) | Pronto |
+| `grade` | Monta o canal TV Gominho (a grade), no estilo da TV Globinho, com os programas da biblioteca | Pronto |
 | `pendrive` | Gera o pendrive com a programação pré-renderizada em MP4, para tocar em qualquer TV | Pronto |
 | `verificar` | Confere se uma TV deve tocar os vídeos de um pendrive (simula o player USB da TV) | Pronto |
 | `servir` | Abre o app no navegador, ou em outros aparelhos da rede e no Raspberry Pi, já com a biblioteca | Pronto |
@@ -150,13 +151,48 @@ npm run cli -- converter ./biblioteca --ffmpeg "C:\ffmpeg\bin\ffmpeg.exe"
 
 Pode interromper com **Ctrl+C** a qualquer momento: o arquivo parcial é apagado e nenhum original é movido pela conversão em andamento. Rodar o mesmo comando de novo continua de onde parou, porque o que já foi convertido é reconhecido e pulado. O comando termina com um resumo (convertidos, falhas, espaço, tempo) e código de saída diferente de zero se algum arquivo falhou.
 
+## `organizar`
+
+```
+tv-gominho organizar <pasta de downloads> <biblioteca> [--simular] [--copiar]
+```
+
+Pega uma pasta de vídeos baixados, com nomes de todo jeito (`DBZ_Episodio 001_WwW.Site.Biz.avi`, `spongebob 1x07 dublado.avi`, `volta ja globinho 2004.avi`), e coloca cada um no lugar certo da [biblioteca](biblioteca.md):
+
+| O que é | Para onde vai |
+|---|---|
+| Episódio de um programa da [lista da TV Globinho](programas-tv-globinho.md) | `programas/<programa>/episodios/` (em `temporada-NN/` quando o nome diz a temporada), com um `programa.yaml` com o título |
+| Episódio de outro programa | `programas/<nome da pasta>/episodios/` |
+| Abertura e encerramento do programa infantil | `vinhetas/aberturas/<emissora>/` e `vinhetas/encerramentos/<emissora>/` |
+| Vinheta de intervalo | `vinhetas/intervalos/<emissora>/`, com `entrada` ou `saida` no começo do nome quando ela é de ida ou de volta |
+| Comercial, chamada | `vinhetas/comerciais/`, `vinhetas/chamadas/` |
+| Filme, amostra, making of, música de abertura de desenho | Fica onde está |
+
+Quem reconhece os arquivos é o **Jev**, um modelo de IA da [TypeSafe](https://typesafe.ai). É o único comando que usa a internet, e é opcional: o resto da TV Gominho funciona sem ele. **Só os nomes dos arquivos e das pastas são enviados; os vídeos não saem do computador.** O Jev não inventa nada: ele escolhe entre opções conhecidas (um programa da lista ou "outro", o tipo do vídeo, a emissora da vinheta), e os caminhos são montados pela ferramenta.
+
+Para usar, crie uma chave na TypeSafe e coloque no arquivo `.env` da raiz do projeto (veja `.env.example`), ou na variável de ambiente `TYPESAFE_API_KEY`:
+
+```
+TYPESAFE_API_KEY=sua-chave
+```
+
+O comando segue algumas regras:
+
+- **Quando o Jev não tem certeza**, o arquivo fica onde está e aparece em "Para revisar", com as duas opções mais prováveis (por exemplo, `Novos/A Volta de Goku.avi`: "dragon-ball-z 56% ou dragon-ball 35%"). É só renomear ou mover à mão.
+- **Nada é apagado nem sobrescrito.** Um arquivo que já existe na biblioteca é pulado. Entre discos diferentes, mover é copiar, conferir o tamanho e só então apagar o original. `--copiar` deixa os originais onde estão.
+- **Um registro** do que foi para onde fica em `<biblioteca>/.tv-gominho/organizar-<data>.json`.
+- **As respostas ficam guardadas** em `<pasta de downloads>/.tv-gominho/jev.json`: rodar com `--simular` e depois de verdade pergunta uma vez só.
+- Vídeos em formatos que o app não toca (AVI, MKV...) vão para a biblioteca do mesmo jeito; depois rode o `converter`.
+
+O custo é pequeno: o programa é perguntado uma vez por pasta, e o tipo de cada vídeo vai em lotes de 20 arquivos, cerca de 650 tokens por arquivo numa pasta grande.
+
 ## `grade`
 
 ```
 tv-gominho grade <biblioteca> [opções]
 ```
 
-Monta o canal TV Globinho com o que está na biblioteca e grava `grades/tv-globinho.yaml`. Você só coloca os episódios em `programas/` e as vinhetas em `vinhetas/`; a grade sai pronta:
+Monta o canal TV Gominho, no estilo da TV Globinho, com o que está na biblioteca e grava `grades/tv-gominho.yaml`. Você só coloca os episódios em `programas/` e as vinhetas em `vinhetas/`; a grade sai pronta:
 
 - Cada bloco começa com uma **abertura**, passa os programas em **rodízio**, com uma **chamada** de `vinhetas/chamadas/` entre eles, e termina com um **encerramento**.
 - O tamanho do bloco já conta os **intervalos comerciais** e as **vinhetas de intervalo** (as configurações `intervalos` da biblioteca). A duração de cada vídeo vem do ffprobe; sem ffmpeg, valem durações típicas.
@@ -166,20 +202,20 @@ Monta o canal TV Globinho com o que está na biblioteca e grava `grades/tv-globi
 
 ```sh
 tv-gominho grade ./biblioteca --epoca 2004 --simular      # só mostra
-tv-gominho grade ./biblioteca --epoca 2004                # grava grades/tv-globinho.yaml
+tv-gominho grade ./biblioteca --epoca 2004                # grava grades/tv-gominho.yaml
 tv-gominho grade ./biblioteca -p dragon-ball-z,pokemon,digimon -b 08:00-10:00,10:30-12:00 --arquivo manha
 ```
 
 | Opção | O que faz |
 |---|---|
-| `--nome <texto>` | Nome do canal. Padrão: `TV Globinho` |
+| `--nome <texto>` | Nome do canal. Padrão: `TV Gominho` |
 | `--programas`, `-p a,b,c` | Pastas dos programas, na ordem do rodízio. Padrão: todos com episódios, numa ordem embaralhada fixa |
 | `--blocos`, `-b` | Blocos com início e fim: `08:00-12:00` (padrão) ou `08:00-10:00,14:00-17:30` |
 | `--epoca`, `-e <ano>` | Vinhetas e programas daquele ano |
 | `--marca <palavra>` | Prefere vinhetas com essa palavra no caminho. Padrão: `globinho` |
 | `--dias seg,ter,...` | Dias da semana. Padrão: segunda a sexta |
 | `--a-partir-de AAAA-MM-DD` | Estreia da grade: o primeiro episódio de cada programa passa nesse dia. Padrão: hoje |
-| `--arquivo <nome>` | Nome do arquivo em `grades/`. Padrão: `tv-globinho` |
+| `--arquivo <nome>` | Nome do arquivo em `grades/`. Padrão: `tv-gominho` |
 | `--substituir` | Grava por cima de uma grade que já existe |
 | `--simular` | Mostra a grade sem gravar |
 
@@ -228,5 +264,7 @@ O código fica em `pacotes/cli/` e é compilado em um arquivo só com o Vite (mo
 
 - `src/ffmpeg/`: localizar o ffmpeg (`locateFfmpeg`), analisar arquivos (`probe`) e rodar com progresso e cancelamento (`run`).
 - `src/node-source.ts`: lê uma pasta do disco como biblioteca (`openNodeLibrary`), para usar com `scanLibrary`.
+- `src/jev/client.ts`: cliente mínimo da API do Jev (TypeSafe), com `fetch`, novas tentativas e cache em disco; sem SDK, para a ferramenta continuar pequena.
+- `src/organizar/`: o comando `organizar`. `questions.ts` (as perguntas ao Jev e por que têm esse formato), `classify.ts` (quem é perguntado e quando), `plan.ts` (para onde vai cada arquivo, sem rede nem disco, por isso testado sem o Jev). `avaliacao.test.ts` mede as perguntas contra o Jev de verdade com nomes de arquivo realistas: rode `npm run avaliar:jev` depois de mudar as perguntas ou os limites de confiança (gasta tokens, por isso o `npm test` pula).
 - `src/convert/plan.ts`: decisões do conversor (converter, só trocar o contêiner ou pular) e argumentos do ffmpeg, sem nenhuma chamada ao ffmpeg, por isso testados sem ele.
 - `src/pendrive/`: o comando `pendrive`. `rundown.ts` (dias, itens e trechos de episódio, com o motor do núcleo), `parts.ts` (divisão em partes de menos de 4 GB), `crt.ts` (o efeito CRT: máscara e filtros), `segment.ts` (argumentos do ffmpeg e chaves de cache de cada item), `render.ts` (renderizar, juntar, retomar), `settings.ts` (configurações da biblioteca + opções), `names.ts`, `readme.ts`, `copy.ts`, `dest.ts`. Tudo que não chama o ffmpeg é testado sem ele; `commands/pendrive.e2e.test.ts` renderiza de verdade (e é pulado se não houver ffmpeg).

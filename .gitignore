@@ -3,9 +3,13 @@ dist/
 exemplo/
 *.log
 .vite/
+.env
 
 # Personal library at the repo root: videos never go to git.
 /biblioteca/
 
 # Portable package (npm run pacote).
 /pacote/
+
+# Full-size original of the app logo; the app ships the WebP next to it.
+/pacotes/interface/src/assets/tv-gominho-logo.png
