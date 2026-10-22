@@ -1,6 +1,8 @@
-import { scanLibrary, validateProposal, type Library, type LibrarySource } from '@tv-gominho/nucleo';
+import { scanLibrary } from './library';
+import { validateProposal } from './proposal';
+import type { Library, LibrarySource } from './types';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { buildProposalPrompt, SYSTEM_PROMPT } from './prompt';
+import { buildProposalPrompt, SYSTEM_PROMPT } from './proposal-prompt';
 
 const FILES: Record<string, string> = {
   'biblioteca/programas/dbz/programa.yaml': 'titulo: DBZ\nsinopse: Segredo da sinopse\n',

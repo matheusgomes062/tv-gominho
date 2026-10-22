@@ -65,7 +65,7 @@ async function start(options: { ia: boolean; editar: boolean } | null): Promise<
   const server = createLibraryServer(
     library,
     app,
-    options ? { pin: PIN, log, now, write: options.editar, assistant: options.ia ? createAssistant(library, { provider, log, now }) : undefined } : undefined,
+    options ? { pin: PIN, log, now, write: options.editar, assistant: options.ia ? createAssistant(library, { provider: () => provider, log, now }) : undefined } : undefined,
   );
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   servers.push(server);
@@ -128,7 +128,7 @@ describe('servir without --ia', () => {
 
 describe('servir --ia', () => {
   it('reports the assistant on and saving off when --editar is not given', async () => {
-    expect(JSON.parse((await send(iaOnly, 'GET', '/__tv-gominho/capacidades')).body)).toEqual({ editar: false, ia: true, pareado: false });
+    expect(JSON.parse((await send(iaOnly, 'GET', '/__tv-gominho/capacidades')).body)).toEqual({ editar: false, ia: true, pareado: false, configIa: false });
     const cookie = await session(iaOnly);
     expect(logs).toContain('Um aparelho foi pareado e pode usar a IA.');
     // Pairing for the assistant does not open the write route.

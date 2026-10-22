@@ -4,7 +4,7 @@ import { bumperBrands, bumperEras, yearRange } from './generate';
 import { fold } from './paths';
 import type { Library } from './types';
 
-// A channel proposed by the optional AI assistant (`tv-gominho servir --ia`, docs/ferramentas.md#ia): the answers of the
+// A channel proposed by the optional AI assistant (docs/ferramentas.md#assistente-de-ia): the answers of the
 // "Montar a semana" wizard, never a grade file. The server asks the model for this shape (proposalSchema) and checks
 // what comes back (validateProposal) before the app shows it in the preview; the app checks it again with its own library.
 

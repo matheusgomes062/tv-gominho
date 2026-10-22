@@ -10,7 +10,9 @@ import { CliError, UsageError } from '../errors';
 import { helpOptions, intOption, parseOptions } from '../options';
 import { anthropicApiKey, anthropicUrl, ANTHROPIC_MODEL, createAnthropicProvider } from '../ia/anthropic';
 import { CAPABILITIES_PATH, createEditor, MAX_BODY, newPin, type EditOptions } from '../serve/edit';
-import { createAssistant, IA_PER_HOUR, type Assistant } from '../serve/ia';
+import { createAssistant, IA_PER_HOUR } from '../serve/ia';
+import { createIaConfig, type IaConfig } from '../serve/ia-config';
+import { appDataDir, createKeyStore } from '../ia/chave';
 import { LIBRARY_FILE_PATH, LIBRARY_LIST_PATH, libraryListing, resolveInside, sendJson, sendLibraryFile, sendStatic } from '../serve/http';
 import type { Command } from './types';
 
@@ -42,11 +44,14 @@ Opções:
   --editar              deixa salvar canais pelo app ("Montar a semana"). Mostra um PIN aqui;
                         cada aparelho digita o PIN uma vez. Só grava grades/<nome>.yaml e
                         nao-passar.yaml, nada mais
-  --ia                  liga o "Pedir para a IA" do "Montar a semana", com a sua chave da
-                        Anthropic em ANTHROPIC_API_KEY (custa dinheiro na sua conta). Envia
-                        títulos, durações, a lista de programas e o pedido; nunca vídeos.
-                        Também pede o PIN. Sem a chave, fica desligada
-  --ia-modelo <id>      outro modelo Claude. Padrão: ${ANTHROPIC_MODEL}
+  --ia-modelo <id>      outro modelo Claude para o "Pedir para a IA". Padrão: ${ANTHROPIC_MODEL}
+  --ia                  liga a IA já ao abrir, sem passar pelas configurações (precisa de chave)
+
+IA (opcional, desligada por padrão): no navegador deste computador, abra Configurações,
+Assistente de IA, cole a sua chave da Anthropic e ligue. A chave fica numa pasta de dados
+do app neste computador (nunca na biblioteca) e custa dinheiro na sua conta a cada pedido.
+Saem títulos, durações, a lista de programas e o pedido; nunca vídeos. Aparelhos da rede
+usam a IA com o PIN. A variável ANTHROPIC_API_KEY, se existir, vale no lugar da chave salva.
   --interface <pasta>   pasta do app compilado (padrão: a que vem com a ferramenta)
   --ajuda               mostra esta ajuda
 
@@ -56,7 +61,7 @@ Exemplos:
   tv-gominho servir ./biblioteca --abrir
   tv-gominho servir E:\\biblioteca --rede --porta 8000
   tv-gominho servir ./biblioteca --rede --editar
-  npm run cli -- servir ./biblioteca --editar --ia   (chave no arquivo .env)`;
+  npm run cli -- servir ./biblioteca --editar --ia   (chave em ANTHROPIC_API_KEY, no arquivo .env)`;
 
 export const servirCommand: Command = {
   name: 'servir',
@@ -78,21 +83,37 @@ export const servirCommand: Command = {
     const log = (message: string) => console.log(message);
     const model = values['ia-modelo']?.trim();
     if (model !== undefined && !/^[a-z0-9][a-z0-9.@:_-]{0,99}$/i.test(model)) throw new UsageError('O nome do modelo em --ia-modelo não parece válido.');
-    let assistant: Assistant | undefined;
-    const key = values.ia ? anthropicApiKey() : undefined;
-    if (key) {
-      let url: string | undefined;
-      try {
-        url = anthropicUrl();
-      } catch (error) {
-        throw new CliError((error as Error).message);
-      }
-      assistant = createAssistant(library, { provider: createAnthropicProvider({ apiKey: key, model, url }), log });
+    let url: string | undefined;
+    try {
+      url = anthropicUrl();
+    } catch (error) {
+      throw new CliError((error as Error).message);
     }
 
-    // --ia pairs devices too: only a paired device may spend the key.
-    const pin = values.editar || assistant ? newPin() : undefined;
-    const server = createLibraryServer(library, app, pin ? { pin, log, write: Boolean(values.editar), assistant } : undefined);
+    // Pairing is always there: the AI can be turned on from the app while the server runs, and then only a paired
+    // device (or this computer's own browser) may spend the key.
+    const pin = newPin();
+    let pinShown = false;
+    const showPin = () => {
+      if (pinShown) return;
+      pinShown = true;
+      console.log(`PIN para parear um aparelho: ${pin}`);
+    };
+    const ia = await createIaConfig({
+      store: createKeyStore(appDataDir()),
+      library,
+      envKey: anthropicApiKey(),
+      startOn: values.ia,
+      model: model ?? ANTHROPIC_MODEL,
+      provider: (apiKey) => createAnthropicProvider({ apiKey, model, url }),
+      log,
+      onAvailable: () => {
+        console.log(`IA: LIGADA. Só aparelhos pareados pedem, no máximo ${IA_PER_HOUR} por hora.`);
+        showPin();
+      },
+    });
+    const assistant = createAssistant(library, { provider: () => ia.provider(), log });
+    const server = createLibraryServer(library, app, { pin, log, write: Boolean(values.editar), assistant, isLocal: ia.isLocal }, ia);
     await new Promise<void>((resolve, reject) => {
       server.once('error', (error: NodeJS.ErrnoException) =>
         reject(error.code === 'EADDRINUSE' ? new CliError(`A porta ${port} já está em uso. Escolha outra com --porta.`) : error),
@@ -108,13 +129,13 @@ export const servirCommand: Command = {
       console.log(`Salvar canais pelo app: LIGADO.`);
       console.log(`  Só quem digitar o PIN grava, e só grades/<nome>.yaml e nao-passar.yaml (até ${MAX_BODY / 1024} KB).`);
     }
-    if (assistant) {
-      console.log(`IA: LIGADA (Anthropic, modelo ${model ?? ANTHROPIC_MODEL}), com a chave de ANTHROPIC_API_KEY. Cada pedido custa dinheiro na sua conta.`);
+    if (ia.available()) {
+      console.log(`IA: LIGADA (Anthropic, modelo ${model ?? ANTHROPIC_MODEL}). Cada pedido custa dinheiro na sua conta.`);
       console.log(`  Só aparelhos pareados pedem, no máximo ${IA_PER_HOUR} por hora. Saem títulos, durações, a lista de programas e o pedido; nunca vídeos.`);
     } else if (values.ia) {
-      console.log('IA: DESLIGADA. --ia precisa da chave em ANTHROPIC_API_KEY (veja docs/ferramentas.md). O resto funciona normalmente.');
+      console.log('IA: sem chave. Coloque a chave em Configurações, Assistente de IA, no navegador deste computador (veja docs/ferramentas.md).');
     }
-    if (pin) console.log(`PIN para parear um aparelho: ${pin}`);
+    if (values.editar || ia.available()) showPin();
     console.log('Ctrl+C para desligar.');
     if (values.abrir) openBrowser(local);
 
@@ -144,7 +165,7 @@ export function allowedHost(host: string | undefined, machineName = hostname()):
  * The server: the app at /, the library under /__biblioteca/. Read-only, unless `edit` is given: then
  * the routes of serve/edit.ts also take a PIN and the files a channel is made of.
  */
-export function createLibraryServer(library: string, app: string, edit?: EditOptions): Server {
+export function createLibraryServer(library: string, app: string, edit?: EditOptions, ia?: IaConfig): Server {
   const editor = edit ? createEditor(library, edit) : null;
   return createServer((req, res) => {
     const [url, query = ''] = (req.url ?? '/').split('?') as [string, string?];
@@ -154,13 +175,17 @@ export function createLibraryServer(library: string, app: string, edit?: EditOpt
       return;
     }
     const handle = async () => {
+      if (url === CAPABILITIES_PATH && (req.method === 'GET' || req.method === 'HEAD')) {
+        // configIa: the app can show and change the AI's settings through this server (serve/ia-config.ts).
+        return sendJson(req, res, { ...(editor?.capabilities(req) ?? { editar: false, ia: false, pareado: false }), configIa: ia !== undefined });
+      }
+      if (ia && (await ia.handle(req, res, url))) return;
       if (editor && (await editor.handle(req, res, url, query))) return;
       if (req.method !== 'GET' && req.method !== 'HEAD') {
         res.statusCode = 405;
         res.end();
         return;
       }
-      if (url === CAPABILITIES_PATH) return sendJson(req, res, { editar: false, ia: false, pareado: false });
       if (url === LIBRARY_LIST_PATH) return sendJson(req, res, await libraryListing(library));
       if (url.startsWith(LIBRARY_FILE_PATH)) {
         const relative = url.slice(LIBRARY_FILE_PATH.length);

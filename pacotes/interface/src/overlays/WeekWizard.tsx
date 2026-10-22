@@ -21,7 +21,7 @@ import { clickDirection } from '../settings-model';
 import { PAIR_MESSAGES, PIN_LENGTH, pinComplete, typePin, type PairOutcome } from '../pin-model';
 import { overwriteWithBackup, type ReplaceResult } from '../sources/overwrite';
 import { downloadText, requestWriteAccess, saveGrade, saveThroughServer, type SaveResult, type WriteAccess } from '../sources/save';
-import type { BrowserLibrary, ServerAssistant, ServerEditing } from '../sources/types';
+import type { AiBackend, BrowserLibrary, ServerEditing } from '../sources/types';
 import { EXAMPLES, MAX_REQUEST_LENGTH, NOTICE, NOTICE_KEY, applyProposal, currentChoices, iaReply, requestProblem, typicalMinutes } from '../ia-model';
 import {
   DAY_LABELS,
@@ -85,7 +85,7 @@ interface Props {
 
 type Phase =
   | { name: 'editing' }
-  // 'Pedir para a IA' (tv-gominho servir --ia): the request, then the proposal fills the answers and opens the preview.
+  // 'Pedir para a IA' (when the AI has a key and is on): the request, then the proposal fills the answers and opens the preview.
   | { name: 'ia' }
   | { name: 'saving' }
   // Saving through `tv-gominho servir --editar` and this device is not paired yet: the PIN, then the same file.
@@ -120,6 +120,18 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
   /** The explanation of the AI's proposal while the answers are the ones it proposed (they can still be adjusted). */
   const [iaNote, setIaNote] = useState<string | null>(null);
   const body = useRef<HTMLDivElement>(null);
+  /** "Pedir para a IA" shows only when the AI has a key and is on (Configurações, Assistente de IA). */
+  const [aiOn, setAiOn] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void source.ai
+      ?.status()
+      .then((status) => live && setAiOn(status?.available ?? false))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [source]);
 
   const playable = useMemo(() => library.shows.filter((show) => show.episodes.length > 0), [library]);
   const taken = useMemo(
@@ -293,9 +305,9 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
               }
               onCancel={goBack}
             />
-          ) : phase.name === 'ia' && source.assistant ? (
+          ) : phase.name === 'ia' && source.ai ? (
             <IaPage
-              assistant={source.assistant}
+              assistant={source.ai}
               library={library}
               shows={playable}
               durations={durations}
@@ -310,7 +322,7 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
           ) : (
             <>
               <h2>{STEPS[index]!.help}</h2>
-              {step === 'ranges' && source.assistant && (
+              {step === 'ranges' && aiOn && source.ai && (
                 <div className="wizard-list">
                   <Row
                     icon="text"
@@ -1146,8 +1158,9 @@ const noticeRead = () => {
 };
 
 /**
- * "Pedir para a IA" (`tv-gominho servir --ia`): before the first use, what leaves the computer and what it costs; then
- * the request, typed in Portuguese. The server asks the model and checks the answer; the wizard shows it in the preview.
+ * "Pedir para a IA": before the first use, what leaves the computer and what it costs; then the request, typed in
+ * Portuguese. The server (or this browser, with its own key) asks the model and checks the answer; the wizard shows it
+ * in the preview.
  */
 function IaPage({
   assistant,
@@ -1158,7 +1171,7 @@ function IaPage({
   onProposal,
   onCancel,
 }: {
-  assistant: ServerAssistant;
+  assistant: AiBackend;
   library: Library;
   shows: Show[];
   durations: Durations;
@@ -1191,14 +1204,21 @@ function IaPage({
     setView('busy');
     const paths = shows.flatMap((show) => show.episodes.slice(0, 3).map((episode) => episode.path));
     await Promise.race([durations.load(paths).catch(() => {}), new Promise((resolve) => setTimeout(resolve, IA_DURATION_WAIT_MS))]);
-    const { status, body } = await assistant.propose({
-      pedido: text.trim(),
-      ...(current ? { atual: proposalToRaw(current) } : {}),
-      duracoes: typicalMinutes(shows, durations.get),
-    });
+    const { status, body } = await assistant.propose(
+      {
+        pedido: text.trim(),
+        ...(current ? { atual: proposalToRaw(current) } : {}),
+        duracoes: typicalMinutes(shows, durations.get),
+      },
+      library,
+    );
     const reply = iaReply(status, body, library);
     if (reply.kind === 'proposal') return onProposal(reply.proposal);
-    if (reply.kind === 'needs-pin') return setView('pin');
+    if (reply.kind === 'needs-pin' && assistant.pair) return setView('pin');
+    if (reply.kind === 'needs-pin') {
+      setProblem('A IA não aceitou o pedido. Confira a chave em Configurações, Assistente de IA.');
+      return setView('form');
+    }
     setProblem(reply.message);
     setView('form');
   }
@@ -1213,8 +1233,8 @@ function IaPage({
     }
   };
 
-  if (view === 'pin') {
-    return <PinPage editing={assistant} message="Para usar a IA, este aparelho precisa do PIN." onPaired={() => void send()} onCancel={() => setView('form')} />;
+  if (view === 'pin' && assistant.pair) {
+    return <PinPage editing={{ pair: assistant.pair }} message="Para usar a IA, este aparelho precisa do PIN." onPaired={() => void send()} onCancel={() => setView('form')} />;
   }
 
   return (
@@ -1225,7 +1245,7 @@ function IaPage({
           <p className="panel-note">Antes de usar, leia o que acontece:</p>
           <ul className="panel-note" data-note="ia-aviso">
             <li>{NOTICE.sent}</li>
-            <li>{NOTICE.key}</li>
+            <li>{NOTICE.cost}</li>
             <li>{NOTICE.review}</li>
             <li>{NOTICE.off}</li>
           </ul>

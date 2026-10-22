@@ -160,7 +160,7 @@ function Main({ session, onChangeFolder, onLibraryChange }: { session: Session; 
         />
       )}
       {overlay === 'quick' && <QuickSettings channels={channels} onAll={() => openOverlay('settings', true)} onBack={closeOverlay} />}
-      {overlay === 'settings' && <SettingsPanel channels={channels} libraryName={source.name} onBack={closeOverlay} />}
+      {overlay === 'settings' && <SettingsPanel channels={channels} libraryName={source.name} ai={source.ai} onBack={closeOverlay} />}
       {overlay === 'blocklist' && <BlocklistScreen source={source} library={library} onSaved={reloadLibrary} onBack={closeOverlay} />}
       {overlay === 'schedule' && (
         <ScheduleHub
