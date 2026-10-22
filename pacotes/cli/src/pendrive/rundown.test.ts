@@ -98,6 +98,14 @@ describe('rundown', () => {
     expect(turma).toEqual(['003.mp4', '002.mp4', '003.mp4']);
   });
 
+  it('skips the episodes of nao-passar.yaml, so the rundown never has them', async () => {
+    const library = await load({ ...FILES, 'nao-passar.yaml': 'episodios:\n  turma: [3]\n' });
+    const rundown = await rundownOf('2026-10-12', 3, SETTINGS, 30, library); // Monday to Wednesday
+    const turma = rundown.days.map((day) => day.pieces.find((piece) => piece.path.includes('turma'))!.path.slice(-7));
+    // Without the list it would be 003, 001, 002: the sequence now runs over 001 and 002 only.
+    expect(turma).toEqual(['002.mp4', '001.mp4', '002.mp4']);
+  });
+
   it('uses the break rules of the channel over the general settings', async () => {
     const rules = DAYS.replace('blocos:', 'intervalos:\n  a_cada: 0\n  comerciais: 1\n  apos_episodio: nao\n\nblocos:');
     const library = await load({ ...FILES, 'grades/teste.yaml': rules });

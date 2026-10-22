@@ -1,5 +1,6 @@
 import { parse } from 'yaml';
 import { findEpisodeByRef } from './agenda';
+import { allowedEpisodes, BLOCKLIST_FILE, emptyBlocklist, parseBlocklist, validateBlocklist } from './blocklist';
 import { formatTimeOfDay } from './dates';
 import {
   basename,
@@ -46,6 +47,7 @@ export async function scanLibrary(source: LibrarySource): Promise<Library> {
   const interstitials: Interstitial[] = [];
   const schedulePaths: string[] = [];
   let settingsPath: string | undefined;
+  let blocklistPath: string | undefined;
 
   for (const path of source.files) {
     if (!path.toLowerCase().startsWith(root.toLowerCase())) continue;
@@ -73,6 +75,8 @@ export async function scanLibrary(source: LibrarySource): Promise<Library> {
       schedulePaths.push(path);
     } else if (parts.length === 1 && /^configuracoes\.ya?ml$/i.test(parts[0]!)) {
       settingsPath = path;
+    } else if (parts.length === 1 && /^nao-passar\.ya?ml$/i.test(parts[0]!)) {
+      blocklistPath = path;
     }
   }
 
@@ -111,8 +115,10 @@ export async function scanLibrary(source: LibrarySource): Promise<Library> {
     }
   }
   const settings = mergeSettings(DEFAULT_SETTINGS, settingsFile);
+  const blocklist = blocklistPath ? parseBlocklist(blocklistPath, await source.readText(blocklistPath), warnings) : emptyBlocklist();
 
-  const library: Library = { root, shows, interstitials, schedules, settings, settingsFile, warnings };
+  const library: Library = { root, shows, interstitials, schedules, settings, settingsFile, blocklist, warnings };
+  if (blocklistPath) validateBlocklist(blocklistPath, library);
   for (const schedule of schedules) validateReferences(schedule, library);
   return library;
 }
@@ -301,6 +307,11 @@ function validateReferences(schedule: Schedule, library: Library) {
         library.warnings.push({
           path: schedule.path,
           message: `A grade usa o programa "${item.show}", que não existe em programas/. Ele será pulado.`,
+        });
+      } else if (item.type === 'show' && allowedEpisodes(library, findShow(library, item.show)!).length === 0) {
+        library.warnings.push({
+          path: schedule.path,
+          message: `A grade usa o programa "${item.show}", que está inteiro em ${BLOCKLIST_FILE} (o programa ou todos os episódios). Ele será pulado.`,
         });
       } else if (item.type === 'interstitial' && resolveInterstitials(library, item.ref).length === 0) {
         library.warnings.push({

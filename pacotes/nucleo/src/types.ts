@@ -99,6 +99,18 @@ export interface Schedule {
   agenda?: AgendaPick[];
 }
 
+/**
+ * nao-passar.yaml (docs/biblioteca.md): what the dynamic mode never chooses by itself. Entries are as
+ * written in the file (shows by folder name, episodes as `normalizeEpisodeRef` references), sorted and
+ * without repeats, so writing it back gives the same file.
+ */
+export interface Blocklist {
+  /** Whole shows, by folder name. */
+  shows: string[];
+  /** Per show (folder name), the references of its blocked episodes: "12" or "temporada-02/12". */
+  episodes: Record<string, string[]>;
+}
+
 export interface LibraryWarning {
   path?: string;
   message: string;
@@ -114,5 +126,7 @@ export interface Library {
   settings: Settings;
   /** Only what configuracoes.yaml sets (empty when there is no file). */
   settingsFile: PartialSettings;
+  /** nao-passar.yaml (empty when there is no file). Resolve it with `blockedEpisodes`. */
+  blocklist: Blocklist;
   warnings: LibraryWarning[];
 }
