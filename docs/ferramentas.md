@@ -263,10 +263,13 @@ Sem `--editar`, o servidor não grava nada. Com ela, o assistente "Criar uma pro
 ```
 tv-gominho servir ./biblioteca --rede --editar
 ...
-Salvar canais pelo app: LIGADO. PIN para parear um aparelho: 482913
+Salvar canais pelo app: LIGADO.
+PIN para parear outro aparelho (TV, celular): 482913
+  Neste computador, em http://localhost:8080/, não precisa de PIN.
 ```
 
-- Ao abrir **Criar** ou **Mudar uma programação** pela primeira vez, o app pede o **PIN de 6 números** que aparece no terminal (e a tela Programação mostra **Pareado** ou **Falta o PIN**). Dá para digitar com os números do controle remoto ou com o teclado na tela (setas e OK). O aparelho fica pareado até o navegador fechar ou o servidor desligar; cada vez que o servidor liga, o PIN é outro.
+- **No próprio computador que roda o `servir`** (`http://localhost:8080`), não precisa de PIN: quem está nele já é o dono e já pode mexer nos arquivos da biblioteca. A tela Programação mostra **Pareado** desde o começo. O servidor reconhece o computador pelo endereço da conexão (`127.0.0.1` ou `::1`), nunca por cabeçalhos. **Atenção:** aberto pelo endereço da rede no próprio computador (`http://192.168.x.x:8080`), a conexão não vem de `127.0.0.1` e o PIN é pedido como em qualquer outro aparelho; use `localhost`.
+- **Nos outros aparelhos** (TV, celular, outro PC), ao abrir **Criar** ou **Mudar uma programação** pela primeira vez, o app pede o **PIN de 6 números** que aparece no terminal (e a tela Programação mostra **Pareado** ou **Falta o PIN**). Dá para digitar com os números do controle remoto ou com o teclado na tela (setas e OK). O aparelho fica pareado até o navegador fechar ou o servidor desligar; cada vez que o servidor liga, o PIN é outro.
 - Só dá para gravar `grades/<nome>.yaml` (nome com letras, números, `-` e `_`) e `nao-passar.yaml`, na raiz da biblioteca (ou dentro de `biblioteca/`, se o servidor foi aberto na pasta acima dela). Nada mais: nem vídeos, nem configurações, nem outras pastas.
 - A grade precisa ser uma grade válida (a mesma leitura do app), em UTF-8, com até 256 KB. A lista "não passar" precisa ser lida pelo app sem nenhum aviso (só `programas` e `episodios`, veja [biblioteca.md](biblioteca.md)).
 - Nunca substitui um arquivo que já existe sem pedir: o assistente cria um canal novo, e quem quer substituir pede explicitamente, com `?substituir=1` no endereço.
@@ -277,9 +280,10 @@ Salvar canais pelo app: LIGADO. PIN para parear um aparelho: 482913
 Segurança:
 
 - Desligado por padrão; só quem tem acesso ao terminal vê o PIN. O PIN é sorteado com gerador criptográfico.
+- O próprio computador dispensa só o PIN: a conferência de origem, de `Host`, de caminho, de tamanho e de conteúdo vale igual para ele. Um site qualquer aberto no navegador desse computador não consegue gravar: o navegador manda a origem desse site, e o pedido é recusado (403).
 - PIN errado 5 vezes seguidas trava o pareamento por 1 minuto, e cada nova trava dura o dobro (até 1 hora). O terminal avisa.
 - O pareamento vira um cookie de sessão aleatório, `HttpOnly` e `SameSite=Strict`, que só vale enquanto o servidor estiver ligado.
-- Toda gravação confere a origem do pedido (`Origin` igual ao endereço aberto), contra páginas de outros sites que tentem gravar pelo navegador de alguém da casa (CSRF), além da proteção de `Host` de sempre.
+- Toda gravação confere a origem do pedido (`Origin` igual ao endereço aberto, e `Sec-Fetch-Site`, quando o navegador manda, igual a `same-origin`), contra páginas de outros sites que tentem gravar pelo navegador de alguém da casa (CSRF), além da proteção de `Host` de sempre.
 - O caminho é conferido como texto, sem decodificar: `..`, barras invertidas, `%2F` e afins são recusados. A pasta de destino, com atalhos (links) resolvidos, precisa ficar dentro da biblioteca.
 - O arquivo é gravado num temporário oculto e renomeado no fim: ou fica o arquivo inteiro, ou nada.
 - A conexão é HTTP sem criptografia, como o resto do `servir`: use `--editar` só na rede de casa.
@@ -288,9 +292,9 @@ Para quem integra (rotas, todas sob o mesmo endereço do app):
 
 | Rota | O que faz |
 |---|---|
-| `GET /__tv-gominho/capacidades` | `{"editar": true/false, "ia": true/false, "pareado": true/false, "configIa": true}` (`ia`: há chave e a IA está ligada) |
+| `GET /__tv-gominho/capacidades` | `{"editar": true/false, "ia": true/false, "pareado": true/false, "configIa": true}` (`ia`: há chave e a IA está ligada; `pareado` é sempre `true` no próprio computador) |
 | `POST /__tv-gominho/pareamento` | JSON `{"pin": "123456"}` → 200 e o cookie; 403 PIN errado; 429 travado (`Retry-After`) |
-| `PUT /__tv-gominho/arquivos/<caminho>` | corpo = o arquivo. 201 criado, 200 substituído (`?substituir=1`; com `&copia=1` a resposta traz `"copia"`, o caminho do `.bak`), 401 sem pareamento, 403 origem, 400 caminho ou conteúdo inválido (ou `copia=1` fora de uma substituição de grade), 409 já existe, 413 grande demais |
+| `PUT /__tv-gominho/arquivos/<caminho>` | corpo = o arquivo. 201 criado, 200 substituído (`?substituir=1`; com `&copia=1` a resposta traz `"copia"`, o caminho do `.bak`), 401 sem pareamento (o navegador do próprio computador não precisa), 403 origem, 400 caminho ou conteúdo inválido (ou `copia=1` fora de uma substituição de grade), 409 já existe, 413 grande demais |
 | `POST /__tv-gominho/ia/proposta` | a IA (abaixo). JSON `{"pedido": "...", "atual"?: {...}, "duracoes"?: {"id": minutos}}` → 200 `{"proposta": {...}}`; 401 sem pareamento (o navegador do próprio computador não precisa), 403 origem, 409 IA desligada ou sem chave, 400 pedido inválido, 413 grande demais, 422 proposta que não serve, 429 cedo demais (`Retry-After`), 502/504 falha da IA |
 | `GET /__tv-gominho/ia/estado` | `{"chave": "nenhuma"/"salva"/"ambiente", "final"?: "…a1B2", "ligada", "disponivel", "local", "modelo"}`. `final` só vai para o navegador do próprio computador |
 | `PUT /__tv-gominho/ia/chave` | só do próprio computador. JSON `{"chave": "sk-ant-..."}` (até 2 KB) → 200 e o estado; 403 outro aparelho ou origem, 400 não parece chave, 409 chave em `ANTHROPIC_API_KEY`, 413, 415 |
@@ -319,8 +323,9 @@ npm run cli -- servir ./biblioteca --rede --editar
 ...
 IA: chave salva pelo app neste computador.
 IA: ligada pelo app.
-IA: LIGADA. Só aparelhos pareados pedem, no máximo 30 por hora.
-PIN para parear um aparelho: 482913
+IA: LIGADA. Só este computador e aparelhos pareados pedem, no máximo 30 por hora.
+PIN para parear outro aparelho (TV, celular): 482913
+  Neste computador, em http://localhost:8080/, não precisa de PIN.
 ```
 
 **Sem servidor (app aberto numa pasta, no Chrome ou no Edge).** A mesma seção **Configurações → Assistente de IA** guarda a chave **só naquele navegador** (o armazenamento local do site), e o próprio navegador chama a API da Anthropic, com o cabeçalho de acesso direto do navegador (`anthropic-dangerous-direct-browser-access`). O pedido, o formato da resposta e as conferências são os mesmos do servidor. **Atenção:** a chave fica naquele navegador, naquele aparelho, e qualquer código que rode na página poderia lê-la. O app não carrega código de outros sites, mas só guarde a chave num aparelho seu, e use **Remover chave** ao terminar. **Aberto direto de um arquivo** (`file://`, como o `interface/index.html` do pacote), o app **não guarda nem usa a chave**: nesse modo todas as páginas abertas do disco dividem o mesmo armazenamento no navegador, então qualquer outra página local poderia lê-la. A seção mostra a IA como indisponível e explica o motivo; uma chave guardada antes nesse modo é ignorada e só aparece para remover. Para usar a IA, abra o app pelo `tv-gominho servir` ou por um endereço `http`/`https`. No navegador, no máximo um pedido a cada 5 segundos.
