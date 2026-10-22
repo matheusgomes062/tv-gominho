@@ -2,6 +2,8 @@ import { generateSchedule, planDay, preservePositions, scanLibrary, type Library
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
   adSummary,
+  advancedLines,
+  summaryLines,
   buildChannel,
   bumperBrands,
   bumperChoice,
@@ -274,5 +276,54 @@ describe('preview days', () => {
   it('names a day with the weekday and the date', () => {
     expect(dayLabel('2026-10-22')).toBe('Qui 22/10');
     expect(longDayLabel('2026-10-24')).toBe('Sábado, 24/10');
+  });
+});
+
+describe('summary and advanced lines', () => {
+  const context = (fileName = 'manha-nova') => ({ library, fileName });
+
+  it('lists every answer with the screen that changes it', () => {
+    const lines = summaryLines(ready(), context());
+    expect(lines.map((line) => [line.id, line.step])).toEqual([
+      ['name', 'review'],
+      ['ranges', 'when'],
+      ['days', 'when'],
+      ['shows', 'shows'],
+      ['commercials', 'commercials'],
+      ['bumpers', 'bumpers'],
+      ['file', 'replace'],
+    ]);
+    const value = (id: string) => lines.find((line) => line.id === id)!.value;
+    expect(value('name')).toBe('Manhã nova');
+    expect(value('ranges')).toBe('08:00–12:00');
+    expect(value('days')).toBe('Segunda a sexta');
+    expect(value('shows')).toBe('Todos os programas');
+    expect(value('commercials')).toBe('Seguir a configuração geral');
+    expect(value('bumpers')).toMatch(/^Qualquer marca, qualquer época/);
+    expect(value('file')).toBe('grades/manha-nova.yaml · Canal novo');
+  });
+
+  it('shows the picked shows in order, the own rules, and the channel to replace', () => {
+    const old = library.schedules[0]!;
+    const state = { ...chooseReplace(ready({ showMode: 'pick', picked: ['pinguins', 'dbz'], adMode: 'custom' }), old), brand: 'tv-globinho', era: 2011 };
+    const lines = summaryLines(state, context('manha'));
+    const value = (id: string) => lines.find((line) => line.id === id)!.value;
+    expect(value('shows')).toBe('Pinguins → DBZ');
+    expect(value('commercials')).toMatch(/^Regras próprias: /);
+    expect(value('bumpers')).toMatch(/^tv-globinho, 2011 · abertura /);
+    expect(value('file')).toBe('grades/manha.yaml · Trocar o canal “Manhã antiga”');
+  });
+
+  it('starts the advanced list on the defaults: nothing marked as changed', () => {
+    const lines = advancedLines(ready(), library);
+    expect(lines.map((line) => line.id)).toEqual(['commercials', 'bumpers', 'replace']);
+    expect(lines.map((line) => line.value)).toEqual(['Seguir a configuração geral', 'Qualquer marca, qualquer época', 'Não: criar um canal novo']);
+    expect(lines.some((line) => line.changed)).toBe(false);
+  });
+
+  it('marks what was changed', () => {
+    const lines = advancedLines({ ...chooseReplace(ready({ adMode: 'custom', brand: 'tv-globinho' }), library.schedules[0]!) }, library);
+    expect(lines.map((line) => line.changed)).toEqual([true, true, true]);
+    expect(lines[2]!.value).toBe('Trocar o canal “Manhã antiga”');
   });
 });

@@ -26,18 +26,31 @@ import {
 // become generator options and how the channel file is named. No React or DOM in here, so
 // it is all testable (see wizard-model.test.ts); WeekWizard.tsx only draws it.
 
-export type StepId = 'ranges' | 'days' | 'shows' | 'commercials' | 'bumpers' | 'name' | 'preview' | 'save';
+/**
+ * The four screens of the wizard, in order, plus the "Ajustes avançados" ones: a list (advanced) that opens
+ * commercials, bumpers (brand and era) and replacing an existing channel (replace). They are off the main path:
+ * the defaults (follow the general settings, any brand, a new channel) are already right.
+ */
+export type StepId = 'when' | 'shows' | 'review' | 'save' | 'advanced' | 'commercials' | 'bumpers' | 'replace';
 
 export const STEPS: ReadonlyArray<{ id: StepId; title: string; help: string }> = [
-  { id: 'ranges', title: 'Horários', help: 'Em que horas o canal fica no ar.' },
-  { id: 'days', title: 'Dias', help: 'Em quais dias da semana.' },
-  { id: 'shows', title: 'Programas', help: 'O que passa no canal.' },
+  { id: 'when', title: 'Quando?', help: 'Em que horas e em quais dias o canal fica no ar.' },
+  { id: 'shows', title: 'O que passa?', help: 'Os desenhos que entram no canal.' },
+  { id: 'review', title: 'Nome e prévia', help: 'Dê um nome ao canal e confira o que vai passar.' },
+  { id: 'save', title: 'Salvar', help: 'Confira e guarde o canal. Em cada linha, “Mudar” volta à tela certa.' },
+];
+
+export const ADVANCED_STEPS: ReadonlyArray<{ id: StepId; title: string; help: string }> = [
+  { id: 'advanced', title: 'Ajustes avançados', help: 'O que quase nunca precisa mudar. Tudo começa no jeito padrão.' },
   { id: 'commercials', title: 'Comerciais', help: 'Os intervalos comerciais deste canal.' },
   { id: 'bumpers', title: 'Vinhetas', help: 'A marca e a época das vinhetas.' },
-  { id: 'name', title: 'Nome', help: 'Como o canal aparece na troca de canais, e se é novo ou troca um que já existe.' },
-  { id: 'preview', title: 'Prévia', help: 'O que vai passar, com os horários estimados.' },
-  { id: 'save', title: 'Salvar', help: 'Confira e guarde o canal.' },
+  { id: 'replace', title: 'Trocar um canal existente', help: 'Por padrão o canal é novo e nada que já existe muda. Aqui dá para refazer um canal que já existe.' },
 ];
+
+/** The title and help of any screen. */
+export function stepInfo(step: StepId): { id: StepId; title: string; help: string } {
+  return STEPS.find((entry) => entry.id === step) ?? ADVANCED_STEPS.find((entry) => entry.id === step)!;
+}
 
 /** A time range of the day: seconds since midnight, the end after the start. */
 export interface TimeRange {
@@ -127,31 +140,81 @@ export function initialState(general: AdBreakSettings = DEFAULT_AD_BREAKS): Wiza
 
 // ---------------------------------------------------------------- steps
 
+/** The step after `step` on the main path; the last one stays. */
 export function nextStep(step: StepId): StepId {
-  return STEPS[Math.min(STEPS.length - 1, stepIndex(step) + 1)]!.id;
+  const index = STEPS.findIndex((entry) => entry.id === step);
+  return STEPS[Math.min(STEPS.length - 1, index + 1)]!.id;
 }
 
-/** The step before, or null on the first one (Back there leaves the wizard). */
+/** The step before on the main path, or null on the first one. */
 export function previousStep(step: StepId): StepId | null {
-  const index = stepIndex(step);
-  return index === 0 ? null : STEPS[index - 1]!.id;
+  const index = STEPS.findIndex((entry) => entry.id === step);
+  return index <= 0 ? null : STEPS[index - 1]!.id;
 }
 
+/** The place of a main step in the path (0 for the first); the advanced screens belong to no place (-1). */
 export function stepIndex(step: StepId): number {
   return STEPS.findIndex((entry) => entry.id === step);
 }
 
-/** The one-line header of a step: "Passo 3 de 8 · Programas". */
+/** The one-line header of a screen: "Passo 3 de 4 · Nome e prévia", or "Ajustes avançados · Comerciais". */
 export function stepHeading(step: StepId): string {
-  return `Passo ${stepIndex(step) + 1} de ${STEPS.length} · ${STEPS[stepIndex(step)]!.title}`;
+  const index = stepIndex(step);
+  if (index >= 0) return `Passo ${index + 1} de ${STEPS.length} · ${STEPS[index]!.title}`;
+  return step === 'advanced' ? stepInfo(step).title : `Ajustes avançados · ${stepInfo(step).title}`;
 }
 
 /**
- * Whether leaving the wizard would lose something: it is past the first step, or an answer differs from the
+ * Where the person is and how they got there. Back goes to the screen they came from; Avançar goes on, except
+ * on a screen opened with "Mudar" (changing), where it goes back to the screen that asked ("Pronto").
+ */
+export interface Nav {
+  step: StepId;
+  /** Opened with "Mudar": Avançar returns to where it was opened. */
+  changing: boolean;
+  trail: ReadonlyArray<{ step: StepId; changing: boolean }>;
+}
+
+export function startNav(step: StepId = 'when'): Nav {
+  return { step, changing: false, trail: [] };
+}
+
+const push = (nav: Nav, step: StepId, changing: boolean): Nav => ({ step, changing, trail: [...nav.trail, { step: nav.step, changing: nav.changing }] });
+
+/** Opens a screen on top of this one (the advanced ones, or the one an AI proposal needs). */
+export function openStep(nav: Nav, step: StepId): Nav {
+  return push(nav, step, false);
+}
+
+/** "Mudar": opens the screen so that finishing it comes back to the current one. */
+export function changeStep(nav: Nav, step: StepId): Nav {
+  return push(nav, step, true);
+}
+
+/** Back to the previous screen, or null when this is the first (Back there leaves the wizard). */
+export function backNav(nav: Nav): Nav | null {
+  const last = nav.trail.at(-1);
+  return last ? { step: last.step, changing: last.changing, trail: nav.trail.slice(0, -1) } : null;
+}
+
+/** Avançar / Pronto. */
+export function advanceNav(nav: Nav): Nav {
+  const inAdvanced = stepIndex(nav.step) < 0;
+  if (nav.changing || inAdvanced) return backNav(nav) ?? push(nav, 'review', false);
+  return push(nav, nextStep(nav.step), false);
+}
+
+/** The label of the button that moves on: "Avançar", or "Pronto" when it only comes back. */
+export function advanceLabel(nav: Nav): string {
+  return nav.changing || stepIndex(nav.step) < 0 ? 'Pronto' : 'Avançar';
+}
+
+/**
+ * Whether leaving the wizard would lose something: it is past the first screen, or an answer differs from the
  * state it opened with (`fresh`, from initialState).
  */
 export function wizardDirty(step: StepId, state: WizardState, fresh: WizardState): boolean {
-  return stepIndex(step) >= 1 || JSON.stringify(state) !== JSON.stringify(fresh);
+  return step !== 'when' || JSON.stringify(state) !== JSON.stringify(fresh);
 }
 
 // ---------------------------------------------------------------- time ranges
@@ -160,6 +223,14 @@ export function applyPreset(state: WizardState, preset: PresetId): WizardState {
   // Custom keeps what is on screen, so a preset can be fine-tuned.
   const ranges = preset === 'custom' ? state.ranges : RANGE_PRESETS.find((entry) => entry.id === preset)!.ranges;
   return { ...state, preset, ranges: ranges.map((range) => ({ ...range })) };
+}
+
+/** The one-press shortcut of the first screen: what most people want, morning on weekdays. */
+export const QUICK_PRESET = { label: 'Manhã, seg a sex', preset: 'morning' as PresetId, days: DAY_PRESETS[0]!.days };
+
+/** Applies the shortcut: the morning range and the weekdays, whatever was chosen before. */
+export function applyQuickPreset(state: WizardState): WizardState {
+  return { ...applyPreset(state, QUICK_PRESET.preset), days: [...QUICK_PRESET.days] };
 }
 
 export function formatRange(range: TimeRange): string {
@@ -258,18 +329,17 @@ export function movePicked(picked: string[], id: string, direction: 1 | -1): str
 /** Why the step cannot move on, in Portuguese, or null. `showCount` is how many shows the library has. */
 export function stepProblem(step: StepId, state: WizardState, showCount: number): string | null {
   switch (step) {
-    case 'ranges':
-      return rangesProblem(state.ranges);
-    case 'days':
-      return state.days.length === 0 ? 'Escolha pelo menos um dia da semana.' : null;
+    case 'when':
+      return rangesProblem(state.ranges) ?? (state.days.length === 0 ? 'Escolha pelo menos um dia da semana.' : null);
     case 'shows':
       if (showCount === 0) return 'A biblioteca não tem programas com episódios.';
       return state.showMode === 'pick' && state.picked.length === 0 ? 'Escolha pelo menos um programa, ou deixe “Todos os programas”.' : null;
+    case 'advanced':
     case 'commercials':
     case 'bumpers':
-    case 'preview':
+    case 'replace':
       return null;
-    case 'name':
+    case 'review':
       if (state.name.trim() === '') return 'Dê um nome ao canal.';
       return state.name.trim().length > MAX_NAME_LENGTH ? `Use no máximo ${MAX_NAME_LENGTH} letras no nome.` : null;
     case 'save':
@@ -280,6 +350,65 @@ export function stepProblem(step: StepId, state: WizardState, showCount: number)
 /** The first step with a problem, or null when the whole wizard is ready to save. */
 export function firstProblemStep(state: WizardState, showCount: number): StepId | null {
   return STEPS.find((step) => stepProblem(step.id, state, showCount) !== null)?.id ?? null;
+}
+
+// ---------------------------------------------------------------- the summary
+
+/** A row of the last screen: what was chosen, and the screen "Mudar" opens for it. */
+export interface SummaryLine {
+  id: string;
+  label: string;
+  value: string;
+  step: StepId;
+}
+
+export interface SummaryContext {
+  library: Library;
+  /** The grade file name (without extension) the channel will have. */
+  fileName: string;
+}
+
+/** The brand and era in words: "Qualquer marca, qualquer época". */
+export function bumpersSummary(state: Pick<WizardState, 'brand' | 'era'>): string {
+  return `${state.brand === '' ? 'Qualquer marca' : state.brand}, ${state.era === null ? 'qualquer época' : state.era}`;
+}
+
+/** New channel, or the one replaced, in words. */
+export function targetSummary(state: Pick<WizardState, 'target'>, library: Library): string {
+  if (state.target === null) return 'Canal novo';
+  const channel = library.schedules.find((schedule) => schedule.id === state.target);
+  return `Trocar o canal “${channel?.name ?? state.target}”`;
+}
+
+/** The answers of the wizard, one row each, with the screen that changes it. */
+export function summaryLines(state: WizardState, { library, fileName }: SummaryContext): SummaryLine[] {
+  const shows =
+    state.showMode === 'all' ? 'Todos os programas' : state.picked.map((id) => library.shows.find((show) => show.id === id)?.title ?? id).join(' → ');
+  const abertura = bumperChoice(library, state)[0]!.ref;
+  return [
+    { id: 'name', label: 'Canal', value: state.name.trim(), step: 'review' },
+    { id: 'ranges', label: 'Horários', value: sortedRanges(state.ranges).map(formatRange).join(' e '), step: 'when' },
+    { id: 'days', label: 'Dias', value: daysSummary(state.days), step: 'when' },
+    { id: 'shows', label: 'Programas', value: shows, step: 'shows' },
+    {
+      id: 'commercials',
+      label: 'Comerciais',
+      value: state.adMode === 'custom' ? `Regras próprias: ${adSummary(state.ad)}` : 'Seguir a configuração geral',
+      step: 'commercials',
+    },
+    { id: 'bumpers', label: 'Vinhetas', value: `${bumpersSummary(state)}${abertura?.includes('/') ? ` · abertura ${abertura}` : ''}`, step: 'bumpers' },
+    { id: 'file', label: 'Arquivo', value: `${library.root}grades/${fileName}.yaml · ${targetSummary(state, library)}`, step: 'replace' },
+  ];
+}
+
+/** The advanced screens, each with what is chosen now (the default unless changed). */
+export function advancedLines(state: WizardState, library: Library): Array<{ id: StepId; label: string; value: string; changed: boolean }> {
+  const custom = state.adMode === 'custom';
+  return [
+    { id: 'commercials' as StepId, label: 'Comerciais', value: custom ? 'Regras próprias deste canal' : 'Seguir a configuração geral', changed: custom },
+    { id: 'bumpers' as StepId, label: 'Vinhetas', value: bumpersSummary(state), changed: state.brand !== '' || state.era !== null },
+    { id: 'replace' as StepId, label: 'Trocar um canal existente', value: state.target === null ? 'Não: criar um canal novo' : targetSummary(state, library), changed: state.target !== null },
+  ];
 }
 
 // ---------------------------------------------------------------- the grade
@@ -293,7 +422,7 @@ export function toBlocks(ranges: TimeRange[]): GenerateBlock[] {
  * `settings` are the ones the TV will play with (the user's choices over the library's): they decide the estimates.
  */
 export function toGenerateOptions(state: WizardState, startDate: string, settings?: GenerateOptions['settings']): GenerateOptions {
-  const problem = rangesProblem(state.ranges) ?? stepProblem('days', state, 1) ?? stepProblem('shows', state, 1) ?? stepProblem('name', state, 1);
+  const problem = stepProblem('when', state, 1) ?? stepProblem('shows', state, 1) ?? stepProblem('review', state, 1);
   if (problem) throw new Error(problem);
   return {
     name: state.name.trim(),

@@ -43,6 +43,8 @@ export async function openServerLibrary(): Promise<BrowserLibrary> {
 
 interface Capabilities {
   editar?: unknown;
+  /** This device already paired with the PIN. */
+  pareado?: unknown;
   ia?: unknown;
   configIa?: unknown;
 }
@@ -50,7 +52,7 @@ interface Capabilities {
 /** What the server offers (--editar, the AI); the dev server and older versions answer something else, or nothing. */
 async function capabilities(): Promise<Capabilities> {
   try {
-    const response = await fetch(CAPABILITIES);
+    const response = await fetch(CAPABILITIES, { cache: 'no-store' });
     if (!response.ok || !(response.headers.get('content-type') ?? '').includes('json')) return {};
     return ((await response.json()) as Capabilities | null) ?? {};
   } catch {
@@ -71,6 +73,9 @@ async function pair(pin: string): Promise<PairOutcome> {
 function serverEditing(): ServerEditing {
   return {
     pair,
+    async isPaired() {
+      return (await capabilities()).pareado === true;
+    },
     async write(path, text, overwrite = false) {
       try {
         const target = FILES + path.split('/').map(encodeURIComponent).join('/') + (overwrite ? '?substituir=1' : '');

@@ -498,6 +498,18 @@ export function prepareSave(state: EditorState, library: Library, date: string):
   return { ...built, schedule: preservePositions(state.base, built.schedule, library, date) };
 }
 
+/** The tabs of the editor, left to right. */
+export const TABS = ['blocks', 'agenda'] as const;
+export type EditorTab = (typeof TABS)[number];
+
+/** The tab a key on a tab leads to: ← and → move to the neighbour and stop at the ends; any other key stays. */
+export function tabAfterKey(tab: EditorTab, key: string): EditorTab {
+  const index = TABS.indexOf(tab);
+  if (key === 'ArrowLeft') return TABS[Math.max(0, index - 1)]!;
+  if (key === 'ArrowRight') return TABS[Math.min(TABS.length - 1, index + 1)]!;
+  return tab;
+}
+
 /** Whether the file has a comment written by hand: a line whose first non-space character is `#`. Saving rewrites the file and drops them. */
 export function hasHandComments(text: string): boolean {
   return /^\s*#/m.test(text);

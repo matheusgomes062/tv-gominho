@@ -1,5 +1,5 @@
 import { MAX_REQUEST_LENGTH, proposalToRaw, validateProposal, type Library, type Proposal, type Show } from '@tv-gominho/nucleo';
-import { RANGE_PRESETS, initialState, type WizardState } from './wizard-model';
+import { RANGE_PRESETS, firstProblemStep, initialState, stepIndex, type StepId, type WizardState } from './wizard-model';
 
 // "Pedir para a IA" in the "Criar uma programação" wizard, when the AI has a key and is on (ai-settings-model.ts): what the app
 // tells the person before using it, what it sends, and how a proposal becomes the wizard's answers. No DOM or fetch.
@@ -65,6 +65,15 @@ export function applyProposal(state: WizardState, proposal: Proposal): WizardSta
     target: null,
     confirmed: false,
   };
+}
+
+/**
+ * Where the wizard goes with a proposal in the answers: the "Nome e prévia" screen, unless an earlier screen has a problem
+ * with them (the person fixes that one first).
+ */
+export function afterProposal(state: WizardState, showCount: number): StepId {
+  const stuck = firstProblemStep(state, showCount);
+  return stuck && stepIndex(stuck) < stepIndex('review') ? stuck : 'review';
 }
 
 /** The wizard's answers as a proposal, to send as "what is chosen now"; null while they are still the defaults. */

@@ -266,7 +266,7 @@ tv-gominho servir ./biblioteca --rede --editar
 Salvar canais pelo app: LIGADO. PIN para parear um aparelho: 482913
 ```
 
-- Ao salvar pela primeira vez, o app pede o **PIN de 6 números** que aparece no terminal. Dá para digitar com os números do controle remoto ou com o teclado na tela (setas e OK). O aparelho fica pareado até o navegador fechar ou o servidor desligar; cada vez que o servidor liga, o PIN é outro.
+- Ao abrir **Criar** ou **Mudar uma programação** pela primeira vez, o app pede o **PIN de 6 números** que aparece no terminal (e a tela Programação mostra **Pareado** ou **Falta o PIN**). Dá para digitar com os números do controle remoto ou com o teclado na tela (setas e OK). O aparelho fica pareado até o navegador fechar ou o servidor desligar; cada vez que o servidor liga, o PIN é outro.
 - Só dá para gravar `grades/<nome>.yaml` (nome com letras, números, `-` e `_`) e `nao-passar.yaml`, na raiz da biblioteca (ou dentro de `biblioteca/`, se o servidor foi aberto na pasta acima dela). Nada mais: nem vídeos, nem configurações, nem outras pastas.
 - A grade precisa ser uma grade válida (a mesma leitura do app), em UTF-8, com até 256 KB. A lista "não passar" precisa ser lida pelo app sem nenhum aviso (só `programas` e `episodios`, veja [biblioteca.md](biblioteca.md)).
 - Nunca substitui um arquivo que já existe sem pedir: o assistente cria um canal novo, e quem quer substituir pede explicitamente, com `?substituir=1` no endereço.
@@ -299,7 +299,7 @@ Para quem integra (rotas, todas sob o mesmo endereço do app):
 
 ### Assistente de IA
 
-Opcional e **desligado por padrão**. Com ele, o "Criar uma programação" ganha o botão **Pedir para a IA**: a pessoa descreve o canal em português ("uma manhã de 3 horas com desenhos calmos") e o Claude, da Anthropic, propõe as escolhas do assistente (horários, dias, programas e ordem, comerciais, marca e época das vinhetas, nome). A proposta abre direto na **Prévia**: dá para salvar, voltar aos passos para ajustar, ou descartar. A IA nunca grava nada; quem salva é a pessoa, do jeito de sempre.
+Opcional e **desligado por padrão**. Com ele, o "Criar uma programação" ganha o botão **Pedir para a IA**: a pessoa descreve o canal em português ("uma manhã de 3 horas com desenhos calmos") e o Claude, da Anthropic, propõe as escolhas do assistente (horários, dias, programas e ordem, comerciais, marca e época das vinhetas, nome). A proposta abre direto na tela **Nome e prévia**: dá para salvar, voltar às telas para ajustar, ou descartar. O botão fica na primeira tela, **Quando?**. A IA nunca grava nada; quem salva é a pessoa, do jeito de sempre.
 
 Precisa de uma chave da API da Anthropic (crie em [console.anthropic.com](https://console.anthropic.com), em *API Keys*). O botão só aparece com as duas coisas: **uma chave e a IA ligada**. Sem isso nada muda e nenhuma chamada é feita.
 

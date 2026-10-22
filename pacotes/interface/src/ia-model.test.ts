@@ -1,6 +1,6 @@
 import { DEFAULT_AD_BREAKS, scanLibrary, type Library, type LibrarySource, type Proposal } from '@tv-gominho/nucleo';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { applyProposal, checkProposal, currentChoices, iaReply, requestProblem, typicalMinutes } from './ia-model';
+import { afterProposal, applyProposal, checkProposal, currentChoices, iaReply, requestProblem, typicalMinutes } from './ia-model';
 import { buildChannel, firstProblemStep, initialState } from './wizard-model';
 
 const FILES: Record<string, string> = {
@@ -61,6 +61,22 @@ describe('applyProposal', () => {
     expect(state.showMode).toBe('all');
     expect(state.adMode).toBe('general');
     expect(state.ad).toEqual(DEFAULT_AD_BREAKS);
+  });
+});
+
+describe('afterProposal', () => {
+  it('opens "Nome e prévia" for a proposal that fits', () => {
+    expect(afterProposal(applyProposal(initialState(), PROPOSAL), 2)).toBe('review');
+  });
+
+  it('stops at the earlier screen that has a problem with the answers', () => {
+    const state = applyProposal(initialState(), PROPOSAL);
+    expect(afterProposal({ ...state, days: [] }, 2)).toBe('when');
+    expect(afterProposal(state, 0)).toBe('shows');
+  });
+
+  it('leaves the name for the preview screen, where it can be fixed', () => {
+    expect(afterProposal({ ...applyProposal(initialState(), PROPOSAL), name: '' }, 2)).toBe('review');
   });
 });
 

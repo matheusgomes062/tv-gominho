@@ -18,6 +18,7 @@ import type { DownloadReason, WriteAccess } from '../sources/save';
 import { requestWriteAccess } from '../sources/save';
 import { download, saveFiles, type SaveFile, type SaveFilesResult } from '../sources/save-files';
 import type { BrowserLibrary, ServerEditing } from '../sources/types';
+import { ScrollBody } from '../components/ScrollBody';
 import { PinPage } from './WeekWizard';
 
 interface Props {
@@ -128,7 +129,7 @@ export function BlocklistScreen({ source, library, onSaved, onBack }: Props) {
               : `Bloqueado: ${summary.shows} ${summary.shows === 1 ? 'programa inteiro' : 'programas inteiros'} e ${summary.episodes} ${summary.episodes === 1 ? 'episódio' : 'episódios'} avulsos.`}
         </p>
 
-        <div className="wizard-body" ref={body} key={`${phase.name}-${openShow?.id ?? ''}`}>
+        <ScrollBody className="wizard-body" innerRef={body} key={`${phase.name}-${openShow?.id ?? ''}`}>
           {phase.name === 'done' ? (
             <DonePage result={phase.result} files={phase.files} reread={phase.reread} onClose={onBack} />
           ) : phase.name === 'pin' ? (
@@ -153,7 +154,7 @@ export function BlocklistScreen({ source, library, onSaved, onBack }: Props) {
           ) : (
             <ShowList library={library} list={list} shows={shows} error={error} onChange={setList} onOpen={(id) => setPhase({ name: 'editing', show: id })} />
           )}
-        </div>
+        </ScrollBody>
 
         {phase.name === 'editing' && leaving && (
           <p className="wizard-problem wizard-leaving" role="alert" data-leaving>
@@ -162,7 +163,7 @@ export function BlocklistScreen({ source, library, onSaved, onBack }: Props) {
         )}
 
         {phase.name === 'editing' && (
-          <footer className="wizard-footer">
+          <footer className="wizard-footer" data-nav-zone="footer" data-nav-row="footer">
             <button data-nav className="action-tile" onClick={goBack}>
               <Icon name="back" className="action-icon" />
               <span>{openShow ? 'Voltar à lista' : changed ? 'Sair sem salvar' : 'Fechar'}</span>
@@ -323,7 +324,7 @@ function DonePage({ result, files, reread, onClose }: { result: SaveFilesResult;
           {grades > 0 ? `, junto com ${grades === 1 ? 'a grade' : `as ${grades} grades`} que ${grades === 1 ? 'guarda' : 'guardam'} a posição de cada programa` : ''}.{' '}
           {reread ? 'A TV já usa a nova lista.' : 'Não consegui reler a biblioteca: escolha a pasta de novo para a TV usar a nova lista.'}
         </p>
-        <div className="wizard-footer">
+        <div className="wizard-footer" data-nav-zone="footer" data-nav-row="footer">
           <button data-nav data-autofocus className="action-tile primary" onClick={onClose}>
             <span>Fechar</span>
           </button>
@@ -362,7 +363,7 @@ function DonePage({ result, files, reread, onClose }: { result: SaveFilesResult;
         {pending.length > 1 && <li>Troque todos de uma vez: as grades guardam a posição de cada programa e precisam combinar com a lista nova.</li>}
         <li>Abra a biblioteca de novo (recarregue a página ou escolha a pasta outra vez).</li>
       </ol>
-      <div className="wizard-footer">
+      <div className="wizard-footer" data-nav-zone="footer" data-nav-row="footer">
         <button data-nav data-autofocus className="action-tile primary" onClick={onClose}>
           <span>Entendi</span>
         </button>

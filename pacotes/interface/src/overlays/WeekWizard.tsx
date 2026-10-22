@@ -15,6 +15,7 @@ import {
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Icon, type IconName } from '../components/Icon';
 import { KeyHints, Overlay } from '../components/Overlay';
+import { ScrollBody } from '../components/ScrollBody';
 import type { Durations } from '../media';
 import { useSettings } from '../settings';
 import { clickDirection } from '../settings-model';
@@ -22,52 +23,58 @@ import { PAIR_MESSAGES, PIN_LENGTH, pinComplete, typePin, type PairOutcome } fro
 import { overwriteWithBackup, type ReplaceResult } from '../sources/overwrite';
 import { downloadText, requestWriteAccess, saveGrade, saveThroughServer, type SaveResult, type WriteAccess } from '../sources/save';
 import type { AiBackend, BrowserLibrary, ServerEditing } from '../sources/types';
-import { EXAMPLES, MAX_REQUEST_LENGTH, NOTICE, NOTICE_KEY, applyProposal, currentChoices, iaReply, requestProblem, typicalMinutes } from '../ia-model';
+import { EXAMPLES, MAX_REQUEST_LENGTH, NOTICE, NOTICE_KEY, afterProposal, applyProposal, currentChoices, iaReply, requestProblem, typicalMinutes } from '../ia-model';
 import {
   DAY_LABELS,
   DAY_ORDER,
   DAY_PRESETS,
   MAX_NAME_LENGTH,
   MAX_RANGES,
+  QUICK_PRESET,
   RANGE_PRESETS,
-  STEPS,
   addRange,
   adSummary,
+  advanceLabel,
+  advanceNav,
+  advancedLines,
   applyPreset,
+  applyQuickPreset,
+  backNav,
   buildChannel,
   bumperBrands,
   bumperChoice,
   bumperEras,
+  changeStep,
   chooseBrand,
   chooseNew,
   chooseReplace,
   dayLabel,
   daysSummary,
-  firstProblemStep,
   existingGradeFiles,
   formatRange,
   initialState,
   longDayLabel,
   moveRangeEdge,
   movePicked,
-  nextStep,
+  openStep,
   planReplace,
   previewDates,
-  previousStep,
   removeRange,
   replaceableChannels,
   sortedRanges,
+  startNav,
   stepAd,
-  stepHeading,
-  wizardDirty,
   stepEra,
-  stepIndex,
+  stepHeading,
+  stepInfo,
   stepProblem,
-  togglePicked,
+  summaryLines,
   toggleDay,
-  gradeFolderFiles,
+  togglePicked,
   uniqueFileName,
+  wizardDirty,
   type BuiltChannel,
+  type Nav,
   type PresetId,
   type StepId,
   type WizardState,
@@ -86,12 +93,15 @@ interface Props {
 }
 
 type Phase =
+  // Serving with `--editar`: asking the server whether this device is paired, before anything else.
+  | { name: 'checking' }
   | { name: 'editing' }
   // 'Pedir para a IA' (when the AI has a key and is on): the request, then the proposal fills the answers and opens the preview.
   | { name: 'ia' }
   | { name: 'saving' }
   // Saving through `tv-gominho servir --editar` and this device is not paired yet: the PIN, then the same file.
-  | { name: 'pin'; editing: ServerEditing; again(message: string): Promise<void>; message?: string }
+  // `start`: asked on opening the wizard (Back leaves it), before any answer is lost to a refusal at the end.
+  | { name: 'pin'; editing: ServerEditing; again(message: string): Promise<void>; message?: string; start?: boolean }
   | { name: 'done'; result: SaveResult | ReplaceResult; reread: boolean };
 
 /** The channel the answers build, kept from the preview to the save so both show and write the same thing. */
@@ -105,21 +115,25 @@ interface Prepared {
 /** How long the preview waits for the first video durations before it shows typical lengths for the rest. */
 const DURATION_WAIT_MS = 12_000;
 const SAMPLE_EPISODES = 12;
+/** The preview is built again this long after the last change of an answer (typing the name). */
+const REBUILD_DELAY_MS = 350;
 
 /**
- * "Criar uma programação": a short sequence of steps (time ranges, days, shows, commercials, bumpers, name, preview, save) that
- * builds a channel with the same generator as `tv-gominho grade` and saves it as a file in grades/: a new one, or in
- * the place of an existing one (with a backup copy of the old file). Everything is reachable with arrows, OK and Back;
- * Back goes one step back, and from the first step closes the wizard.
+ * "Criar uma programação": four screens (Quando?, O que passa?, Nome e prévia, Salvar) that build a channel with the same
+ * generator as `tv-gominho grade` and save it as a file in grades/: a new one, or in the place of an existing one (with
+ * a backup copy of the old file). Comerciais, Vinhetas and "Trocar um canal existente" sit behind "Ajustes avançados".
+ * Everything is reachable with arrows, OK and Back; Back goes to the screen before. On the last screen each answer has
+ * "Mudar", which opens its screen and comes back. Served with --editar, the PIN is asked on opening.
  */
 export function WeekWizard({ source, library, durations, channels, onSaved, onWatch, onBack }: Props) {
   const { settings } = useSettings();
-  const [step, setStep] = useState<StepId>('ranges');
+  const [nav, setNav] = useState<Nav>(startNav);
+  const step = nav.step;
   const [state, setState] = useState<WizardState>(() => initialState(settings.adBreaks));
   const [fresh] = useState<WizardState>(() => initialState(settings.adBreaks));
   // Leaving with answers that would be lost asks once (as the channel editor does).
   const [leaving, setLeaving] = useState(false);
-  const [phase, setPhase] = useState<Phase>({ name: 'editing' });
+  const [phase, setPhase] = useState<Phase>(() => (source.editing ? { name: 'checking' } : { name: 'editing' }));
   const [error, setError] = useState<string | null>(null);
   const [prepared, setPrepared] = useState<Prepared | null>(null);
   /** The explanation of the AI's proposal while the answers are the ones it proposed (they can still be adjusted). */
@@ -138,6 +152,25 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
     };
   }, [source]);
 
+  // Served with --editar: the PIN comes first, so nobody fills in four screens to be refused at the end.
+  useEffect(() => {
+    const editing = source.editing;
+    if (!editing) return;
+    let live = true;
+    void editing
+      .isPaired()
+      .catch(() => true)
+      .then((paired) => {
+        if (!live) return;
+        setPhase((current) =>
+          current.name !== 'checking' ? current : paired ? { name: 'editing' } : { name: 'pin', editing, start: true, again: async () => setPhase({ name: 'editing' }) },
+        );
+      });
+    return () => {
+      live = false;
+    };
+  }, [source]);
+
   const playable = useMemo(() => library.shows.filter((show) => show.episodes.length > 0), [library]);
   const taken = useMemo(
     () => [...existingGradeFiles(source.files, library.root), ...library.schedules.map((schedule) => schedule.id)],
@@ -148,6 +181,7 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
   const problem = stepProblem(step, state, playable.length);
   const change = (patch: Partial<WizardState>) => setState((current) => ({ ...current, ...patch }));
   const stateKey = JSON.stringify(state);
+  const stale = prepared !== null && prepared.key !== stateKey;
 
   /** Builds the channel for the answers, after reading the duration of the videos it will use (as far as that is quick). */
   async function build(): Promise<Prepared> {
@@ -162,81 +196,84 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
     return { key: stateKey, built, today };
   }
 
-  // Entering the preview builds the channel once; it stays for the save step, and any other step forgets it (the answers may change).
+  // The "Nome e prévia" screen builds the channel for the answers it has, and again shortly after each change (the name
+  // seeds the day's draws, so even a letter changes the preview). The old preview stays until the new one is ready.
   useEffect(() => {
-    if (step !== 'preview') {
-      if (step !== 'save') setPrepared(null);
-      return;
-    }
+    if (step !== 'review' || phase.name !== 'editing') return;
+    if (prepared?.key === stateKey) return;
+    if (stepProblem('when', state, playable.length) || stepProblem('shows', state, playable.length) || stepProblem('review', state, playable.length)) return;
     let current = true;
     setError(null);
-    build().then(
-      (result) => current && setPrepared(result),
-      (failure: Error) => {
-        if (!current) return;
-        setError(`Não foi possível montar o canal: ${failure.message}`);
-        setStep('name');
+    const timer = setTimeout(
+      () => {
+        build().then(
+          (result) => current && setPrepared(result),
+          (failure: Error) => current && setError(`Não foi possível montar o canal: ${failure.message}`),
+        );
       },
+      prepared ? REBUILD_DELAY_MS : 0,
     );
     return () => {
       current = false;
+      clearTimeout(timer);
     };
-    // Only the step starts a build: the answers cannot change while the preview is open.
-  }, [step]);
+    // build() reads the answers of this render, which stateKey stands for.
+  }, [step, phase.name, stateKey]);
 
-  // Each step starts with focus on its first choice (or the one marked data-autofocus).
+  // Each screen starts with focus on its first choice (or the one marked data-autofocus).
   useEffect(() => {
     const container = body.current;
     if (!container) return;
-    // A step with nothing to choose (the summary) starts on the button that moves on.
+    // The last screen starts on the button that saves: the answers are above it, one "Mudar" away.
     const target =
       container.querySelector<HTMLElement>('[data-autofocus]') ??
-      container.querySelector<HTMLElement>('[data-nav]') ??
-      container.parentElement?.querySelector<HTMLElement>('[data-save], [data-next]');
+      (step === 'save' ? container.parentElement?.parentElement?.querySelector<HTMLElement>('[data-save]') : null) ??
+      container.querySelector<HTMLElement>('[data-nav]');
     target?.focus();
-  }, [step, phase.name, prepared !== null]);
+  }, [step, phase.name]);
 
   const goBack = () => {
-    if (phase.name === 'saving') return;
+    if (phase.name === 'saving' || phase.name === 'checking') return;
     if (phase.name === 'done') return onBack();
-    if (phase.name === 'pin' || phase.name === 'ia') return setPhase({ name: 'editing' });
+    if (phase.name === 'pin') return phase.start ? onBack() : setPhase({ name: 'editing' });
+    if (phase.name === 'ia') return setPhase({ name: 'editing' });
     setError(null);
-    const before = previousStep(step);
-    if (before) setStep(before);
+    const before = backNav(nav);
+    if (before) setNav(before);
     else leave();
   };
   /** Closes the wizard; with answers that would be lost, the first try only asks (the second one leaves). */
   const leave = () => {
     if (phase.name === 'saving') return;
-    if (phase.name === 'done' || leaving || !wizardDirty(step, state, fresh)) return onBack();
+    if (phase.name === 'done' || phase.name === 'pin' || leaving || !wizardDirty(step, state, fresh)) return onBack();
     setLeaving(true);
   };
-  // Any change of answer or step takes the question back.
+  // Any change of answer or screen takes the question back.
   useEffect(() => setLeaving(false), [stateKey, step, phase.name]);
   const goOn = () => {
     if (problem) return;
-    setStep(nextStep(step));
+    setNav(advanceNav(nav));
   };
 
-  /** The AI's proposal becomes the answers; the preview shows it, unless a step still has a problem with it. */
+  /** The AI's proposal becomes the answers; the preview shows it, unless a screen still has a problem with it. */
   function takeProposal(proposal: Proposal) {
     const next = applyProposal(state, proposal);
     setState(next);
     setIaNote(proposal.note || 'A IA preencheu as escolhas.');
     setError(null);
     setPhase({ name: 'editing' });
-    const stuck = firstProblemStep(next, playable.length);
-    setStep(stuck && stepIndex(stuck) < stepIndex('preview') ? stuck : 'preview');
+    const target = afterProposal(next, playable.length);
+    setNav(target === 'when' ? startNav() : openStep(startNav(), target));
   }
 
   function discardProposal() {
     setState(initialState(settings.adBreaks));
     setIaNote(null);
-    setStep('ranges');
+    setNav(startNav());
   }
 
   async function save() {
-    // Replacing a channel needs the confirmation of the last step.
+    // Replacing a channel needs the confirmation of the last screen.
     if (problem) return;
     setError(null);
     setPhase({ name: 'saving' });
@@ -281,7 +318,7 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
   }
 
   const last = step === 'save';
-  const index = stepIndex(step);
+  const first = nav.trail.length === 0;
 
   return (
     <Overlay edge="left" label="Criar uma programação" onBack={goBack} className="wizard-overlay">
@@ -294,17 +331,27 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
           </button>
         </header>
 
-        <p className="wizard-progress" aria-label="Passo atual" data-step={index + 1}>
-          {stepHeading(step)}
+        <p className="wizard-progress" aria-label="Passo atual" data-step={step}>
+          {phase.name === 'pin' && phase.start ? 'Antes de começar · PIN do computador' : stepHeading(step)}
         </p>
 
-        <div className="wizard-body" ref={body} key={`${step}-${phase.name}`}>
+        <ScrollBody className="wizard-body" innerRef={body} key={`${step}-${phase.name}`}>
           {phase.name === 'done' ? (
             <DonePage result={phase.result} reread={phase.reread} onWatch={() => onWatch(phase.result.fileName)} onClose={onBack} />
+          ) : phase.name === 'checking' ? (
+            <p className="wizard-busy" role="status">
+              Conferindo se este aparelho já foi pareado com o computador…
+            </p>
           ) : phase.name === 'pin' ? (
             <PinPage
               editing={phase.editing}
-              what={state.target ? `trocar a programação “${state.name.trim()}”` : `salvar a programação “${state.name.trim()}”`}
+              what={
+                phase.start
+                  ? 'criar e salvar programações neste computador'
+                  : state.target
+                    ? `trocar a programação “${state.name.trim()}”`
+                    : `salvar a programação “${state.name.trim()}”`
+              }
               message={phase.message}
               onPaired={() =>
                 void phase.again('O computador pediu o PIN de novo. Confira o número no terminal.').catch((failure) => {
@@ -330,36 +377,55 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
             </p>
           ) : (
             <>
-              <h2>{STEPS[index]!.help}</h2>
-              {step === 'ranges' && aiOn && source.ai && (
-                <div className="wizard-list">
-                  <Row
-                    icon="text"
-                    label="Pedir para a IA"
-                    meta="Descreva o canal em português; a IA propõe e você revisa na prévia antes de salvar."
-                    data="ia"
-                    onClick={() => setPhase({ name: 'ia' })}
-                  />
-                </div>
+              {step !== 'save' && <h2>{stepInfo(step).help}</h2>}
+              {step === 'when' && (
+                <WhenStep
+                  state={state}
+                  onChange={setState}
+                  onAi={aiOn && source.ai ? () => setPhase({ name: 'ia' }) : undefined}
+                  onQuick={() => {
+                    setState(applyQuickPreset);
+                    setNav(advanceNav(nav));
+                  }}
+                />
               )}
-              {step === 'ranges' && <RangesStep state={state} onChange={setState} />}
-              {step === 'days' && <DaysStep state={state} onChange={change} />}
-              {step === 'shows' && <ShowsStep state={state} library={library} shows={playable} onChange={change} />}
+              {step === 'shows' && (
+                <ShowsStep
+                  state={state}
+                  library={library}
+                  shows={playable}
+                  onChange={change}
+                  onAll={() => {
+                    change({ showMode: 'all' });
+                    setNav(advanceNav(nav));
+                  }}
+                />
+              )}
+              {step === 'review' && (
+                <>
+                  <NameField state={state} fileName={fileName} onChange={setState} onEnter={goOn} />
+                  <button data-nav data-advanced className="action-tile small" onClick={() => setNav(openStep(nav, 'advanced'))}>
+                    <Icon name="settings" className="action-icon" />
+                    <span>Ajustes avançados</span>
+                  </button>
+                  {iaNote && (
+                    <div className="wizard-list" data-note="ia">
+                      <p className="panel-note">
+                        Proposta da IA: {iaNote} Confira a prévia. Para ajustar, volte aos passos anteriores; para seguir, avance e salve.
+                      </p>
+                      <button data-nav className="action-tile small" onClick={discardProposal}>
+                        <Icon name="close" className="action-icon" />
+                        <span>Descartar a proposta</span>
+                      </button>
+                    </div>
+                  )}
+                  <PreviewStep prepared={prepared} stale={stale} building={!prepared && !problem && !error} library={library} durations={durations} />
+                </>
+              )}
+              {step === 'advanced' && <AdvancedStep state={state} library={library} onOpen={(id) => setNav(openStep(nav, id))} />}
               {step === 'commercials' && <CommercialsStep state={state} library={library} onChange={setState} />}
               {step === 'bumpers' && <BumpersStep state={state} library={library} onChange={setState} />}
-              {step === 'name' && <NameStep state={state} fileName={fileName} library={library} onChange={setState} onEnter={goOn} />}
-              {step === 'preview' && iaNote && (
-                <div className="wizard-list" data-note="ia">
-                  <p className="panel-note">
-                    Proposta da IA: {iaNote} Confira a prévia. Para ajustar, volte aos passos anteriores; para seguir, avance e salve.
-                  </p>
-                  <button data-nav className="action-tile small" onClick={discardProposal}>
-                    <Icon name="close" className="action-icon" />
-                    <span>Descartar a proposta</span>
-                  </button>
-                </div>
-              )}
-              {step === 'preview' && <PreviewStep prepared={prepared?.key === stateKey ? prepared : null} library={library} durations={durations} />}
+              {step === 'replace' && <ReplaceStep state={state} fileName={fileName} library={library} onChange={setState} />}
               {step === 'save' && (
                 <SummaryStep
                   state={state}
@@ -368,6 +434,7 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
                   channels={channels}
                   replacing={replacing}
                   onChange={setState}
+                  onChangeStep={(id) => setNav(changeStep(nav, id))}
                 />
               )}
               {(problem ?? error) && (
@@ -377,7 +444,7 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
               )}
             </>
           )}
-        </div>
+        </ScrollBody>
 
         {phase.name === 'editing' && leaving && (
           <p className="wizard-problem wizard-leaving" role="alert" data-leaving>
@@ -386,20 +453,20 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
         )}
 
         {phase.name === 'editing' && (
-          <footer className="wizard-footer">
-            <button data-nav data-nav-adjust className="action-tile" onClick={goBack} onKeyDown={footerKeys}>
+          <footer className="wizard-footer" data-nav-zone="footer" data-nav-row="footer">
+            <button data-nav className="action-tile" onClick={goBack}>
               <Icon name="back" className="action-icon" />
-              <span>{index === 0 ? 'Cancelar' : 'Voltar'}</span>
+              <span>{first ? 'Cancelar' : 'Voltar'}</span>
             </button>
             {last ? (
-              <button data-nav data-nav-adjust data-save className="action-tile primary" aria-disabled={problem ? true : undefined} onClick={save} onKeyDown={footerKeys}>
+              <button data-nav data-save className="action-tile primary" aria-disabled={problem ? true : undefined} onClick={save}>
                 <Icon name="check" className="action-icon" />
                 <span>{state.target ? 'Trocar o canal' : 'Salvar canal'}</span>
               </button>
             ) : (
-              <button data-nav data-nav-adjust data-next className="action-tile primary" aria-disabled={problem ? true : undefined} onClick={goOn} onKeyDown={footerKeys}>
-                <span>Avançar</span>
-                <Icon name="chevronRight" className="action-icon" />
+              <button data-nav data-next className="action-tile primary" aria-disabled={problem ? true : undefined} onClick={goOn}>
+                <span>{advanceLabel(nav)}</span>
+                <Icon name={advanceLabel(nav) === 'Pronto' ? 'check' : 'chevronRight'} className="action-icon" />
               </button>
             )}
           </footer>
@@ -412,24 +479,13 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
             ['OK', 'confirmar'],
             [
               'Voltar',
-              phase.name === 'pin' || phase.name === 'ia' ? 'cancelar' : index === 0 || phase.name === 'done' ? 'fechar' : 'passo anterior',
+              phase.name === 'pin' || phase.name === 'ia' ? 'cancelar' : first || phase.name === 'done' ? 'fechar' : 'tela anterior',
             ],
           ]}
         />
       </div>
     </Overlay>
   );
-}
-
-/**
- * Left and Right between the buttons of the footer. The spatial navigation alone would send Right from "Voltar" to
- * a wide row above instead of "Avançar" (rows are nearer than the button on the far side), so the footer keeps them.
- */
-function footerKeys(event: KeyboardEvent<HTMLElement>) {
-  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-  event.preventDefault();
-  const buttons = [...event.currentTarget.parentElement!.querySelectorAll<HTMLElement>('[data-nav]')];
-  buttons[buttons.indexOf(event.currentTarget) + (event.key === 'ArrowLeft' ? -1 : 1)]?.focus();
 }
 
 // ---------------------------------------------------------------- rows
@@ -441,8 +497,11 @@ interface RowProps {
   /** A radio/checkbox style row, with its state shown on the right. */
   role?: 'radio' | 'checkbox';
   checked?: boolean;
+  /** A button that is on or off (not a radio): aria-pressed, with the same mark. */
+  pressed?: boolean;
   autofocus?: boolean;
   children?: ReactNode;
+  className?: string;
   onClick(event: React.MouseEvent<HTMLButtonElement>): void;
   onKeyDown?(event: KeyboardEvent<HTMLButtonElement>): void;
   /** The row keeps Left/Right for itself (see nav.ts). */
@@ -450,16 +509,18 @@ interface RowProps {
   data?: string;
 }
 
-function Row({ icon, label, meta, role, checked, autofocus, children, onClick, onKeyDown, adjust, data }: RowProps) {
+function Row({ icon, label, meta, role, checked, pressed, autofocus, children, className = '', onClick, onKeyDown, adjust, data }: RowProps) {
+  const on = Boolean(role ? checked : pressed);
   return (
     <button
       data-nav
       data-nav-adjust={adjust ? '' : undefined}
       data-autofocus={autofocus ? '' : undefined}
       data-wizard={data}
-      className="row wizard-row"
+      className={`row wizard-row ${className}`.trim()}
       role={role}
       aria-checked={role ? Boolean(checked) : undefined}
+      aria-pressed={!role && pressed !== undefined ? pressed : undefined}
       onClick={onClick}
       onKeyDown={onKeyDown}
     >
@@ -468,7 +529,7 @@ function Row({ icon, label, meta, role, checked, autofocus, children, onClick, o
         <span className="row-label">{label}</span>
         {meta && <span className="row-meta">{meta}</span>}
       </span>
-      {children ?? (role && <span className="wizard-mark" data-on={Boolean(checked)}>{checked && <Icon name="check" />}</span>)}
+      {children ?? ((role || pressed !== undefined) && <span className="wizard-mark" data-on={on}>{on && <Icon name="check" />}</span>)}
     </button>
   );
 }
@@ -501,29 +562,65 @@ function Stepper({ icon, label, value, onStep, data, autofocus }: { icon: IconNa
   );
 }
 
-// ---------------------------------------------------------------- steps
+// ---------------------------------------------------------------- screen 1: when
 
-function RangesStep({ state, onChange }: { state: WizardState; onChange(update: (state: WizardState) => WizardState): void }) {
+/** "Quando?": the one-press shortcut first, then the time ranges and the days together. */
+function WhenStep({
+  state,
+  onChange,
+  onAi,
+  onQuick,
+}: {
+  state: WizardState;
+  onChange(update: (state: WizardState) => WizardState): void;
+  onAi?: () => void;
+  onQuick(): void;
+}) {
   const choose = (preset: PresetId) => onChange((current) => applyPreset(current, preset));
+  const sameDays = (days: Weekday[]) => days.length === state.days.length && days.every((day) => state.days.includes(day));
+  const setDays = (days: Weekday[]) => onChange((current) => ({ ...current, days }));
   return (
     <>
-      <div role="radiogroup" aria-label="Faixas de horário" className="wizard-list">
+      {onAi && (
+        <Row
+          icon="text"
+          label="Pedir para a IA"
+          meta="Descreva o canal em português; a IA propõe e você revisa antes de salvar."
+          data="ia"
+          onClick={onAi}
+        />
+      )}
+      <Row
+        icon="clock"
+        autofocus
+        className="wizard-quick"
+        label={QUICK_PRESET.label}
+        meta={`${RANGE_PRESETS.find((preset) => preset.id === QUICK_PRESET.preset)!.ranges.map(formatRange).join(' e ')}. OK já usa e segue para os programas.`}
+        data="quick"
+        onClick={onQuick}
+      >
+        <Icon name="chevronRight" className="selector-arrow" />
+      </Row>
+
+      <p className="wizard-group">Ou ajuste</p>
+      <div className="wizard-chips" role="group" aria-label="Faixas de horário" data-nav-row="presets">
         {RANGE_PRESETS.map((preset) => (
-          <Row
+          <button
             key={preset.id}
-            icon="clock"
-            role="radio"
-            autofocus={preset.id === state.preset}
-            checked={preset.id === state.preset}
-            label={preset.label}
-            meta={preset.id === 'custom' ? 'Até 3 faixas, com os horários que você escolher.' : preset.ranges.map(formatRange).join(' e ')}
-            data={preset.id}
+            data-nav
+            data-preset={preset.id}
+            className="action-tile"
+            aria-pressed={preset.id === state.preset}
+            title={preset.id === 'custom' ? 'Até 3 faixas, com os horários que você escolher' : preset.ranges.map(formatRange).join(' e ')}
             onClick={() => choose(preset.id)}
-          />
+          >
+            <Icon name="clock" className="action-icon" />
+            <span>{preset.label}</span>
+          </button>
         ))}
       </div>
 
-      {state.preset === 'custom' && (
+      {state.preset === 'custom' ? (
         <div className="wizard-list" aria-label="Suas faixas">
           {state.ranges.map((range, i) => (
             <div className="wizard-range" key={i}>
@@ -556,34 +653,23 @@ function RangesStep({ state, onChange }: { state: WizardState; onChange(update: 
             </button>
           )}
         </div>
-      )}
-      {state.preset !== 'custom' && (
-        <p className="panel-note">No ar: {sortedRanges(state.ranges).map(formatRange).join(' e ')}. Escolha “Faixas próprias” para ajustar os horários.</p>
-      )}
-    </>
-  );
-}
+      ) : null}
 
-function DaysStep({ state, onChange }: { state: WizardState; onChange(patch: Partial<WizardState>): void }) {
-  const same = (days: Weekday[]) => days.length === state.days.length && days.every((day) => state.days.includes(day));
-  return (
-    <>
-      <div className="wizard-chips" aria-label="Atalhos">
+      <div className="wizard-chips" aria-label="Atalhos de dias" data-nav-row="day-presets">
         {DAY_PRESETS.map((preset) => (
           <button
             key={preset.id}
             data-nav
-            data-autofocus={same(preset.days) ? '' : undefined}
             data-days-preset={preset.id}
             className="action-tile"
-            aria-pressed={same(preset.days)}
-            onClick={() => onChange({ days: [...preset.days] })}
+            aria-pressed={sameDays(preset.days)}
+            onClick={() => setDays([...preset.days])}
           >
             {preset.label}
           </button>
         ))}
       </div>
-      <div className="wizard-chips" role="group" aria-label="Dias da semana">
+      <div className="wizard-chips" role="group" aria-label="Dias da semana" data-nav-row="days">
         {DAY_ORDER.map((day) => {
           const on = state.days.includes(day);
           return (
@@ -593,51 +679,57 @@ function DaysStep({ state, onChange }: { state: WizardState; onChange(patch: Par
               data-day={day}
               role="checkbox"
               aria-checked={on}
+              aria-label={DAY_LABELS[day]}
+              title={DAY_LABELS[day]}
               className="action-tile day-chip"
-              onClick={() => onChange({ days: toggleDay(state.days, day) })}
+              onClick={() => setDays(toggleDay(state.days, day))}
             >
-              {on && <Icon name="check" className="action-icon" />}
-              <span>{DAY_LABELS[day]}</span>
+              <span>{DAY_LABELS[day].slice(0, 3)}</span>
             </button>
           );
         })}
       </div>
-      <p className="panel-note">O canal passa só nos dias marcados. Nos outros, a TV reprisa o último dia, como nas outras grades.</p>
+      <p className="panel-note">
+        No ar: {sortedRanges(state.ranges).map(formatRange).join(' e ')}, {daysSummary(state.days).toLowerCase()}.
+      </p>
     </>
   );
 }
+
+// ---------------------------------------------------------------- screen 2: shows
 
 function ShowsStep({
   state,
   library,
   shows,
   onChange,
+  onAll,
 }: {
   state: WizardState;
   library: Library;
   shows: Library['shows'];
   onChange(patch: Partial<WizardState>): void;
+  /** "Todos os programas" is the answer most people want: choosing it goes on. */
+  onAll(): void;
 }) {
   const picking = state.showMode === 'pick';
   const titleOf = new Map(library.shows.map((show) => [show.id, show.title]));
   return (
     <>
-      <div role="radiogroup" aria-label="Quais programas" className="wizard-list">
+      <div className="wizard-list" role="group" aria-label="Quais programas">
         <Row
           icon="episode"
-          role="radio"
+          pressed={!picking}
           autofocus={!picking}
-          checked={!picking}
           label="Todos os programas"
-          meta={`${shows.length} ${shows.length === 1 ? 'programa' : 'programas'}, em rodízio na ordem que o app escolhe.`}
+          meta={`${shows.length} ${shows.length === 1 ? 'programa' : 'programas'}, em rodízio na ordem que o app escolhe. OK já usa e segue.`}
           data="all"
-          onClick={() => onChange({ showMode: 'all' })}
+          onClick={onAll}
         />
         <Row
           icon="episode"
-          role="radio"
+          pressed={picking}
           autofocus={picking}
-          checked={picking}
           label="Escolher os programas"
           meta="Você marca os que entram e a ordem do rodízio."
           data="pick"
@@ -688,6 +780,25 @@ function ShowsStep({
           <p className="panel-note">Os programas passam em rodízio na ordem dos números. Com a seta ← ou → no programa marcado, ele passa para antes ou depois.</p>
         </div>
       )}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------- the advanced screens
+
+/** "Ajustes avançados": the three things that start on the default and rarely need to change. */
+function AdvancedStep({ state, library, onOpen }: { state: WizardState; library: Library; onOpen(id: StepId): void }) {
+  const icons: Partial<Record<StepId, IconName>> = { commercials: 'ads', bumpers: 'interstitials', replace: 'restore' };
+  return (
+    <>
+      <div className="wizard-list" role="group" aria-label="Ajustes avançados">
+        {advancedLines(state, library).map((line, i) => (
+          <Row key={line.id} icon={icons[line.id] ?? 'settings'} autofocus={i === 0} label={line.label} meta={`${line.value}${line.changed ? ' (mudado)' : ''}`} data={`advanced-${line.id}`} onClick={() => onOpen(line.id)}>
+            <Icon name="chevronRight" className="selector-arrow" />
+          </Row>
+        ))}
+      </div>
+      <p className="panel-note">Nada aqui precisa ser mexido para criar um canal: o padrão segue a configuração geral, usa qualquer marca de vinhetas e cria um canal novo.</p>
     </>
   );
 }
@@ -836,16 +947,14 @@ function BumpersStep({ state, library, onChange }: { state: WizardState; library
   );
 }
 
-function NameStep({
+function NameField({
   state,
   fileName,
-  library,
   onChange,
   onEnter,
 }: {
   state: WizardState;
   fileName: string;
-  library: Library;
   onChange(update: (state: WizardState) => WizardState): void;
   onEnter(): void;
 }) {
@@ -857,34 +966,52 @@ function NameStep({
       onEnter();
     }
   };
+  return (
+    <label className="wizard-field">
+      <span className="row-label">Nome do canal</span>
+      <input
+        data-nav
+        data-nav-adjust
+        data-autofocus
+        data-name
+        type="text"
+        value={state.name}
+        maxLength={MAX_NAME_LENGTH + 10}
+        autoComplete="off"
+        spellCheck={false}
+        aria-describedby="wizard-file-note"
+        onChange={(event) => onChange((current) => ({ ...current, name: event.target.value }))}
+        onKeyDown={onKeyDown}
+        onFocus={(event) => event.target.select()}
+      />
+      <span className="row-meta" id="wizard-file-note">
+        {state.target === null ? (
+          <>
+            Aparece na troca de canais. O arquivo vai se chamar <code>grades/{fileName}.yaml</code>.
+          </>
+        ) : (
+          <>
+            Aparece na troca de canais. Vai por cima de <code>grades/{fileName}.yaml</code>, com cópia de segurança.
+          </>
+        )}
+      </span>
+    </label>
+  );
+}
+
+/** "Trocar um canal existente": the wizard makes a new channel unless one of these is chosen (and confirmed on the last screen). */
+function ReplaceStep({ state, fileName, library, onChange }: { state: WizardState; fileName: string; library: Library; onChange(update: (state: WizardState) => WizardState): void }) {
   const channels = replaceableChannels(library);
   const replacing = state.target !== null;
   const target = channels.find((channel) => channel.id === state.target);
   const backupName = target ? planReplace(target, localIsoDate(new Date()), [], library.root).backupName : '';
   return (
     <>
-      <label className="wizard-field">
-        <span className="row-label">Nome do canal</span>
-        <input
-          data-nav
-          data-nav-adjust
-          data-autofocus
-          data-name
-          type="text"
-          value={state.name}
-          maxLength={MAX_NAME_LENGTH + 10}
-          autoComplete="off"
-          spellCheck={false}
-          onChange={(event) => onChange((current) => ({ ...current, name: event.target.value }))}
-          onKeyDown={onKeyDown}
-          onFocus={(event) => event.target.select()}
-        />
-      </label>
-
       <div role="radiogroup" aria-label="Canal novo ou trocar um canal" className="wizard-list">
         <Row
           icon="plus"
           role="radio"
+          autofocus={!replacing}
           checked={!replacing}
           label="Criar um canal novo"
           meta="O jeito seguro: nada que já existe é trocado."
@@ -896,6 +1023,7 @@ function NameStep({
             key={channel.id}
             icon="restore"
             role="radio"
+            autofocus={state.target === channel.id}
             checked={state.target === channel.id}
             label={`Trocar o canal “${channel.name}”`}
             meta={`${channel.path} · o arquivo antigo fica guardado como cópia de segurança`}
@@ -908,7 +1036,7 @@ function NameStep({
       {replacing ? (
         <p className="panel-note" data-note="replace">
           O canal será refeito com as escolhas deste assistente e gravado por cima de <code>{fileName}.yaml</code>. Antes disso, o arquivo antigo é copiado para{' '}
-          <code>grades/{backupName}</code>, que a TV não lê como canal. Cada programa continua no episódio em que estava hoje.
+          <code>grades/{backupName}</code>, que a TV não lê como canal. Cada programa continua no episódio em que estava hoje. A confirmação fica na última tela.
         </p>
       ) : (
         <p className="panel-note">
@@ -926,7 +1054,20 @@ type PreviewView = 'day' | 'week';
 /** The clock time of an estimate: "08:22". */
 const at = (seconds: number) => formatTimeOfDay(seconds);
 
-function PreviewStep({ prepared, library, durations }: { prepared: Prepared | null; library: Library; durations: Durations }) {
+function PreviewStep({
+  prepared,
+  stale,
+  building,
+  library,
+  durations,
+}: {
+  prepared: Prepared | null;
+  /** The answers changed since `prepared` was built: it stays on screen until the new one is ready. */
+  stale: boolean;
+  building: boolean;
+  library: Library;
+  durations: Durations;
+}) {
   const { settings } = useSettings();
   const [view, setView] = useState<PreviewView>('day');
   const [day, setDay] = useState(0);
@@ -960,11 +1101,11 @@ function PreviewStep({ prepared, library, durations }: { prepared: Prepared | nu
   }, [schedule, library, settings, dates, durations]);
 
   if (!prepared || !schedule) {
-    return (
+    return building ? (
       <p className="wizard-busy" role="status">
-        Montando o canal… Lendo a duração dos vídeos para os horários fecharem certinho.
+        Montando a prévia… Lendo a duração dos vídeos para os horários fecharem certinho.
       </p>
-    );
+    ) : null;
   }
 
   const titleOf = (id: string) => library.shows.find((show) => show.id === id)?.title ?? id;
@@ -985,12 +1126,11 @@ function PreviewStep({ prepared, library, durations }: { prepared: Prepared | nu
 
   return (
     <>
-      <div className="wizard-chips" role="group" aria-label="Ver">
+      <div className="wizard-chips" role="group" aria-label="Ver" data-nav-row="view">
         {(['day', 'week'] as const).map((name) => (
           <button
             key={name}
             data-nav
-            data-autofocus={view === name ? '' : undefined}
             data-view={name}
             className="action-tile"
             aria-pressed={view === name}
@@ -1046,7 +1186,9 @@ function PreviewStep({ prepared, library, durations }: { prepared: Prepared | nu
       )}
 
       <p className="panel-note" data-note="estimate">
-        {guessed
+        {stale
+          ? 'Atualizando a prévia com as suas mudanças… '
+          : guessed
           ? 'Estimado: alguns vídeos ainda não tiveram a duração lida, então valem durações típicas (22 minutos por episódio) e os horários são aproximados. '
           : reading
             ? 'Lendo a duração dos vídeos da semana… os horários podem mudar um pouco. '
@@ -1087,6 +1229,7 @@ function DayList({ preview, titleOf }: { preview: DayPreview; titleOf(id: string
   );
 }
 
+/** The last screen: every answer in a row with "Mudar", which opens its screen and comes back here with the answers kept. */
 function SummaryStep({
   state,
   fileName,
@@ -1094,6 +1237,7 @@ function SummaryStep({
   channels,
   replacing,
   onChange,
+  onChangeStep,
 }: {
   state: WizardState;
   fileName: string;
@@ -1101,36 +1245,23 @@ function SummaryStep({
   channels: Schedule[];
   replacing: Schedule | null;
   onChange(update: (state: WizardState) => WizardState): void;
+  onChangeStep(step: StepId): void;
 }) {
-  const { settings } = useSettings();
-  const shows =
-    state.showMode === 'all'
-      ? 'Todos os programas'
-      : state.picked.map((id) => library.shows.find((show) => show.id === id)?.title ?? id).join(' → ');
-  const choice = bumperChoice(library, state);
-  const lines: Array<[string, string]> = [
-    ['Canal', state.name.trim()],
-    ['Horários', sortedRanges(state.ranges).map(formatRange).join(' e ')],
-    ['Dias', daysSummary(state.days)],
-    ['Programas', shows],
-    ['Comerciais', state.adMode === 'custom' ? `Regras próprias: ${adSummary(state.ad)}` : `Configuração geral: ${adSummary(settings.adBreaks)}`],
-    [
-      'Vinhetas',
-      `${state.brand === '' ? 'Qualquer marca' : state.brand}, ${state.era === null ? 'qualquer época' : state.era}${choice[0]!.ref ? ` · abertura ${choice[0]!.ref}` : ''}`,
-    ],
-    ['Arquivo', `${library.root}grades/${fileName}.yaml`],
-  ];
+  const lines = summaryLines(state, { library, fileName });
   const lostAgenda = replacing?.agenda?.length ?? 0;
   return (
     <>
-      <dl className="wizard-summary">
-        {lines.map(([term, value]) => (
-          <div key={term}>
-            <dt>{term}</dt>
-            <dd>{value}</dd>
-          </div>
+      <ul className="summary-list" aria-label="Resumo do canal">
+        {lines.map((line) => (
+          <li key={line.id}>
+            <button data-nav data-change={line.id} className="row summary-row" aria-label={`Mudar ${line.label.toLowerCase()}: ${line.value}`} onClick={() => onChangeStep(line.step)}>
+              <span className="summary-label">{line.label}</span>
+              <span className="summary-value">{line.value}</span>
+              <span className="hub-edit">Mudar</span>
+            </button>
+          </li>
         ))}
-      </dl>
+      </ul>
       {replacing ? (
         <>
           <p className="panel-note" data-note="replace-warning">
@@ -1142,6 +1273,7 @@ function SummaryStep({
             <Row
               icon="alert"
               role="checkbox"
+              autofocus={!state.confirmed}
               checked={state.confirmed}
               label={`Sim, trocar o canal “${replacing.name}”`}
               meta="Marque para liberar o botão “Trocar o canal”."
@@ -1153,7 +1285,6 @@ function SummaryStep({
       ) : (
         <p className="panel-note">
           Hoje a biblioteca tem {channels.length} {channels.length === 1 ? 'canal' : 'canais'}; este será mais um.
-          No Chrome e no Edge, o app pede permissão para gravar na pasta só quando você salva. Nos outros casos, o arquivo é baixado.
         </p>
       )}
     </>
@@ -1267,7 +1398,7 @@ function IaPage({
             <li>{NOTICE.review}</li>
             <li>{NOTICE.off}</li>
           </ul>
-          <div className="wizard-footer">
+          <div className="wizard-footer" data-nav-zone="footer" data-nav-row="footer">
             <button data-nav className="action-tile" onClick={onCancel}>
               <span>Agora não</span>
             </button>
@@ -1308,7 +1439,7 @@ function IaPage({
               {problem}
             </p>
           )}
-          <div className="wizard-footer">
+          <div className="wizard-footer" data-nav-zone="footer" data-nav-row="footer">
             <button data-nav className="action-tile" onClick={onCancel}>
               <span>Cancelar</span>
             </button>
@@ -1399,7 +1530,7 @@ export function PinPage({ editing, what, message, onPaired, onCancel }: { editin
           {problem}
         </p>
       )}
-      <div className="wizard-footer">
+      <div className="wizard-footer" data-nav-zone="footer" data-nav-row="footer">
         <button data-nav data-cancel className="action-tile" onClick={onCancel}>
           <span>Cancelar</span>
         </button>
@@ -1431,7 +1562,7 @@ function DonePage({ result, reread, onWatch, onClose }: { result: SaveResult | R
             O canal antigo está guardado em <code>{replaced.backupPath}</code>. A TV não o lê como canal. Para voltar atrás, apague o canal novo e tire o <code>.bak</code> e a data do nome da cópia.
           </p>
         )}
-        <div className="wizard-footer">
+        <div className="wizard-footer" data-nav-zone="footer" data-nav-row="footer">
           {reread && (
             <button data-nav data-autofocus data-watch className="action-tile primary" onClick={onWatch}>
               <Icon name="play" className="action-icon" />
@@ -1467,7 +1598,7 @@ function DonePage({ result, reread, onWatch, onClose }: { result: SaveResult | R
         <li>No pendrive ou no Raspberry Pi, é a mesma pasta <code>grades</code> da biblioteca.</li>
         <li>Abra a biblioteca de novo (recarregue a página ou escolha a pasta outra vez). O canal aparece na troca de canais.</li>
       </ol>
-      <div className="wizard-footer">
+      <div className="wizard-footer" data-nav-zone="footer" data-nav-row="footer">
         <button data-nav data-autofocus className="action-tile primary" onClick={onClose}>
           <span>Entendi</span>
         </button>

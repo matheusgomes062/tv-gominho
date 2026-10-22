@@ -87,7 +87,7 @@ export function AgendaWeek({ state, library, today, edit }: Props) {
         Cada espaço mostra o episódio que a TV passa. Escolha um espaço para fixar o episódio daquele dia: os dias seguintes continuam a partir dele. As mudanças valem quando você salva o canal.
       </p>
 
-      <div className="agenda-nav" role="group" aria-label="Semana">
+      <div className="agenda-nav" role="group" aria-label="Semana" data-nav-row="week">
         <button data-nav data-week="prev" className="action-tile small" onClick={() => goTo(shiftWeek(weekStart, -1))}>
           <Icon name="chevronLeft" className="action-icon" />
           <span>Semana anterior</span>
