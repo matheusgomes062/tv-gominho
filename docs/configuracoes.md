@@ -130,7 +130,7 @@ Uma imagem pequena fixa no canto inferior direito da tela, como o logotipo da em
 marca_dagua: marca.png
 ```
 
-- **Padrão:** sem `marca_dagua`, aparece o logo do TV Gominho. Com `marca_dagua`, a sua imagem vence e o logo não aparece.
+- **Padrão:** sem `marca_dagua`, aparece o logo do TV Gominho. Com `marca_dagua`, a sua imagem vence e o logo não aparece. O logo padrão é desenhado como um vidro fosco: claro, quase sem cor, bem transparente e com um brilho fino na borda e uma sombra suave, para se ler em cenas claras e escuras. A imagem da biblioteca aparece como ela é, sem esse efeito.
 - **Onde fica o arquivo:** dentro da pasta da biblioteca (a que tem `programas/`, `vinhetas/` e `grades/`), e o caminho é relativo a ela: `marca.png` na raiz da biblioteca, ou `imagens/marca.png` numa subpasta. Maiúsculas e minúsculas não importam. Caminho absoluto (`/casa/marca.png`, `C:\marca.png`) e `..` não valem.
 - **Formato:** PNG ou WebP com fundo transparente é o ideal (JPG também funciona, mas fica com o fundo retangular). Prefira uma imagem simples, sem muitos detalhes finos, e com pelo menos uns 200 pixels de largura. Um logotipo claro, ou claro com contorno escuro, aparece bem sobre qualquer cena.
 - **Tamanho e posição:** ocupa até uns 11% da largura da imagem (e 20% da altura), sempre mantendo a proporção, com uma margem de 6% da borda de baixo e da direita, dentro da área segura. É desenhada semitransparente (65%).
