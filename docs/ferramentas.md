@@ -246,15 +246,49 @@ Confere cada vídeo como o player USB de uma TV faria: formato, codecs, perfil e
 ## `servir`
 
 ```
-tv-gominho servir <biblioteca> [--porta 8080] [--rede] [--abrir]
+tv-gominho servir <biblioteca> [--porta 8080] [--rede] [--abrir] [--editar]
 ```
 
 Entrega o app e a biblioteca por HTTP: abra `http://localhost:8080` em qualquer navegador e a TV já começa, sem escolher pasta. É o que o [Raspberry Pi](raspberry-pi.md) usa.
 
 - Sem `--rede`, só o próprio computador abre o endereço. Com `--rede`, outros aparelhos da casa também (o comando mostra os endereços).
-- Só leitura: nada é gravado na biblioteca. Arquivos e pastas ocultos (`.originais`) não são servidos, e arquivos da biblioteca que não são vídeo, imagem ou texto vão como download, nunca como página.
+- Só leitura, a não ser com `--editar` (abaixo): nada é gravado na biblioteca. Arquivos e pastas ocultos (`.originais`) não são servidos, e arquivos da biblioteca que não são vídeo, imagem ou texto vão como download, nunca como página.
 - Só responde a endereços IP, `localhost` e o nome do próprio aparelho (como `raspberrypi.local`), contra páginas que tentam ler a rede de casa por outro nome (*DNS rebinding*).
 - Leve: o app vai comprimido (o JavaScript, de ~430 KB, viaja como ~120 KB em Brotli, já comprimido na hora do build), e a lista da biblioteca vai em gzip. Vídeos e fontes não são comprimidos de novo: já são.
+
+### Salvar canais pelo servidor (`--editar`)
+
+Sem `--editar`, o servidor não grava nada. Com ela, o assistente "Montar a semana" salva o canal direto na biblioteca, de qualquer aparelho que abriu o endereço (a TV, o celular, outro PC):
+
+```
+tv-gominho servir ./biblioteca --rede --editar
+...
+Salvar canais pelo app: LIGADO. PIN para parear um aparelho: 482913
+```
+
+- Ao salvar pela primeira vez, o app pede o **PIN de 6 números** que aparece no terminal. Dá para digitar com os números do controle remoto ou com o teclado na tela (setas e OK). O aparelho fica pareado até o navegador fechar ou o servidor desligar; cada vez que o servidor liga, o PIN é outro.
+- Só dá para gravar `grades/<nome>.yaml` (nome com letras, números, `-` e `_`) e `nao-passar.yaml`, na raiz da biblioteca (ou dentro de `biblioteca/`, se o servidor foi aberto na pasta acima dela). Nada mais: nem vídeos, nem configurações, nem outras pastas.
+- A grade precisa ser uma grade válida (a mesma leitura do app), em UTF-8, com até 256 KB. A lista "não passar" precisa ser lida pelo app sem nenhum aviso (só `programas` e `episodios`, veja [biblioteca.md](biblioteca.md)).
+- Nunca substitui um arquivo que já existe: o assistente sempre cria um canal novo. Quem quiser substituir (um editor, no futuro) precisa pedir explicitamente, com `?substituir=1` no endereço.
+- Cada arquivo gravado aparece no terminal (`Gravado: grades/manha.yaml`).
+
+Segurança:
+
+- Desligado por padrão; só quem tem acesso ao terminal vê o PIN. O PIN é sorteado com gerador criptográfico.
+- PIN errado 5 vezes seguidas trava o pareamento por 1 minuto, e cada nova trava dura o dobro (até 1 hora). O terminal avisa.
+- O pareamento vira um cookie de sessão aleatório, `HttpOnly` e `SameSite=Strict`, que só vale enquanto o servidor estiver ligado.
+- Toda gravação confere a origem do pedido (`Origin` igual ao endereço aberto), contra páginas de outros sites que tentem gravar pelo navegador de alguém da casa (CSRF), além da proteção de `Host` de sempre.
+- O caminho é conferido como texto, sem decodificar: `..`, barras invertidas, `%2F` e afins são recusados. A pasta de destino, com atalhos (links) resolvidos, precisa ficar dentro da biblioteca.
+- O arquivo é gravado num temporário oculto e renomeado no fim: ou fica o arquivo inteiro, ou nada.
+- A conexão é HTTP sem criptografia, como o resto do `servir`: use `--editar` só na rede de casa.
+
+Para quem integra (rotas, todas sob o mesmo endereço do app):
+
+| Rota | O que faz |
+|---|---|
+| `GET /__tv-gominho/capacidades` | `{"editar": true/false, "pareado": true/false}` |
+| `POST /__tv-gominho/pareamento` | JSON `{"pin": "123456"}` → 200 e o cookie; 403 PIN errado; 429 travado (`Retry-After`) |
+| `PUT /__tv-gominho/arquivos/<caminho>` | corpo = o arquivo. 201 criado, 200 substituído, 401 sem pareamento, 403 origem, 400 caminho ou conteúdo inválido, 409 já existe, 413 grande demais |
 
 ## Pacote portátil
 
@@ -265,6 +299,7 @@ Entrega o app e a biblioteca por HTTP: abra `http://localhost:8080` em qualquer 
 O código fica em `pacotes/cli/` e é compilado em um arquivo só com o Vite (modo SSR para Node), porque o Node roda TypeScript mas não resolve os imports sem extensão do núcleo. Cada comando é um módulo em `src/commands/` registrado em `src/commands/index.ts`. Os módulos reutilizáveis:
 
 - `src/ffmpeg/`: localizar o ffmpeg (`locateFfmpeg`), analisar arquivos (`probe`) e rodar com progresso e cancelamento (`run`).
+- `src/serve/`: o HTTP do `servir` (`http.ts`: arquivos com Range, lista, app comprimido) e a gravação com PIN de `--editar` (`edit.ts`), testada em `commands/servir.editar.test.ts`.
 - `src/node-source.ts`: lê uma pasta do disco como biblioteca (`openNodeLibrary`), para usar com `scanLibrary`.
 - `src/jev/client.ts`: cliente mínimo da API do Jev (TypeSafe), com `fetch`, novas tentativas e cache em disco; sem SDK, para a ferramenta continuar pequena.
 - `src/organizar/`: o comando `organizar`. `questions.ts` (as perguntas ao Jev e por que têm esse formato), `classify.ts` (quem é perguntado e quando), `plan.ts` (para onde vai cada arquivo, sem rede nem disco, por isso testado sem o Jev). `avaliacao.test.ts` mede as perguntas contra o Jev de verdade com nomes de arquivo realistas: rode `npm run avaliar:jev` depois de mudar as perguntas ou os limites de confiança (gasta tokens, por isso o `npm test` pula).
