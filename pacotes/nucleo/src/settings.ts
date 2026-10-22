@@ -68,11 +68,11 @@ export interface Settings {
   /** The OSD skin. A theme sets it; with 'custom' it stays whatever it was. Not a yaml option on its own. */
   osdSkin: OsdSkin;
   /**
-   * The watermark image (`marca_dagua`), or null. `parseSettings` returns the path as written in the file,
+   * The library's watermark image (`marca_dagua`), or null: the interface then shows its bundled logo. `parseSettings` returns the path as written in the file,
    * relative to the library root; `scanLibrary` resolves it to the file's path in the library source.
    */
   watermark: string | null;
-  /** The watermark is shown (`marca_dagua_ligada`). Only matters when there is one. */
+  /** The watermark is shown (`marca_dagua_ligada`). Applies to the bundled logo too. */
   watermarkEnabled: boolean;
 }
 

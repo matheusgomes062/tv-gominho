@@ -26,6 +26,10 @@ import { ChannelOsd, formatTimecode, useVideoSeconds } from '../components/Osd';
 import type { OsdState } from '../components/osd-painter';
 import { Static } from '../components/Static';
 import { useFileUrl } from '../components/useFileUrl';
+// Inlined (a data: URL) so the OSD canvas is never tainted when the app is opened from file:// (USB stick).
+import bundledWatermark from '../assets/tv-gominho-logo.webp?inline';
+import { glassDataUrl } from '../components/glass-watermark';
+import { watermarkSource } from '../settings-model';
 import { useFlash } from '../components/useFlash';
 import { HINT_MS, IDLE_HINT_MS, hintSeen, markHintSeen } from '../menu-hint';
 import { useImage } from '../components/useImage';
@@ -485,8 +489,15 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
     info && entry && item?.kind === 'episode' ? `${item.episode.title}${entry.part ? ` (parte ${entry.part.index} de ${entry.part.count})` : ''}` : null;
   const channelName = schedule?.name;
   // The `marca_dagua` bug stays on while a program plays; bumpers, commercials, static and the test card hide it.
-  const watermarkImage = useImage(useFileUrl(source, settings.watermarkEnabled ? (settings.watermark ?? undefined) : undefined));
-  const watermarkCorner = settings.watermarkEnabled && settings.watermark !== null;
+  // Without a `marca_dagua` in the library it is the bundled logo, so it is on by default.
+  const watermarkFrom = watermarkSource(settings);
+  const libraryWatermark = useFileUrl(source, watermarkFrom.kind === 'library' ? watermarkFrom.path : undefined);
+  // The bundled logo gets the frosted "glass" look; a library image is drawn as it is.
+  const bundledRaw = useImage(watermarkFrom.kind === 'bundled' ? bundledWatermark : undefined);
+  const bundledGlass = useImage(useMemo(() => (bundledRaw ? (glassDataUrl(bundledRaw) ?? undefined) : undefined), [bundledRaw]));
+  const libraryImage = useImage(watermarkFrom.kind === 'library' ? libraryWatermark : undefined);
+  const watermarkImage = watermarkFrom.kind === 'bundled' ? bundledGlass : libraryImage;
+  const watermarkCorner = watermarkFrom.kind !== 'off';
   const watermark = watermarkCorner && status.name === 'playing' && item?.kind === 'episode' ? watermarkImage : null;
   const osdState = useMemo<OsdState>(
     () => ({
