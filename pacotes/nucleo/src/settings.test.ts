@@ -214,6 +214,18 @@ canal_inicial: 3
       expect(parse('marca_dagua:\n')).toEqual({ settings: {}, warnings: [] });
     });
 
+    it('can be switched off with marca_dagua_ligada, which is on by default', () => {
+      expect(DEFAULT_SETTINGS.watermarkEnabled).toBe(true);
+      expect(parse('marca_dagua: marca.png\nmarca_dagua_ligada: não\n')).toEqual({
+        settings: { watermark: 'marca.png', watermarkEnabled: false },
+        warnings: [],
+      });
+      expect(parse('marca_dagua_ligada: SIM\n').settings).toEqual({ watermarkEnabled: true });
+      const { settings, warnings } = parse('marca_dagua_ligada: talvez\n');
+      expect(settings).toEqual({});
+      expect(warnings[0]!.message).toContain('"marca_dagua_ligada" deve ser sim ou não');
+    });
+
     it('refuses absolute paths, "..", and values that are not an image path, with a warning', () => {
       for (const value of ['/etc/marca.png', 'C:\\marca.png', 'c:marca.png', '../marca.png', 'a/../../marca.png', 'a//marca.png', 'marca.gif', 'marca', '42', 'true', '[marca.png]']) {
         const { settings, warnings } = parse(`marca_dagua: ${JSON.stringify(value)}\n`);
@@ -264,12 +276,19 @@ describe('sanitizeSettings', () => {
     expect(sanitizeSettings({ adBreaks: 3 })).toEqual({});
   });
 
+  it('keeps the stored watermark switch only when it is a boolean', () => {
+    expect(sanitizeSettings({ watermarkEnabled: false })).toEqual({ watermarkEnabled: false });
+    expect(sanitizeSettings({ watermarkEnabled: 'não', watermark: 'x.png' })).toEqual({});
+    expect(mergeSettings(DEFAULT_SETTINGS, { watermarkEnabled: false }).watermarkEnabled).toBe(false);
+  });
+
   it('keeps valid fields and drops the rest', () => {
     expect(
       sanitizeSettings({
         aspect: 'stretch',
         schedule: 'sempre',
         clock: 'yes',
+        watermarkEnabled: 1,
         startChannel: null,
         crt: { enabled: false, intensity: 'loud', extra: 1 },
         other: true,

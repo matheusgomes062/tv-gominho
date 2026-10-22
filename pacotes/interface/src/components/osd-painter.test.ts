@@ -56,12 +56,12 @@ describe('wrapWords', () => {
 });
 
 describe('watermarkRect', () => {
-  it('puts a wide image in the top right corner, 11% of the tube wide, keeping its shape', () => {
+  it('puts a wide image in the bottom right corner, 11% of the tube wide, keeping its shape', () => {
     const box = watermarkRect(1000, 750, 400, 100);
     expect(box.width).toBeCloseTo(110);
     expect(box.height).toBeCloseTo(27.5);
     expect(box.x + box.width).toBeCloseTo(940);
-    expect(box.y).toBeCloseTo(45);
+    expect(box.y + box.height).toBeCloseTo(705);
   });
 
   it('shrinks a tall image to 20% of the tube height', () => {
@@ -69,6 +69,7 @@ describe('watermarkRect', () => {
     expect(box.height).toBeCloseTo(150);
     expect(box.width).toBeCloseTo(37.5);
     expect(box.x + box.width).toBeCloseTo(940);
+    expect(box.y + box.height).toBeCloseTo(705);
   });
 
   it('is the same box the stylesheet gives the plain screen', () => {
@@ -76,7 +77,7 @@ describe('watermarkRect', () => {
     const percent = (property: string) => Number(rule.match(new RegExp(String.raw`${property}:\s*([\d.]+)%`))?.[1]) / 100;
     expect(percent('width')).toBe(WATERMARK.maxWidth);
     expect(percent('max-height')).toBe(WATERMARK.maxHeight);
-    expect(percent('top')).toBe(WATERMARK.margin);
+    expect(percent('bottom')).toBe(WATERMARK.margin);
     expect(percent('right')).toBe(WATERMARK.margin);
     expect(Number(rule.match(/opacity:\s*([\d.]+)/)?.[1])).toBe(WATERMARK.opacity);
   });

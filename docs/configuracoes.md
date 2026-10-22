@@ -71,6 +71,7 @@ Como o tema se combina com as outras opções:
 | `relogio_na_tela` | sim/não | não |
 | `tema` | `tv_antiga`, `vhs`, `tv_moderna`, `personalizado` | `tv_antiga` |
 | `marca_dagua` | caminho de uma imagem dentro da biblioteca (PNG, WebP ou JPG) | nenhuma |
+| `marca_dagua_ligada` | sim/não | sim |
 | `idioma` | ainda não suportada (veja "Ainda não implementada") | |
 
 ### `canal_inicial`
@@ -122,7 +123,7 @@ intervalos:
 
 ### `marca_dagua`
 
-Uma imagem pequena fixa no canto superior direito da tela, como o logotipo da emissora que fica no canto da imagem na TV de verdade:
+Uma imagem pequena fixa no canto inferior direito da tela, como o logotipo da emissora que fica no canto da imagem na TV de verdade:
 
 ```yaml
 marca_dagua: marca.png
@@ -130,10 +131,11 @@ marca_dagua: marca.png
 
 - **Onde fica o arquivo:** dentro da pasta da biblioteca (a que tem `programas/`, `vinhetas/` e `grades/`), e o caminho é relativo a ela: `marca.png` na raiz da biblioteca, ou `imagens/marca.png` numa subpasta. Maiúsculas e minúsculas não importam. Caminho absoluto (`/casa/marca.png`, `C:\marca.png`) e `..` não valem.
 - **Formato:** PNG ou WebP com fundo transparente é o ideal (JPG também funciona, mas fica com o fundo retangular). Prefira uma imagem simples, sem muitos detalhes finos, e com pelo menos uns 200 pixels de largura. Um logotipo claro, ou claro com contorno escuro, aparece bem sobre qualquer cena.
-- **Tamanho e posição:** ocupa até uns 11% da largura da imagem (e 20% da altura), sempre mantendo a proporção, com uma margem de 6% do canto, dentro da área segura. É desenhada semitransparente (65%).
+- **Tamanho e posição:** ocupa até uns 11% da largura da imagem (e 20% da altura), sempre mantendo a proporção, com uma margem de 6% da borda de baixo e da direita, dentro da área segura. É desenhada semitransparente (65%).
 - **Quando aparece:** enquanto passa um programa. Some nas vinhetas, nos comerciais, no chuvisco e na tela de "fora do ar". Aparece **dentro da tela da TV**: com o efeito CRT ligado ela acompanha a curvatura, as linhas e o brilho da imagem; com o CRT desligado fica por cima da imagem lisa. Na Biblioteca (assistindo a um programa fora da grade) não aparece.
 - **Se der errado:** uma imagem que não está na biblioteca, um caminho inválido ou um arquivo que não é imagem geram um aviso (Menu → Avisos) e a marca d'água é ignorada; a TV segue normalmente. Não confunda com o `logo.png` de cada programa (veja [biblioteca.md](biblioteca.md)), que é o logotipo do programa na página dele.
-- Não há opção no menu do app: a marca d'água vem só do `configuracoes.yaml`.
+- **Relógio:** com `relogio_na_tela` ligado, o relógio dos temas TV antiga e TV moderna fica no canto superior esquerdo e não se mexe. O da Fita VHS fica no canto inferior direito, o mesmo da marca d'água: enquanto a marca d'água estiver ligada (mesmo nos momentos em que ela some, como nas vinhetas), ele fica no canto inferior esquerdo: o canto de baixo à direita fica só para a marca d'água. A barra de informações do programa (que aparece por uns segundos) cobre a marca d'água enquanto estiver na tela.
+- **Desligar:** `marca_dagua_ligada: não` esconde a marca d'água sem apagar o `marca_dagua`. No app, é o interruptor "Marca d'água" em Configurações → Imagem, e vale na hora, com ou sem CRT. Sem `marca_dagua` na biblioteca, o interruptor fica apagado ("Sem marca d'água na biblioteca"). A escolha do app fica salva no navegador, como as outras, e "Restaurar padrões" a apaga. Só quem escreve o `configuracoes.yaml` escolhe a imagem: o app não troca de imagem.
 
 ### Ainda não implementada
 

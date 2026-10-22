@@ -459,8 +459,9 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
     info && entry && item?.kind === 'episode' ? `${item.episode.title}${entry.part ? ` (parte ${entry.part.index} de ${entry.part.count})` : ''}` : null;
   const channelName = schedule?.name;
   // The `marca_dagua` bug stays on while a program plays; bumpers, commercials, static and the test card hide it.
-  const watermarkImage = useImage(useFileUrl(source, settings.watermark ?? undefined));
-  const watermark = status.name === 'playing' && item?.kind === 'episode' ? watermarkImage : null;
+  const watermarkImage = useImage(useFileUrl(source, settings.watermarkEnabled ? (settings.watermark ?? undefined) : undefined));
+  const watermarkCorner = settings.watermarkEnabled && settings.watermark !== null;
+  const watermark = watermarkCorner && status.name === 'playing' && item?.kind === 'episode' ? watermarkImage : null;
   const osdState = useMemo<OsdState>(
     () => ({
       skin: settings.osdSkin,
@@ -471,14 +472,15 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
       info: infoTitle !== null ? { title: infoTitle, subtitle: infoSubtitle } : null,
       clock: settings.clock ? clockText : null,
       watermark,
+      watermarkCorner,
     }),
-    [settings.osdSkin, settings.clock, channelShown, channelName, channel, videoSeconds, infoTitle, infoSubtitle, clockText, watermark],
+    [settings.osdSkin, settings.clock, channelShown, channelName, channel, videoSeconds, infoTitle, infoSubtitle, clockText, watermark, watermarkCorner],
   );
   const hidden = crtActive ? 'osd-sr' : '';
 
   return (
     <main
-      className={`tv ${aspectClass(settings.aspect)} skin-${settings.osdSkin} ${pointer ? 'show-pointer' : ''}`}
+      className={`tv ${aspectClass(settings.aspect)} skin-${settings.osdSkin} ${watermarkCorner ? 'has-watermark' : ''} ${pointer ? 'show-pointer' : ''}`}
       onMouseMove={showPointer}
       onDoubleClick={() => void toggleFullscreen()}
     >

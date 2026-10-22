@@ -72,6 +72,8 @@ export interface Settings {
    * relative to the library root; `scanLibrary` resolves it to the file's path in the library source.
    */
   watermark: string | null;
+  /** The watermark is shown (`marca_dagua_ligada`). Only matters when there is one. */
+  watermarkEnabled: boolean;
 }
 
 export type PartialSettings = Partial<Omit<Settings, 'crt' | 'adBreaks'>> & {
@@ -99,6 +101,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'classic',
   osdSkin: 'classic',
   watermark: null,
+  watermarkEnabled: true,
 };
 
 /** Layers `partial` on top of `base`; fields missing from `partial` keep the base value. */
@@ -147,6 +150,7 @@ export function sanitizeSettings(value: unknown): PartialSettings {
   result.interstitials = flag(value, 'interstitials');
   result.commercials = flag(value, 'commercials');
   result.clock = flag(value, 'clock');
+  result.watermarkEnabled = flag(value, 'watermarkEnabled');
   result.theme = option(value, 'theme', ALLOWED.theme);
   result.osdSkin = option(value, 'osdSkin', ALLOWED.osdSkin);
   if (value.startChannel === null || typeof value.startChannel === 'string') result.startChannel = value.startChannel;
@@ -248,6 +252,9 @@ export function parseSettings(path: string, text: string, warnings: LibraryWarni
         break;
       case 'marca_dagua':
         set('watermark', watermarkPath(key, value, warn));
+        break;
+      case 'marca_dagua_ligada':
+        set('watermarkEnabled', bool(key, value, warn));
         break;
       case 'crt': {
         const crt = parseCrt(value, warn);

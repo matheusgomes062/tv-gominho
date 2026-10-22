@@ -189,6 +189,18 @@ export function buildDefs(channels: Schedule[], startChannel: string | null): Re
       get: (s) => s.clock,
       set: (clock) => ({ clock: clock as boolean }),
     }),
+    // Only the library's configuracoes.yaml can name the image, so without one the switch is locked.
+    def({
+      key: 'watermarkEnabled',
+      label: "Marca d'água",
+      icon: 'picture',
+      kind: 'switch',
+      options: ON_OFF,
+      dimmed: (s) => s.watermark === null,
+      dimmedReason: "Sem marca d'água na biblioteca",
+      get: (s) => s.watermarkEnabled,
+      set: (watermarkEnabled) => ({ watermarkEnabled: watermarkEnabled as boolean }),
+    }),
     // Programação
     def({
       key: 'schedule',
@@ -332,7 +344,7 @@ export interface Category {
 
 export const CATEGORIES: Category[] = [
   { id: 'theme', label: 'Tema', icon: 'palette', rows: ['osdSkin'] },
-  { id: 'picture', label: 'Imagem', icon: 'picture', rows: ['aspect', 'crt.enabled', 'crt.intensity', 'crt.curvature', 'crt.scanlines', 'clock'] },
+  { id: 'picture', label: 'Imagem', icon: 'picture', rows: ['aspect', 'crt.enabled', 'crt.intensity', 'crt.curvature', 'crt.scanlines', 'clock', 'watermarkEnabled'] },
   { id: 'schedule', label: 'Programação', icon: 'calendar', rows: ['schedule', 'interstitials', 'commercials'] },
   { id: 'channels', label: 'Canais', icon: 'tv', rows: ['startMode', 'startChannel', 'channelsPerShow', 'channelChangeStatic'] },
   { id: 'ads', label: 'Intervalos comerciais', icon: 'ads', rows: ['adBreaks.every', 'adBreaks.ads', 'adBreaks.afterEpisode', 'adBreaks.bumpers'] },
