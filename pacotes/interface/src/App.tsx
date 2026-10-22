@@ -183,6 +183,7 @@ function Main({ session, onChangeFolder, onLibraryChange }: { session: Session; 
       {overlay === 'blocklist' && <BlocklistScreen source={source} library={library} onSaved={reloadLibrary} onBack={closeOverlay} />}
       {overlay === 'schedule' && (
         <ScheduleHub
+          source={source}
           library={library}
           focus={hubFocus}
           onWizard={() => {

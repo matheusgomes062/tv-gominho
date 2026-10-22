@@ -57,7 +57,7 @@ function source(parts: { tree?: Tree; editing?: ServerEditing; files?: string[];
 }
 
 function server(replace: ServerEditing['replaceWithBackup']): ServerEditing {
-  return { pair: async () => 'paired', write: async () => 'failed', replaceWithBackup: vi.fn(replace) };
+  return { pair: async () => 'paired', isPaired: async () => true, write: async () => 'failed', replaceWithBackup: vi.fn(replace) };
 }
 
 beforeEach(() => {

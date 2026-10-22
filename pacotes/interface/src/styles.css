@@ -3614,3 +3614,144 @@ button.agenda-cell:focus-visible .agenda-tag[data-tag],
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* --- Scroll cue: the scrollbars of the panels are hidden, so a body with more below says so ------------------- */
+.scroll-wrap {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+}
+
+.scroll-wrap > :first-child {
+  min-height: 0;
+}
+
+/* The last lines fade out while more content lies below. */
+.scroll-wrap[data-more='true'] > :first-child {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 3.2 * var(--u)), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 3.2 * var(--u)), transparent);
+}
+
+.scroll-cue {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+
+.scroll-wrap[data-more='true'] > .scroll-cue {
+  opacity: 1;
+}
+
+.scroll-cue span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: calc(0.12 * var(--u)) calc(0.8 * var(--u));
+  font-family: var(--ff-body);
+  font-size: var(--fs-meta);
+  font-weight: 700;
+  color: var(--ov-text);
+  background: var(--ov-bg);
+  border: var(--bw) solid var(--ov-line);
+  border-radius: var(--r-pill);
+}
+
+.scroll-cue .icon {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-cue {
+    transition: none;
+  }
+}
+
+/* --- Wizard, round 2: the first screen, the last screen, the pairing status ------------------------------------ */
+.wizard-group {
+  margin: calc(0.2 * var(--u)) 0 0;
+  font-family: var(--ff-body);
+  font-size: var(--fs-meta);
+  color: var(--ov-dim);
+}
+
+.wizard-quick {
+  border-color: var(--ov-accent);
+}
+
+.wizard-body .wizard-chips {
+  gap: calc(0.4 * var(--u));
+}
+
+.wizard-body .wizard-chips .action-tile {
+  padding-block: calc(0.45 * var(--u));
+}
+
+.day-chip {
+  justify-content: center;
+  padding-inline: calc(0.9 * var(--u));
+}
+
+.day-chip[aria-checked='true'] {
+  background: color-mix(in srgb, var(--ov-accent) 30%, var(--ov-tile));
+}
+
+.day-chip[aria-checked='true']:focus-visible {
+  background: var(--ov-focus);
+}
+
+.summary-list {
+  display: grid;
+  gap: calc(0.35 * var(--u));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.summary-row {
+  width: 100%;
+  grid-template-columns: calc(5.5 * var(--u)) minmax(0, 1fr) auto;
+  padding-block: calc(0.4 * var(--u));
+}
+
+.summary-label {
+  font-family: var(--ff-body);
+  font-size: var(--fs-meta);
+  color: var(--ov-dim);
+}
+
+.summary-value {
+  font-weight: var(--fw-display);
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+
+.row:focus-visible .summary-label {
+  color: inherit;
+}
+
+.pairing-badge {
+  margin-left: auto;
+  padding: calc(0.1 * var(--u)) calc(0.7 * var(--u));
+  font-family: var(--ff-body);
+  font-size: var(--fs-meta);
+  font-weight: 700;
+  color: var(--danger);
+  border: var(--bw) solid currentColor;
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+
+.pairing-badge[data-paired='true'] {
+  color: var(--ov-accent);
+}
+
+.pairing-badge + .panel-close {
+  margin-left: 0;
+}

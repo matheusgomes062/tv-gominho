@@ -2,6 +2,7 @@ import { localIsoDate, type Library, type Schedule, type ScheduleItem, type Week
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Icon, type IconName } from '../components/Icon';
 import { KeyHints, Overlay } from '../components/Overlay';
+import { ScrollBody } from '../components/ScrollBody';
 import {
   MAX_COUNT,
   MAX_DESCRIPTION_LENGTH,
@@ -16,6 +17,7 @@ import {
   isDirty,
   moveItem,
   newestBlock,
+  TABS,
   openEditor,
   prepareSave,
   refCategory,
@@ -23,6 +25,7 @@ import {
   removeBlock,
   removeItem,
   setBlockTime,
+  tabAfterKey,
   setDescription,
   setName,
   settleBlocks,
@@ -53,10 +56,13 @@ interface Props {
 }
 
 type Phase =
+  // Served with --editar: asking the server whether this device is paired, before anything else.
+  | { name: 'checking' }
   | { name: 'editing' }
   | { name: 'saving' }
   // Saving through `tv-gominho servir --editar` and this device is not paired yet: the PIN, then the same save.
-  | { name: 'pin'; editing: ServerEditing; again(message: string): Promise<void>; message?: string }
+  // `start`: asked on opening the editor (Back leaves it) instead of at the save.
+  | { name: 'pin'; editing: ServerEditing; again(message: string): Promise<void>; message?: string; start?: boolean }
   | { name: 'done'; result: ReplaceResult; reread: boolean; dropped: number };
 
 const KIND_LABEL: Record<ScheduleItem['type'], string> = { show: 'Programa', interstitial: 'Vinheta', commercials: 'Comerciais' };
@@ -69,10 +75,29 @@ const KIND_ICON: Record<ScheduleItem['type'], IconName> = { show: 'episode', int
  */
 export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onBack }: Props) {
   const [state, setState] = useState<EditorState>(() => openEditor(schedule));
-  const [phase, setPhase] = useState<Phase>({ name: 'editing' });
+  const [phase, setPhase] = useState<Phase>(() => (source.editing ? { name: 'checking' } : { name: 'editing' }));
   const [error, setError] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [tab, setTab] = useState<'blocks' | 'agenda'>('blocks');
+
+  // Served with --editar: the PIN comes first, not after the changes are made.
+  useEffect(() => {
+    const editing = source.editing;
+    if (!editing) return;
+    let live = true;
+    void editing
+      .isPaired()
+      .catch(() => true)
+      .then((paired) => {
+        if (!live) return;
+        setPhase((current) =>
+          current.name !== 'checking' ? current : paired ? { name: 'editing' } : { name: 'pin', editing, start: true, again: async () => setPhase({ name: 'editing' }) },
+        );
+      });
+    return () => {
+      live = false;
+    };
+  }, [source]);
   const today = useMemo(() => localIsoDate(new Date()), []);
   // The file as it is on disk now: saving rewrites it from the model, which drops the comments written by hand.
   const [original, setOriginal] = useState<string | null>(null);
@@ -104,8 +129,8 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
   });
 
   const goBack = () => {
-    if (phase.name === 'saving') return;
-    if (phase.name === 'pin') return setPhase({ name: 'editing' });
+    if (phase.name === 'saving' || phase.name === 'checking') return;
+    if (phase.name === 'pin') return phase.start ? onBack() : setPhase({ name: 'editing' });
     if (phase.name === 'done' || !dirty || leaving) return onBack();
     setLeaving(true);
   };
@@ -153,9 +178,10 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
     });
   };
 
-  // The result page starts on its first button.
+  // The result page starts on its first button; the editor, once the pairing check is over, on its first control.
   useEffect(() => {
     if (phase.name === 'done') body.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus();
+    else if (phase.name === 'editing' && !body.current?.contains(document.activeElement)) body.current?.querySelector<HTMLElement>('[data-nav]')?.focus();
   }, [phase.name]);
 
   return (
@@ -169,13 +195,17 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
           </button>
         </header>
 
-        <div className="editor-body" ref={body}>
-          {phase.name === 'done' ? (
+        <ScrollBody className="editor-body" innerRef={body}>
+          {phase.name === 'checking' ? (
+            <p className="wizard-busy" role="status">
+              Conferindo se este aparelho já foi pareado com o computador…
+            </p>
+          ) : phase.name === 'done' ? (
             <DonePage result={phase.result} reread={phase.reread} dropped={phase.dropped} onWatch={() => onWatch(schedule.id)} onClose={onBack} />
           ) : phase.name === 'pin' ? (
             <PinPage
               editing={phase.editing}
-              what={`salvar a programação “${state.name.trim()}”`}
+              what={phase.start ? 'mudar programações neste computador' : `salvar a programação “${state.name.trim()}”`}
               message={phase.message}
               onPaired={() =>
                 void phase.again('O computador pediu o PIN de novo. Confira o número no terminal.').catch((failure) => {
@@ -195,15 +225,26 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
                 Arquivo <code>{state.path}</code>
               </p>
               <div className="editor-tabs" role="tablist" aria-label="Partes do canal">
-                {(['blocks', 'agenda'] as const).map((id) => (
+                {TABS.map((id) => (
                   <button
                     key={id}
-                    data-nav
+                    // Only the open tab is a stop for the arrows (Up from the fields lands on it); ← → switch tabs.
+                    data-nav={tab === id ? '' : undefined}
+                    data-nav-adjust
+                    data-focus={`tab-${id}`}
                     data-tab={id}
                     role="tab"
+                    tabIndex={tab === id ? 0 : -1}
                     aria-selected={tab === id}
                     className="action-tile small"
                     onClick={() => setTab(id)}
+                    onKeyDown={(event) => {
+                      const next = tabAfterKey(tab, event.key);
+                      if (next === tab) return;
+                      event.preventDefault();
+                      refocus.current = `tab-${next}`;
+                      setTab(next);
+                    }}
                   >
                     <Icon name={id === 'blocks' ? 'clock' : 'calendar'} className="action-icon" />
                     <span>{id === 'blocks' ? 'Blocos' : `Agenda${state.picks.length > 0 ? ` (${state.picks.length})` : ''}`}</span>
@@ -239,7 +280,7 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
               )}
             </>
           )}
-        </div>
+        </ScrollBody>
 
         {phase.name === 'editing' && (
           <div className="editor-foot">
@@ -265,7 +306,7 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
                 Há mudanças que ainda não foram salvas. Aperte Esc (ou Voltar) de novo para sair sem salvar, ou salve o canal.
               </p>
             )}
-            <footer className="wizard-footer">
+            <footer className="wizard-footer" data-nav-zone="footer" data-nav-row="footer">
               <button data-nav data-leave className="action-tile" onClick={onBack}>
                 <Icon name="back" className="action-icon" />
                 <span>{dirty ? 'Sair sem salvar' : 'Fechar'}</span>
@@ -669,7 +710,7 @@ function DonePage({ result, reread, dropped, onWatch, onClose }: { result: Repla
             O arquivo antigo está guardado em <code>{result.backupPath}</code>. A TV não o lê como canal. Para voltar atrás, apague o canal novo e tire o <code>.bak</code> e a data do nome da cópia.
           </p>
         )}
-        <div className="wizard-footer">
+        <div className="wizard-footer" data-nav-zone="footer" data-nav-row="footer">
           {reread && (
             <button data-nav data-autofocus data-watch className="action-tile primary" onClick={onWatch}>
               <Icon name="play" className="action-icon" />
@@ -698,7 +739,7 @@ function DonePage({ result, reread, dropped, onWatch, onClose }: { result: Repla
         <li>No pendrive ou no Raspberry Pi, é a mesma pasta <code>grades</code> da biblioteca.</li>
         <li>Abra a biblioteca de novo (recarregue a página ou escolha a pasta outra vez).</li>
       </ol>
-      <div className="wizard-footer">
+      <div className="wizard-footer" data-nav-zone="footer" data-nav-row="footer">
         <button data-nav data-autofocus className="action-tile primary" onClick={onClose}>
           <span>Entendi</span>
         </button>

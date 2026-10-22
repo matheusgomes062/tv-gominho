@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
   RANGE_PRESETS,
+  ADVANCED_STEPS,
+  QUICK_PRESET,
   STEPS,
+  advanceLabel,
+  advanceNav,
+  applyQuickPreset,
+  backNav,
+  changeStep,
+  openStep,
+  startNav,
   addRange,
   applyPreset,
   daysSummary,
@@ -31,12 +40,84 @@ const h = (hours: number, minutes = 0) => hours * 3600 + minutes * 60;
 const range = (from: number, to: number): TimeRange => ({ start: h(from), end: h(to) });
 
 describe('steps', () => {
-  it('go from the time ranges to the save step, and Back from the first leaves the wizard', () => {
-    expect(STEPS.map((step) => step.id)).toEqual(['ranges', 'days', 'shows', 'commercials', 'bumpers', 'name', 'preview', 'save']);
-    expect(nextStep('ranges')).toBe('days');
+  it('are four screens, from "Quando?" to "Salvar", and Back from the first leaves the wizard', () => {
+    expect(STEPS.map((step) => step.id)).toEqual(['when', 'shows', 'review', 'save']);
+    expect(nextStep('when')).toBe('shows');
+    expect(nextStep('review')).toBe('save');
     expect(nextStep('save')).toBe('save');
-    expect(previousStep('days')).toBe('ranges');
-    expect(previousStep('ranges')).toBeNull();
+    expect(previousStep('shows')).toBe('when');
+    expect(previousStep('when')).toBeNull();
+  });
+
+  it('keeps commercials, bumpers and replacing a channel behind "Ajustes avançados"', () => {
+    expect(ADVANCED_STEPS.map((step) => step.id)).toEqual(['advanced', 'commercials', 'bumpers', 'replace']);
+    expect(ADVANCED_STEPS.map((step) => step.title)).toEqual(['Ajustes avançados', 'Comerciais', 'Vinhetas', 'Trocar um canal existente']);
+    for (const step of ADVANCED_STEPS) expect(STEPS.map((entry) => entry.id)).not.toContain(step.id);
+  });
+});
+
+describe('navigation between screens', () => {
+  it('goes on with Avançar and back with Voltar, and Voltar from the first screen leaves', () => {
+    let nav = startNav();
+    nav = advanceNav(nav);
+    expect(nav.step).toBe('shows');
+    nav = advanceNav(nav);
+    expect(nav.step).toBe('review');
+    expect(backNav(nav)!.step).toBe('shows');
+    expect(backNav(backNav(nav)!)!.step).toBe('when');
+    expect(backNav(startNav())).toBeNull();
+  });
+
+  it('opens the advanced screens from the review and comes back to it', () => {
+    const review = advanceNav(advanceNav(startNav()));
+    const advanced = openStep(review, 'advanced');
+    expect(advanceLabel(advanced)).toBe('Pronto');
+    const commercials = openStep(advanced, 'commercials');
+    expect(advanceNav(commercials).step).toBe('advanced');
+    expect(advanceNav(advanceNav(commercials)).step).toBe('review');
+    expect(backNav(commercials)!.step).toBe('advanced');
+  });
+
+  it('"Mudar" opens a screen and "Pronto" returns to the one that asked, answers untouched', () => {
+    const save = advanceNav(advanceNav(advanceNav(startNav())));
+    expect(save.step).toBe('save');
+    const changing = changeStep(save, 'shows');
+    expect(changing.step).toBe('shows');
+    expect(advanceLabel(changing)).toBe('Pronto');
+    expect(advanceNav(changing).step).toBe('save');
+    expect(backNav(changing)!.step).toBe('save');
+    // The same from an advanced screen.
+    const bumpers = changeStep(save, 'bumpers');
+    expect(advanceNav(bumpers).step).toBe('save');
+  });
+
+  it('keeps "Pronto" through the advanced list opened from a screen reached with "Mudar"', () => {
+    const save = advanceNav(advanceNav(advanceNav(startNav())));
+    const review = changeStep(save, 'review');
+    const advanced = openStep(review, 'advanced');
+    const back = advanceNav(advanced);
+    expect(back.step).toBe('review');
+    expect(advanceLabel(back)).toBe('Pronto');
+    expect(advanceNav(back).step).toBe('save');
+  });
+
+  it('labels the main path "Avançar"', () => {
+    expect(advanceLabel(startNav())).toBe('Avançar');
+  });
+});
+
+describe('the one-press shortcut', () => {
+  it('sets the morning range and the weekdays whatever was chosen before', () => {
+    const odd = { ...applyPreset(initialState(), 'afternoon'), days: ['sab' as const] };
+    const state = applyQuickPreset(odd);
+    expect(state.preset).toBe('morning');
+    expect(state.ranges).toEqual([range(8, 12)]);
+    expect(state.days).toEqual(['seg', 'ter', 'qua', 'qui', 'sex']);
+    expect(QUICK_PRESET.label).toBe('Manhã, seg a sex');
+  });
+
+  it('is what the wizard already starts with: pressing it on the defaults changes nothing', () => {
+    expect(applyQuickPreset(initialState())).toEqual(initialState());
   });
 });
 
@@ -143,7 +224,7 @@ describe('validation by step', () => {
   });
 
   it('needs at least one day', () => {
-    expect(stepProblem('days', { ...state, days: [] }, 5)).toMatch(/pelo menos um dia/);
+    expect(stepProblem('when', { ...state, days: [] }, 5)).toMatch(/pelo menos um dia/);
   });
 
   it('needs at least one show, in either mode', () => {
@@ -154,14 +235,14 @@ describe('validation by step', () => {
   });
 
   it('needs a name that is not blank and not too long', () => {
-    expect(stepProblem('name', { ...state, name: '   ' }, 5)).toMatch(/Dê um nome/);
-    expect(stepProblem('name', { ...state, name: 'x'.repeat(41) }, 5)).toMatch(/no máximo 40/);
-    expect(stepProblem('name', { ...state, name: 'Manhãs' }, 5)).toBeNull();
+    expect(stepProblem('review', { ...state, name: '   ' }, 5)).toMatch(/Dê um nome/);
+    expect(stepProblem('review', { ...state, name: 'x'.repeat(41) }, 5)).toMatch(/no máximo 40/);
+    expect(stepProblem('review', { ...state, name: 'Manhãs' }, 5)).toBeNull();
   });
 
   it('points to the first step that is not right', () => {
-    expect(firstProblemStep({ ...state, days: [], name: '' }, 5)).toBe('days');
-    expect(firstProblemStep({ ...state, ranges: [range(8, 12), range(10, 11)], days: [] }, 5)).toBe('ranges');
+    expect(firstProblemStep({ ...state, days: [], name: '' }, 5)).toBe('when');
+    expect(firstProblemStep({ ...state, ranges: [range(8, 12), range(10, 11)], days: [] }, 5)).toBe('when');
   });
 });
 

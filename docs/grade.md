@@ -6,26 +6,40 @@ Não precisa escrever a grade à mão: `tv-gominho grade <biblioteca> --epoca 20
 
 ## Criar uma programação pelo app
 
-No app, **Menu → Programação** abre o assistente "Criar uma programação": uma sequência curta de passos que gera uma grade com o mesmo gerador do `tv-gominho grade` e a salva na biblioteca. Funciona com mouse, teclado e controle remoto (setas, OK e Voltar; nos botões do rodapé, ← → alternam entre "Voltar" e "Avançar"). Sair do assistente com respostas ainda não salvas pede confirmação (Voltar de novo para sair).
+No app, **Menu → Programação** abre a tela da programação: no topo, **Criar uma programação**; abaixo, cada canal com um resumo ("Seg a sex · 08:00–12:00 · 7 desenhos") e o botão **Mudar**. O assistente gera uma grade com o mesmo gerador do `tv-gominho grade` e a salva na biblioteca, em **quatro telas**. Funciona com mouse, teclado e controle remoto: ↑ ↓ ← → andam pelos controles (↓ vai para a linha de baixo; o rodapé só é alcançado quando não há mais nada abaixo), OK confirma e Voltar volta à tela anterior; nos botões do rodapé, ← → alternam entre "Voltar" e "Avançar". Quando a tela é maior que a janela, o texto some em degradê e aparece **mais abaixo ↓**. Sair do assistente com respostas ainda não salvas pede confirmação (Voltar de novo para sair).
 
-| Passo | O que você escolhe |
+O cabeçalho diz onde você está, em uma linha: "Passo 3 de 4 · Nome e prévia".
+
+| Tela | O que você escolhe |
 |---|---|
-| 1. Horários | **Manhã** (08:00–12:00), **Tarde** (14:00–18:00), **Manhã e tarde**, ou **Faixas próprias**: até 3 faixas, com início e fim ajustados de 15 em 15 minutos (← → no valor, ou clique nas setas). As faixas não podem se sobrepor e cada uma termina depois de começar. |
-| 2. Dias | Os dias da semana em que o canal passa, com atalhos "Segunda a sexta", "Fim de semana" e "Todos os dias". Pelo menos um dia. |
-| 3. Programas | **Todos os programas** (o app escolhe a ordem do rodízio) ou **Escolher os programas**: você marca os que entram e a ordem do rodízio é a da marcação; com ← → no programa marcado ele passa para antes ou depois. Pelo menos um programa. |
-| 4. Comerciais | **Seguir a configuração geral** (o padrão: a grade não escreve regras) ou **Regras próprias deste canal**: de quanto em quanto tempo há intervalo (0 a 30 minutos; 0 = sem cortes no meio do episódio), quantos comerciais passam (1 a 10), se há intervalo depois de cada episódio e se há vinhetas de entrada e saída. Vira o bloco [`intervalos`](#intervalos-por-canal) da grade. |
-| 5. Vinhetas | A **marca** (as pastas de marca que existem em `vinhetas/aberturas`, `encerramentos`, `chamadas` e `intervalos`, como `tv-globinho`) e a **época** (os anos que aparecem nos nomes, como "2003-2009" ou "(2011)"). O padrão é **Qualquer marca** e **qualquer época**. A tela mostra qual abertura, encerramento e vinheta de intervalo saem da escolha. |
-| 6. Nome | Como o canal aparece na troca de canais, e se ele é **novo** (o padrão) ou **troca um canal que já existe** (veja abaixo). |
-| 7. Prévia | O que vai passar, como a TV vai passar (veja abaixo). |
-| 8. Salvar | Um resumo e o botão **Salvar canal** (ou **Trocar o canal**). |
+| 1. Quando? | O atalho **Manhã, seg a sex** (08:00–12:00, segunda a sexta): OK nele já usa e segue para os programas. Abaixo, "Ou ajuste": **Manhã**, **Tarde** (14:00–18:00), **Manhã e tarde** ou **Faixas próprias** (até 3 faixas, com início e fim ajustados de 15 em 15 minutos: ← → no valor, ou clique nas setas; as faixas não podem se sobrepor e cada uma termina depois de começar), e os dias da semana (atalhos "Segunda a sexta", "Fim de semana" e "Todos os dias", ou cada dia: pelo menos um). Se a IA está ligada, **Pedir para a IA** também fica nesta tela. |
+| 2. O que passa? | **Todos os programas** (o app escolhe a ordem do rodízio; OK já segue) ou **Escolher os programas**: você marca os que entram e a ordem do rodízio é a da marcação; com ← → no programa marcado ele passa para antes ou depois. Pelo menos um programa. |
+| 3. Nome e prévia | O nome do canal (como aparece na troca de canais), o botão **Ajustes avançados** e a prévia do que vai passar (veja abaixo). Enter no nome segue para a última tela. |
+| 4. Salvar | Um resumo com uma linha por resposta, cada uma com **Mudar**, e o botão **Salvar canal** (ou **Trocar o canal**), que já começa selecionado. |
 
-Cada faixa de horário vira um bloco da grade, preenchido com os programas em rodízio, com abertura, chamadas e encerramento, como em `tv-gominho grade`. A marca e a época usam a mesma escolha de vinhetas do comando (`--marca` e `--epoca`). Os horários nos comentários do arquivo contam os intervalos do **próprio canal**, quando ele tem regras próprias: o bloco fecha perto do fim da faixa com os comerciais que de fato vão passar. Voltar (Esc) recua um passo; no primeiro, fecha o assistente.
+**Quatro telas e cinco teclas no caminho padrão.** Com tudo no padrão, de Menu → Programação até o canal salvo são 5 teclas OK: *Criar uma programação*, *Manhã, seg a sex*, *Todos os programas*, o nome (Enter) e *Salvar canal*. Digitar outro nome, escolher programas ou mudar horários acrescenta teclas só onde você mexe.
+
+**Mudar, na última tela.** "Mudar" em cada linha leva à tela daquela resposta (Quando?, O que passa?, Nome e prévia, ou uma das telas de ajustes avançados) e o botão do rodapé vira **Pronto**, que volta direto à tela **Salvar** com todas as respostas como estavam. Voltar também volta para lá.
+
+### Ajustes avançados
+
+O botão **Ajustes avançados** (na tela Nome e prévia) lista o que quase nunca precisa mudar, e tudo começa no jeito padrão:
+
+| Ajuste | O que você escolhe |
+|---|---|
+| Comerciais | **Seguir a configuração geral** (o padrão: a grade não escreve regras) ou **Regras próprias deste canal**: de quanto em quanto tempo há intervalo (0 a 30 minutos; 0 = sem cortes no meio do episódio), quantos comerciais passam (1 a 10), se há intervalo depois de cada episódio e se há vinhetas de entrada e saída. Vira o bloco [`intervalos`](#intervalos-por-canal) da grade. |
+| Vinhetas | A **marca** (as pastas de marca que existem em `vinhetas/aberturas`, `encerramentos`, `chamadas` e `intervalos`, como `tv-globinho`) e a **época** (os anos que aparecem nos nomes, como "2003-2009" ou "(2011)"). O padrão é **Qualquer marca** e **qualquer época**. A tela mostra qual abertura, encerramento e vinheta de intervalo saem da escolha. |
+| Trocar um canal existente | Por padrão o canal é **novo**. Aqui dá para **trocar um canal que já existe** (veja abaixo). |
+
+Cada faixa de horário vira um bloco da grade, preenchido com os programas em rodízio, com abertura, chamadas e encerramento, como em `tv-gominho grade`. A marca e a época usam a mesma escolha de vinhetas do comando (`--marca` e `--epoca`). Os horários nos comentários do arquivo contam os intervalos do **próprio canal**, quando ele tem regras próprias: o bloco fecha perto do fim da faixa com os comerciais que de fato vão passar. Voltar (Esc) volta à tela anterior; na primeira, fecha o assistente.
 
 ### O que o canal não pode mudar
 
-O interruptor geral de comerciais (e o de vinhetas) vence: as regras do canal só mudam *como* são os intervalos, nunca *se* há comerciais ou vinhetas. Se eles estão desligados na configuração geral, o passo avisa e o canal passa sem eles.
+O interruptor geral de comerciais (e o de vinhetas) vence: as regras do canal só mudam *como* são os intervalos, nunca *se* há comerciais ou vinhetas. Se eles estão desligados na configuração geral, a tela de ajustes avisa e o canal passa sem eles.
 
 ### Prévia
+
+A prévia fica na tela **Nome e prévia**, embaixo do nome. Ao mudar o nome ela se refaz um instante depois (o nome do arquivo decide o sorteio), e a anterior continua na tela até a nova ficar pronta.
 
 A prévia mostra **um dia** (com ← → trocando de dia) ou **a semana** (os próximos 7 dias a partir de hoje), com o **horário estimado de cada episódio** e **qual episódio passa**. Ela usa o mesmo motor da TV (`planDay` e `buildTimeline`, com as regras de intervalo do canal e a configuração geral de comerciais e vinhetas), então os episódios são os que a TV vai passar nesses dias, com as mesmas escolhas sorteadas (o sorteio depende do nome do arquivo do canal, que a prévia já usa). Os horários seguem o jeito de `horario: real`: cada bloco começa na hora marcada, a menos que o anterior passe dela. Os intervalos comerciais já estão contados.
 
@@ -38,9 +52,9 @@ A prévia mostra **um dia** (com ← → trocando de dia) ou **a semana** (os pr
 
 **Por padrão o assistente cria um canal novo.** O nome do arquivo vem do nome do canal (letras, números e hífens: "Manhãs da Turma" vira `grades/manhas-da-turma.yaml`) e, se já existe, ganha `-2`, `-3`... Nenhum arquivo existente é trocado.
 
-Para mudar só um pedaço de um canal (um horário, um item), use o [editor de canal](#mudar-uma-programacao-pelo-app). Para refazer o canal do zero com as respostas do assistente, o passo "Nome" também permite escolher **Trocar o canal "..."**, entre os canais que são arquivos de `grades/` (o Canal Automático e os canais por programa não aparecem). Trocar tem estas garantias:
+Para mudar só um pedaço de um canal (um horário, um item), use o [editor de canal](#mudar-uma-programacao-pelo-app). Para refazer o canal do zero com as respostas do assistente, os **Ajustes avançados** têm **Trocar um canal existente**, com **Trocar o canal "..."**, entre os canais que são arquivos de `grades/` (o Canal Automático e os canais por programa não aparecem). Trocar tem estas garantias:
 
-1. **Confirmação explícita:** no último passo, o botão **Trocar o canal** só funciona depois de marcar "Sim, trocar o canal...".
+1. **Confirmação explícita:** na tela Salvar, o botão **Trocar o canal** só funciona depois de marcar "Sim, trocar o canal...".
 2. **Cópia de segurança antes de gravar:** o arquivo antigo é copiado para `grades/<canal>.AAAA-MM-DD.yaml.bak` (por exemplo `manha.2026-10-22.yaml.bak`; se já existe uma cópia do mesmo dia, `manha.2026-10-22-2.yaml.bak`). O app confere se a cópia ficou igual antes de gravar por cima; se não consegue fazer a cópia, não mexe no canal. A terminação `.bak` faz com que a biblioteca **não leia a cópia como canal** (só `.yaml` e `.yml` em `grades/` são canais) e não gera aviso. Para voltar atrás, apague o canal novo e tire a data e o `.bak` do nome da cópia.
 3. **Os programas não pulam:** o canal novo recebe as [posições salvas](#posições-salvas) de cada programa na data de hoje (o episódio que o canal antigo passaria primeiro hoje), então cada programa segue do ponto em que estava.
 4. **O que não é copiado:** o assistente refaz o canal com as respostas dele. A `agenda` (episódios escolhidos à mão) e outras edições que você fez no arquivo antigo não vão para o canal novo; ficam só na cópia de segurança.
@@ -50,10 +64,10 @@ Sem permissão de escrita, o app baixa os dois arquivos (a cópia e o canal novo
 ### Onde o canal é salvo
 
 - **Chrome ou Edge, no PC, com a biblioteca aberta pelo botão "Escolher biblioteca"** (a pasta fica lembrada): ao tocar em **Salvar canal** (ou **Trocar o canal**), o navegador pede **permissão de escrita** na pasta. O app só pede isso nessa hora; a leitura continua como sempre. Dada a permissão, o arquivo é gravado em `grades/` (a pasta é criada se não existir; se a biblioteca está dentro de uma pasta `biblioteca`, vai para `biblioteca/grades/`). Em seguida a biblioteca é lida de novo e o canal já aparece na troca de canais, sem recarregar a página. A tela oferece **Assistir agora**.
-- **Biblioteca servida por `tv-gominho servir --editar`** (a TV, o celular ou outro PC pela rede): na primeira vez, o app pede o PIN que aparece no terminal do computador (números do controle remoto ou o teclado na tela). Depois o arquivo é gravado em `grades/` pelo servidor e o canal já aparece na troca de canais. Veja [ferramentas.md](ferramentas.md#salvar-canais-pelo-servidor---editar). **Trocar um canal** (e salvar no editor) também grava pelo servidor: é o próprio servidor que faz a cópia de segurança em `grades/` antes de gravar por cima (veja [ferramentas.md](ferramentas.md#salvar-canais-pelo-servidor---editar)).
+- **Biblioteca servida por `tv-gominho servir --editar`** (a TV, o celular ou outro PC pela rede): na primeira vez, o app pede o PIN que aparece no terminal do computador (números do controle remoto ou o teclado na tela) **assim que você abre Criar ou Mudar uma programação**, antes de qualquer pergunta, e não depois de preencher tudo. A tela Programação mostra no cabeçalho **Pareado** ou **Falta o PIN**. Depois o arquivo é gravado em `grades/` pelo servidor e o canal já aparece na troca de canais. Veja [ferramentas.md](ferramentas.md#salvar-canais-pelo-servidor---editar). **Trocar um canal** (e salvar no editor) também grava pelo servidor: é o próprio servidor que faz a cópia de segurança em `grades/` antes de gravar por cima (veja [ferramentas.md](ferramentas.md#salvar-canais-pelo-servidor---editar)).
 - **Em qualquer outro caso** (Firefox, Safari, pasta aberta pelo campo de pasta comum, `tv-gominho servir` sem `--editar`, ou permissão negada): o app **baixa o arquivo** `.yaml` e mostra onde colocá-lo: dentro da pasta `grades/` da biblioteca (a mesma pasta, no pendrive e no Raspberry Pi). Depois é só abrir a biblioteca de novo para o canal aparecer.
 
-Para os blocos fecharem perto do fim de cada faixa, o assistente lê a duração dos vídeos (o navegador lê os metadados dos arquivos, sem ffmpeg) ao chegar na prévia. Se isso demorar mais de 12 segundos numa biblioteca grande, valem as durações típicas (22 minutos por episódio) para o que faltou. O canal salvo é exatamente o que a prévia mostrou.
+Para os blocos fecharem perto do fim de cada faixa, o assistente lê a duração dos vídeos (o navegador lê os metadados dos arquivos, sem ffmpeg) ao chegar em Nome e prévia. Se isso demorar mais de 12 segundos numa biblioteca grande, valem as durações típicas (22 minutos por episódio) para o que faltou. O canal salvo é exatamente o que a prévia mostrou.
 
 ## Mudar uma programação pelo app
 
@@ -62,6 +76,8 @@ No PC, **Menu → Programação → Mudar** (ao lado do nome do canal) abre o ed
 - mudar o **nome**, a **descrição** e os **dias**;
 - **acrescentar e remover blocos** e mudar o **horário** de cada um (`HH:MM`, como `08:00`). Dois blocos não podem começar no mesmo horário, e os blocos ficam sempre em ordem de horário;
 - **acrescentar, remover e reordenar os itens** de um bloco (os botões ▲ ▼ ou Alt+↑ / Alt+↓): **programa** (qual e quantos episódios), **vinheta** (a categoria e, dentro dela, "sortear de toda a pasta", "sortear da pasta" de uma subpasta ou um arquivo específico) e **comerciais** (quantos).
+
+**No teclado e no controle**, as abas **Blocos** e **Agenda** trocam com ← → (↓ entra no conteúdo da aba e ↑ volta para ela); na Agenda, ← → andam entre **Semana anterior**, **Esta semana** e **Próxima semana**, e ↓ chega ao primeiro espaço da semana. Servido com `--editar`, o PIN é pedido ao abrir o editor.
 
 **A aba "Agenda"** mostra a [agenda](#agenda) como uma semana: as colunas são os dias em que o canal passa (os dias fora de `dias` não aparecem) e as linhas são os itens de programa dos blocos (horário do bloco e programa). Cada espaço mostra o episódio que a TV vai passar, calculado pelo mesmo motor da TV com o canal **como está no editor, mesmo antes de salvar** e já com a lista [não passar](biblioteca.md#desenhos-que-não-passam-nao-passaryaml): se você mudar os blocos ou os dias na aba "Blocos", a semana muda junto. Um item com `episodios: N` mostra o primeiro episódio e "+N-1". Um programa com `ordem: aleatoria` mostra o episódio sorteado (marcado "sorteio").
 

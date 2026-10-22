@@ -1,10 +1,14 @@
 import type { Library } from '@tv-gominho/nucleo';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { KeyHints, Overlay } from '../components/Overlay';
-import { resolveHubTarget, sameHubTarget, type HubTarget } from '../hub-model';
+import { ScrollBody } from '../components/ScrollBody';
+import { channelSummary, pairingBadge, resolveHubTarget, sameHubTarget, type HubTarget } from '../hub-model';
+import type { BrowserLibrary } from '../sources/types';
 
 interface Props {
+  /** The library: served with --editar, it tells whether this device is paired. */
+  source: BrowserLibrary;
   library: Library;
   /** The row to focus when this screen opens (the one a closed sub-screen was opened from). */
   focus?: HubTarget | null;
@@ -22,8 +26,21 @@ interface Props {
  * or to change one of the grades of the library. The automatic channel and the per-show channels are not files, so
  * they are not listed. File names and paths stay behind "Detalhes".
  */
-export function ScheduleHub({ library, focus = null, onWizard, onEdit, onBlocklist, onBack }: Props) {
+export function ScheduleHub({ source, library, focus = null, onWizard, onEdit, onBlocklist, onBack }: Props) {
   const [details, setDetails] = useState(false);
+  // Served with --editar: whether this device is paired yet (null = not known, or no pairing involved).
+  const [paired, setPaired] = useState<boolean | null>(null);
+  useEffect(() => {
+    let live = true;
+    void source.editing
+      ?.isPaired()
+      .then((value) => live && setPaired(value))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [source]);
+  const badge = pairingBadge(source.editing !== undefined, paired);
   const target = resolveHubTarget(
     focus,
     library.schedules.map((schedule) => schedule.id),
@@ -36,17 +53,27 @@ export function ScheduleHub({ library, focus = null, onWizard, onEdit, onBlockli
         <header className="panel-header">
           <Icon name="calendar" />
           <h1>Programação</h1>
+          {badge && (
+            <span
+              className="pairing-badge"
+              data-paired={badge.ok}
+              role="status"
+              title={badge.ok ? 'Este aparelho já pode salvar programações no computador.' : 'O PIN do computador é pedido ao abrir Criar ou Mudar uma programação.'}
+            >
+              {badge.label}
+            </span>
+          )}
           <button className="panel-close" onClick={onBack} aria-label="Fechar" title="Fechar" tabIndex={-1}>
             <Icon name="close" />
           </button>
         </header>
 
-        <div className="wizard-body hub-body">
+        <ScrollBody className="wizard-body hub-body">
           <button data-nav data-autofocus={autofocus({ kind: 'wizard' })} data-hub="wizard" className="row wizard-row" onClick={onWizard}>
             <Icon name="plus" className="row-lead" />
             <span className="row-text">
               <span className="row-label">Criar uma programação</span>
-              <span className="row-meta">Um assistente em poucos passos: horários, dias e programas.</span>
+              <span className="row-meta">Quatro telas: quando, o que passa, nome e prévia, salvar.</span>
             </span>
             <Icon name="chevronRight" className="selector-arrow" />
           </button>
@@ -69,11 +96,11 @@ export function ScheduleHub({ library, focus = null, onWizard, onEdit, onBlockli
                   <Icon name="clock" className="row-lead" />
                   <span className="row-text">
                     <span className="row-label">{schedule.name}</span>
-                    <span className="row-meta">
-                      {schedule.blocks.length} {schedule.blocks.length === 1 ? 'horário' : 'horários'}
-                    </span>
+                    <span className="row-meta">{channelSummary(schedule)}</span>
                   </span>
-                  <span className="hub-edit">Mudar</span>
+                  <span className="hub-edit" aria-hidden="true">
+                    Mudar ›
+                  </span>
                 </button>
               ))}
             </div>
@@ -108,7 +135,7 @@ export function ScheduleHub({ library, focus = null, onWizard, onEdit, onBlockli
               )}
             </div>
           )}
-        </div>
+        </ScrollBody>
 
         <KeyHints
           hints={[

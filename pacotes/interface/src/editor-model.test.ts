@@ -25,6 +25,7 @@ import {
   setDescription,
   setName,
   settleBlocks,
+  tabAfterKey,
   timeProblem,
   toggleDay,
   updateItem,
@@ -572,5 +573,15 @@ describe('hasHandComments', () => {
     expect(hasHandComments('nome: A\nblocos:\n    # entre linhas\n  - horario: "08:00"\n')).toBe(true);
     expect(hasHandComments('nome: "A # B"\r\nblocos: []\r\n')).toBe(false);
     expect(hasHandComments('')).toBe(false);
+  });
+});
+
+describe('tabAfterKey', () => {
+  it('switches with the arrows, stops at the ends and ignores other keys', () => {
+    expect(tabAfterKey('blocks', 'ArrowRight')).toBe('agenda');
+    expect(tabAfterKey('agenda', 'ArrowLeft')).toBe('blocks');
+    expect(tabAfterKey('blocks', 'ArrowLeft')).toBe('blocks');
+    expect(tabAfterKey('agenda', 'ArrowRight')).toBe('agenda');
+    expect(tabAfterKey('blocks', 'ArrowDown')).toBe('blocks');
   });
 });
