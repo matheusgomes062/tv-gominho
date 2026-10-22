@@ -49,6 +49,8 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
+/* The channel videos switch with the hidden attribute; .screen video sets display, so this must win. */
+[hidden] { display: none !important; }
 html { font-synthesis: none; }
 body {
   margin: 0;
@@ -99,7 +101,9 @@ code, pre { font-family: var(--font-mono); }
 .btn svg { width: 18px; height: 18px; flex: none; }
 
 /* ---------- Hero ---------- */
-.hero { position: relative; isolation: isolate; overflow: hidden; background: #3a2d20; }
+/* The photo fills the whole hero; the text and the remote are rows of it, so they never overlap. */
+.hero { position: relative; isolation: isolate; overflow: hidden; background: #3a2d20;
+  display: grid; grid-template-rows: 1fr auto; min-height: clamp(600px, 88svh, 860px); }
 /* Starts a little to the right so the estante clears the text; the left edge fades into the wall tone. */
 .scene { position: absolute; inset: 0 0 0 20%; z-index: -2; overflow: hidden;
   -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 10%); mask-image: linear-gradient(90deg, transparent 0, #000 10%); }
@@ -121,7 +125,7 @@ code, pre { font-family: var(--font-mono); }
     linear-gradient(90deg, rgba(8, 10, 22, 0.94) 0%, rgba(8, 10, 22, 0.86) 30%, rgba(8, 10, 22, 0.35) 46%, rgba(8, 10, 22, 0) 58%),
     linear-gradient(0deg, rgba(8, 10, 22, 0.6), rgba(8, 10, 22, 0) 28%),
     rgba(8, 10, 22, 0.12); }
-.hero-inner { min-height: clamp(600px, 88svh, 860px); display: grid; align-items: center; padding-block: 72px 112px; }
+.hero-inner { display: grid; align-items: center; padding-block: 64px 28px; }
 .hero-copy { display: grid; gap: 18px; max-width: 29rem; }
 /* The logo is a crayon drawing; on the dark scrim its blue letters would vanish, so it sits on a
    sheet of notebook paper taped to the wall, where a kid's drawing reads clearly. */
@@ -145,7 +149,7 @@ code, pre { font-family: var(--font-mono); }
 .hero .lede { color: #d9d6e4; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
 .hero-foot {
-  position: absolute; inset-inline: 0; bottom: 20px;
+  padding-bottom: 22px;
   display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
 }
 .credit { font-size: var(--text-caption); color: #b9b7cb; max-width: 40rem; text-wrap: pretty; }
@@ -222,7 +226,8 @@ footer strong { color: var(--text); font-weight: 600; }
   .scene img { object-position: 60% 40%; }
   .scene::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(0deg, var(--bg) 0%, rgba(13, 16, 32, 0) 22%); }
   .scrim { display: none; }
-  .hero-inner { min-height: 0; padding-block: 8px 28px; }
+  .hero { min-height: 0; grid-template-rows: auto auto auto; }
+  .hero-inner { padding-block: 8px 28px; }
   .hero-foot { position: static; padding-bottom: 28px; flex-direction: column-reverse; align-items: stretch; }
   .remote { align-self: center; }
   .credit { text-align: center; }
@@ -567,7 +572,11 @@ Comandos:
     const v = videos[current];
     v.preload = 'auto';
     v.muted = !soundOn;
-    v.play().then(() => { blocked = false; }, () => { blocked = true; });
+    // AbortError only means a later pause() (channel change, scrolling away) cut this play() short.
+    v.play().then(
+      () => { if (v === videos[current]) blocked = false; },
+      (error) => { if (v === videos[current] && error.name !== 'AbortError') blocked = true; },
+    );
   }
   function staticSound() {
     if (!soundOn) return;
