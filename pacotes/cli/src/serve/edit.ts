@@ -4,7 +4,7 @@
 
 import { randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { constants } from 'node:fs';
-import { copyFile, link, lstat, mkdir, readdir, readFile, realpath, rename, stat, unlink, writeFile } from 'node:fs/promises';
+import { copyFile, lstat, mkdir, readdir, readFile, realpath, rename, stat, unlink, writeFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import path from 'node:path';
 import { BLOCKLIST_FILE, gradeBackupName, localIsoDate, parseBlocklist, parseSchedule, type LibraryWarning } from '@tv-gominho/nucleo';
@@ -26,6 +26,8 @@ const PAIR_TIMEOUT_MS = 10_000;
 
 const COOKIE = 'tvg_sessao';
 const PIN_DIGITS = 6;
+/** Backup names tried before giving up (a name is only taken when another process made it meanwhile). */
+const MAX_BACKUP_TRIES = 50;
 
 /**
  * What may be written, relative to the folder being served: the library root is that folder or its
@@ -188,22 +190,30 @@ export function createEditor(library: string, options: EditOptions) {
 }
 
 /**
- * Copies `file` to <name>.AAAA-MM-DD.yaml.bak (-2, -3... when taken) in `dir` and returns the copy's name. The copy is made
- * under a temporary name, compared byte by byte, and only then linked to its final name: link() fails instead of
- * replacing, so an existing backup is never overwritten, and a half-made copy is never left under a .bak name.
+ * Copies `file` to <name>.AAAA-MM-DD.yaml.bak (-2, -3... when taken) in `dir` and returns the copy's name. COPYFILE_EXCL
+ * fails instead of replacing, so an existing backup is never overwritten (no hard links: FAT32/exFAT pendrives lack them).
+ * The copy is read back and compared byte by byte; a copy that does not match is removed and the save is refused.
  */
 async function backupFile(dir: string, file: string, entries: readonly string[], date: string): Promise<string> {
-  const name = gradeBackupName(path.basename(file), date, entries);
-  const temp = path.join(dir, `.tv-gominho-${randomBytes(6).toString('hex')}.tmp`);
-  try {
-    await copyFile(file, temp, constants.COPYFILE_EXCL);
-    const [original, copy] = await Promise.all([readFile(file), readFile(temp)]);
-    if (!original.equals(copy)) throw new Error('a cópia de segurança não confere');
-    await link(temp, path.join(dir, name));
-  } finally {
-    await unlink(temp).catch(() => {});
+  const taken = [...entries];
+  for (let attempt = 0; attempt < MAX_BACKUP_TRIES; attempt++) {
+    const name = gradeBackupName(path.basename(file), date, taken);
+    const target = path.join(dir, name);
+    try {
+      await copyFile(file, target, constants.COPYFILE_EXCL);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+      taken.push(name);
+      continue;
+    }
+    const [original, copy] = await Promise.all([readFile(file), readFile(target)]);
+    if (!original.equals(copy)) {
+      await unlink(target).catch(() => {});
+      throw new Error('a cópia de segurança não confere');
+    }
+    return name;
   }
-  return name;
+  throw new Error('não foi possível achar um nome livre para a cópia de segurança');
 }
 
 /** Same origin as the address the page was opened at (already checked against allowedHost). */
