@@ -34,7 +34,8 @@ export interface PlanOptions {
 }
 
 export type PlannedItem =
-  | { kind: 'episode'; path: string; show: Show; episode: Episode; episodeIndex: number }
+  /** `itemIndex`: the position (from 0) in its block of the schedule item that planned the episode. */
+  | { kind: 'episode'; path: string; show: Show; episode: Episode; episodeIndex: number; itemIndex: number }
   | { kind: 'interstitial'; path: string; category: string };
 
 export interface PlannedBlock {
@@ -90,7 +91,7 @@ export function planDay(schedule: Schedule, library: Library, date: string, opti
 
   const blocks: PlannedBlock[] = schedule.blocks.map((block) => {
     const items: PlannedItem[] = [];
-    for (const item of block.items) {
+    for (const [itemIndex, item] of block.items.entries()) {
       if (item.type === 'show') {
         const show = findShow(library, item.show);
         const key = item.show.toLowerCase();
@@ -108,7 +109,7 @@ export function planDay(schedule: Schedule, library: Library, date: string, opti
           const episodeIndex = episodeIndexOf(key, counter, allowed, random) ?? allowed[drawn];
           if (episodeIndex === undefined) continue;
           const episode = show.episodes[episodeIndex]!;
-          items.push({ kind: 'episode', path: episode.path, show, episode, episodeIndex });
+          items.push({ kind: 'episode', path: episode.path, show, episode, episodeIndex, itemIndex });
         }
       } else if (item.type === 'interstitial') {
         // Always draw, even when switched off, so the other picks of the day don't change.

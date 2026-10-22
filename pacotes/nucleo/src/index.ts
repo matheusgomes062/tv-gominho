@@ -3,7 +3,7 @@ export { scanLibrary, findShow, resolveInterstitials, scheduleItemProblem } from
 export { parseSchedule } from './schedule';
 export { allowedEpisodes, blockedEpisodes, blocklistToYaml, parseBlocklist, emptyBlocklist, BLOCKLIST_FILE } from './blocklist';
 export { findEpisodeByRef, normalizeEpisodeRef, type Anchor, type AnchorSource, type EpisodeLookup } from './agenda';
-export { preservePositions } from './positions';
+export { preservePositions, episodeRef } from './positions';
 export { bumperRole, groupBumpers, bumpersOf, NO_BUMPERS, type BumperRole, type BumperGroup, type BreakBumpers } from './bumpers';
 export {
   DEFAULT_SETTINGS,
@@ -68,6 +68,7 @@ export {
   formatTimeOfDay,
   parseTimeOfDay,
   isoToDayNumber,
+  dayNumberToIso,
   weekdayOf,
   WEEKDAYS,
   type Weekday,

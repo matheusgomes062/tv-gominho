@@ -69,7 +69,7 @@ function showsOf(schedule: Schedule): string[] {
 }
 
 /** The reference (agenda.ts `findEpisodeByRef`) of `show.episodes[index]`: its number, with the season when the number repeats. Null for an episode without a number. */
-function episodeRef(show: Show, index: number): string | null {
+export function episodeRef(show: Show, index: number): string | null {
   const episode = show.episodes[index];
   if (!episode || episode.number === null) return null;
   const repeats = show.episodes.some((other, i) => i !== index && other.number === episode.number);
