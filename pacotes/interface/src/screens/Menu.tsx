@@ -14,6 +14,8 @@ interface Props {
   onSettings(): void;
   /** Opens the "Montar a semana" wizard. */
   onSchedule(): void;
+  /** Opens the "Não passar" screen. */
+  onBlocklist(): void;
   onChangeFolder(): void;
   /** Closes the menu and goes back to the picture. */
   onBack(): void;
@@ -23,10 +25,11 @@ interface Props {
  * The main menu: a sheet along the bottom of the live picture with the channels as cards, and below
  * them the other places to go. The TV keeps playing behind it.
  */
-export function Menu({ channels, channel, warningCount, libraryName, onWatch, onLibrary, onWarnings, onQuick, onSettings, onSchedule, onChangeFolder, onBack }: Props) {
+export function Menu({ channels, channel, warningCount, libraryName, onWatch, onLibrary, onWarnings, onQuick, onSettings, onSchedule, onBlocklist, onChangeFolder, onBack }: Props) {
   const actions: Array<{ id: string; icon: IconName; label: string; badge?: number; run(): void }> = [
     { id: 'library', icon: 'book', label: 'Biblioteca', run: onLibrary },
     { id: 'schedule', icon: 'calendar', label: 'Programação', run: onSchedule },
+    { id: 'blocklist', icon: 'close', label: 'Não passar', run: onBlocklist },
     { id: 'quick', icon: 'settings', label: 'Ajustes rápidos', run: onQuick },
     { id: 'settings', icon: 'palette', label: 'Configurações', run: onSettings },
     { id: 'warnings', icon: 'alert', label: 'Avisos', badge: warningCount, run: onWarnings },

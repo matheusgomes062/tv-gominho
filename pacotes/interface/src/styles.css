@@ -2839,3 +2839,23 @@ h2 {
   line-height: 1.45;
   color: var(--ov-text);
 }
+
+/* --- "Não passar" screen ---------------------------------------------------------------------------- */
+.np-summary {
+  margin: 0;
+  padding: 0 calc(1.5 * var(--u));
+}
+
+.np-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: calc(0.45 * var(--u));
+  align-items: stretch;
+}
+
+.wizard-mark[data-partial="true"] {
+  border-color: var(--ov-accent);
+  color: var(--ov-accent);
+  font-weight: 700;
+  line-height: 1;
+}
