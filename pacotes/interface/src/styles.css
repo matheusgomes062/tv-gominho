@@ -2739,7 +2739,28 @@ h2 {
   font-variant-numeric: tabular-nums;
 }
 
+.wizard-ia {
+  display: grid;
+  gap: calc(0.8 * var(--u));
+}
+
+.wizard-ia h2 {
+  margin: 0;
+}
+
+.wizard-ia ul {
+  display: grid;
+  gap: calc(0.4 * var(--u));
+  margin: 0;
+  padding-left: calc(1.2 * var(--u));
+}
+
+.wizard-ia .wizard-footer {
+  gap: var(--sp-3);
+}
+
 .wizard-pin .wizard-footer,
+.wizard-ia .wizard-footer,
 .wizard-done .wizard-footer {
   justify-content: flex-start;
   padding: calc(0.4 * var(--u)) 0 0;
@@ -2756,7 +2777,14 @@ h2 {
   gap: calc(0.4 * var(--u));
 }
 
-.wizard-field input {
+.wizard-field textarea {
+  min-height: calc(5 * var(--u));
+  resize: vertical;
+  line-height: 1.4;
+}
+
+.wizard-field input,
+.wizard-field textarea {
   padding: calc(0.7 * var(--u)) calc(0.9 * var(--u));
   color: var(--ov-text);
   background: var(--ov-tile);
@@ -2768,6 +2796,7 @@ h2 {
   text-transform: none;
 }
 
+.wizard-field textarea:focus-visible,
 .wizard-field input:focus-visible {
   outline: none;
   color: var(--ov-on-focus);

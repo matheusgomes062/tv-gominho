@@ -8,7 +8,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CliError, UsageError } from '../errors';
 import { helpOptions, intOption, parseOptions } from '../options';
+import { anthropicApiKey, anthropicUrl, ANTHROPIC_MODEL, createAnthropicProvider } from '../ia/anthropic';
 import { CAPABILITIES_PATH, createEditor, MAX_BODY, newPin, type EditOptions } from '../serve/edit';
+import { createAssistant, IA_PER_HOUR, type Assistant } from '../serve/ia';
 import { LIBRARY_FILE_PATH, LIBRARY_LIST_PATH, libraryListing, resolveInside, sendJson, sendLibraryFile, sendStatic } from '../serve/http';
 import type { Command } from './types';
 
@@ -18,6 +20,8 @@ const OPTIONS = {
   rede: { type: 'boolean' },
   abrir: { type: 'boolean' },
   editar: { type: 'boolean' },
+  ia: { type: 'boolean' },
+  'ia-modelo': { type: 'string' },
   interface: { type: 'string' },
 } as const;
 
@@ -38,6 +42,11 @@ Opções:
   --editar              deixa salvar canais pelo app ("Montar a semana"). Mostra um PIN aqui;
                         cada aparelho digita o PIN uma vez. Só grava grades/<nome>.yaml e
                         nao-passar.yaml, nada mais
+  --ia                  liga o "Pedir para a IA" do "Montar a semana", com a sua chave da
+                        Anthropic em ANTHROPIC_API_KEY (custa dinheiro na sua conta). Envia
+                        títulos, durações, a lista de programas e o pedido; nunca vídeos.
+                        Também pede o PIN. Sem a chave, fica desligada
+  --ia-modelo <id>      outro modelo Claude. Padrão: ${ANTHROPIC_MODEL}
   --interface <pasta>   pasta do app compilado (padrão: a que vem com a ferramenta)
   --ajuda               mostra esta ajuda
 
@@ -46,7 +55,8 @@ Para o Raspberry Pi em modo quiosque, veja docs/raspberry-pi.md.
 Exemplos:
   tv-gominho servir ./biblioteca --abrir
   tv-gominho servir E:\\biblioteca --rede --porta 8000
-  tv-gominho servir ./biblioteca --rede --editar`;
+  tv-gominho servir ./biblioteca --rede --editar
+  npm run cli -- servir ./biblioteca --editar --ia   (chave no arquivo .env)`;
 
 export const servirCommand: Command = {
   name: 'servir',
@@ -65,8 +75,24 @@ export const servirCommand: Command = {
     const port = intOption('--porta', values.porta, 1, 65535) ?? DEFAULT_PORT;
     const host = values.rede ? '0.0.0.0' : '127.0.0.1';
 
-    const pin = values.editar ? newPin() : undefined;
-    const server = createLibraryServer(library, app, pin ? { pin, log: (message) => console.log(message) } : undefined);
+    const log = (message: string) => console.log(message);
+    const model = values['ia-modelo']?.trim();
+    if (model !== undefined && !/^[a-z0-9][a-z0-9.@:_-]{0,99}$/i.test(model)) throw new UsageError('O nome do modelo em --ia-modelo não parece válido.');
+    let assistant: Assistant | undefined;
+    const key = values.ia ? anthropicApiKey() : undefined;
+    if (key) {
+      let url: string | undefined;
+      try {
+        url = anthropicUrl();
+      } catch (error) {
+        throw new CliError((error as Error).message);
+      }
+      assistant = createAssistant(library, { provider: createAnthropicProvider({ apiKey: key, model, url }), log });
+    }
+
+    // --ia pairs devices too: only a paired device may spend the key.
+    const pin = values.editar || assistant ? newPin() : undefined;
+    const server = createLibraryServer(library, app, pin ? { pin, log, write: Boolean(values.editar), assistant } : undefined);
     await new Promise<void>((resolve, reject) => {
       server.once('error', (error: NodeJS.ErrnoException) =>
         reject(error.code === 'EADDRINUSE' ? new CliError(`A porta ${port} já está em uso. Escolha outra com --porta.`) : error),
@@ -78,10 +104,17 @@ export const servirCommand: Command = {
     console.log(`TV Gominho no ar, com a biblioteca ${library}`);
     console.log(`  Neste computador: ${local}`);
     if (values.rede) for (const address of lanAddresses()) console.log(`  Na rede:          http://${address}:${port}/`);
-    if (pin) {
-      console.log(`Salvar canais pelo app: LIGADO. PIN para parear um aparelho: ${pin}`);
+    if (values.editar) {
+      console.log(`Salvar canais pelo app: LIGADO.`);
       console.log(`  Só quem digitar o PIN grava, e só grades/<nome>.yaml e nao-passar.yaml (até ${MAX_BODY / 1024} KB).`);
     }
+    if (assistant) {
+      console.log(`IA: LIGADA (Anthropic, modelo ${model ?? ANTHROPIC_MODEL}), com a chave de ANTHROPIC_API_KEY. Cada pedido custa dinheiro na sua conta.`);
+      console.log(`  Só aparelhos pareados pedem, no máximo ${IA_PER_HOUR} por hora. Saem títulos, durações, a lista de programas e o pedido; nunca vídeos.`);
+    } else if (values.ia) {
+      console.log('IA: DESLIGADA. --ia precisa da chave em ANTHROPIC_API_KEY (veja docs/ferramentas.md). O resto funciona normalmente.');
+    }
+    if (pin) console.log(`PIN para parear um aparelho: ${pin}`);
     console.log('Ctrl+C para desligar.');
     if (values.abrir) openBrowser(local);
 
@@ -127,7 +160,7 @@ export function createLibraryServer(library: string, app: string, edit?: EditOpt
         res.end();
         return;
       }
-      if (url === CAPABILITIES_PATH) return sendJson(req, res, { editar: false, pareado: false });
+      if (url === CAPABILITIES_PATH) return sendJson(req, res, { editar: false, ia: false, pareado: false });
       if (url === LIBRARY_LIST_PATH) return sendJson(req, res, await libraryListing(library));
       if (url.startsWith(LIBRARY_FILE_PATH)) {
         const relative = url.slice(LIBRARY_FILE_PATH.length);

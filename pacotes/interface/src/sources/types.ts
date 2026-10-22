@@ -13,6 +13,22 @@ export interface ServerEditing {
   replaceWithBackup(path: string, text: string): Promise<{ status: WriteOutcome; backup?: string }>;
 }
 
+/** What the app sends to `tv-gominho servir --ia` (serve/ia.ts in the CLI). */
+export interface IaRequest {
+  pedido: string;
+  /** The wizard's answers so far, in the shape of the proposal schema. */
+  atual?: unknown;
+  /** Typical minutes per show id. */
+  duracoes?: Record<string, number>;
+}
+
+/** The AI assistant of `tv-gominho servir --ia`: the key stays on the computer, the app only gets proposals. */
+export interface ServerAssistant {
+  pair(pin: string): Promise<PairOutcome>;
+  /** The HTTP status and the parsed JSON answer (null when it was not JSON or the computer did not answer). */
+  propose(request: IaRequest): Promise<{ status: number; body: unknown }>;
+}
+
 /** A library folder opened in the browser. */
 export interface BrowserLibrary extends LibrarySource {
   /** Folder name, shown to the user. */
@@ -21,6 +37,8 @@ export interface BrowserLibrary extends LibrarySource {
   handle?: FileSystemDirectoryHandle;
   /** Present when the library is served by `tv-gominho servir --editar`: the way to write a channel through it. */
   editing?: ServerEditing;
+  /** Present when the server runs with --ia and has a key: "Pedir para a IA" in the wizard. */
+  assistant?: ServerAssistant;
   /** A URL the <video>/<img> elements can load. */
   url(path: string): Promise<string>;
   /** Changes when the file changes; used to cache video durations. */

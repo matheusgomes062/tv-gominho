@@ -3,11 +3,14 @@ import {
   formatTimeOfDay,
   localIsoDate,
   previewDay,
+  proposalToRaw,
   scheduleToYaml,
   type DayPreview,
   type Weekday,
   type Library,
+  type Proposal,
   type Schedule,
+  type Show,
 } from '@tv-gominho/nucleo';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Icon, type IconName } from '../components/Icon';
@@ -15,10 +18,11 @@ import { KeyHints, Overlay } from '../components/Overlay';
 import type { Durations } from '../media';
 import { useSettings } from '../settings';
 import { clickDirection } from '../settings-model';
-import { PAIR_MESSAGES, PIN_LENGTH, pinComplete, typePin } from '../pin-model';
+import { PAIR_MESSAGES, PIN_LENGTH, pinComplete, typePin, type PairOutcome } from '../pin-model';
 import { overwriteWithBackup, type ReplaceResult } from '../sources/overwrite';
 import { downloadText, requestWriteAccess, saveGrade, saveThroughServer, type SaveResult, type WriteAccess } from '../sources/save';
-import type { BrowserLibrary, ServerEditing } from '../sources/types';
+import type { BrowserLibrary, ServerAssistant, ServerEditing } from '../sources/types';
+import { EXAMPLES, MAX_REQUEST_LENGTH, NOTICE, NOTICE_KEY, applyProposal, currentChoices, iaReply, requestProblem, typicalMinutes } from '../ia-model';
 import {
   DAY_LABELS,
   DAY_ORDER,
@@ -39,6 +43,7 @@ import {
   chooseReplace,
   dayLabel,
   daysSummary,
+  firstProblemStep,
   existingGradeFiles,
   formatRange,
   initialState,
@@ -80,6 +85,8 @@ interface Props {
 
 type Phase =
   | { name: 'editing' }
+  // 'Pedir para a IA' (tv-gominho servir --ia): the request, then the proposal fills the answers and opens the preview.
+  | { name: 'ia' }
   | { name: 'saving' }
   // Saving through `tv-gominho servir --editar` and this device is not paired yet: the PIN, then the same file.
   | { name: 'pin'; editing: ServerEditing; again(message: string): Promise<void>; message?: string }
@@ -110,6 +117,8 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
   const [phase, setPhase] = useState<Phase>({ name: 'editing' });
   const [error, setError] = useState<string | null>(null);
   const [prepared, setPrepared] = useState<Prepared | null>(null);
+  /** The explanation of the AI's proposal while the answers are the ones it proposed (they can still be adjusted). */
+  const [iaNote, setIaNote] = useState<string | null>(null);
   const body = useRef<HTMLDivElement>(null);
 
   const playable = useMemo(() => library.shows.filter((show) => show.episodes.length > 0), [library]);
@@ -173,7 +182,7 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
   const goBack = () => {
     if (phase.name === 'saving') return;
     if (phase.name === 'done') return onBack();
-    if (phase.name === 'pin') return setPhase({ name: 'editing' });
+    if (phase.name === 'pin' || phase.name === 'ia') return setPhase({ name: 'editing' });
     setError(null);
     const before = previousStep(step);
     if (before) setStep(before);
@@ -183,6 +192,23 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
     if (problem) return;
     setStep(nextStep(step));
   };
+
+  /** The AI's proposal becomes the answers; the preview shows it, unless a step still has a problem with it. */
+  function takeProposal(proposal: Proposal) {
+    const next = applyProposal(state, proposal);
+    setState(next);
+    setIaNote(proposal.note || 'A IA preencheu as escolhas.');
+    setError(null);
+    setPhase({ name: 'editing' });
+    const stuck = firstProblemStep(next, playable.length);
+    setStep(stuck && stepIndex(stuck) < stepIndex('preview') ? stuck : 'preview');
+  }
+
+  function discardProposal() {
+    setState(initialState(settings.adBreaks));
+    setIaNote(null);
+    setStep('ranges');
+  }
 
   async function save() {
     // Replacing a channel needs the confirmation of the last step.
@@ -267,6 +293,16 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
               }
               onCancel={goBack}
             />
+          ) : phase.name === 'ia' && source.assistant ? (
+            <IaPage
+              assistant={source.assistant}
+              library={library}
+              shows={playable}
+              durations={durations}
+              current={currentChoices(state, settings.adBreaks)}
+              onProposal={takeProposal}
+              onCancel={goBack}
+            />
           ) : phase.name === 'saving' ? (
             <p className="wizard-busy" role="status">
               {state.target ? 'Guardando a cópia de segurança e trocando o canal…' : 'Gravando o canal…'}
@@ -274,12 +310,34 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
           ) : (
             <>
               <h2>{STEPS[index]!.help}</h2>
+              {step === 'ranges' && source.assistant && (
+                <div className="wizard-list">
+                  <Row
+                    icon="text"
+                    label="Pedir para a IA"
+                    meta="Descreva o canal em português; a IA propõe e você revisa na prévia antes de salvar."
+                    data="ia"
+                    onClick={() => setPhase({ name: 'ia' })}
+                  />
+                </div>
+              )}
               {step === 'ranges' && <RangesStep state={state} onChange={setState} />}
               {step === 'days' && <DaysStep state={state} onChange={change} />}
               {step === 'shows' && <ShowsStep state={state} library={library} shows={playable} onChange={change} />}
               {step === 'commercials' && <CommercialsStep state={state} library={library} onChange={setState} />}
               {step === 'bumpers' && <BumpersStep state={state} library={library} onChange={setState} />}
               {step === 'name' && <NameStep state={state} fileName={fileName} library={library} onChange={setState} onEnter={goOn} />}
+              {step === 'preview' && iaNote && (
+                <div className="wizard-list" data-note="ia">
+                  <p className="panel-note">
+                    Proposta da IA: {iaNote} Confira a prévia. Para ajustar, volte aos passos anteriores; para seguir, avance e salve.
+                  </p>
+                  <button data-nav className="action-tile small" onClick={discardProposal}>
+                    <Icon name="close" className="action-icon" />
+                    <span>Descartar a proposta</span>
+                  </button>
+                </div>
+              )}
               {step === 'preview' && <PreviewStep prepared={prepared?.key === stateKey ? prepared : null} library={library} durations={durations} />}
               {step === 'save' && (
                 <SummaryStep
@@ -1074,6 +1132,159 @@ function SummaryStep({
 
 // ---------------------------------------------------------------- PIN
 
+// ---------------------------------------------------------------- the AI
+
+/** How long the request waits for the episode lengths it sends as hints. */
+const IA_DURATION_WAIT_MS = 4_000;
+
+const noticeRead = () => {
+  try {
+    return localStorage.getItem(NOTICE_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * "Pedir para a IA" (`tv-gominho servir --ia`): before the first use, what leaves the computer and what it costs; then
+ * the request, typed in Portuguese. The server asks the model and checks the answer; the wizard shows it in the preview.
+ */
+function IaPage({
+  assistant,
+  library,
+  shows,
+  durations,
+  current,
+  onProposal,
+  onCancel,
+}: {
+  assistant: ServerAssistant;
+  library: Library;
+  shows: Show[];
+  durations: Durations;
+  current: Proposal | null;
+  onProposal(proposal: Proposal): void;
+  onCancel(): void;
+}) {
+  const [view, setView] = useState<'notice' | 'form' | 'busy' | 'pin'>(() => (noticeRead() ? 'form' : 'notice'));
+  const [text, setText] = useState('');
+  const [problem, setProblem] = useState<string | null>(null);
+  const page = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    page.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus();
+  }, [view]);
+
+  function accept() {
+    try {
+      localStorage.setItem(NOTICE_KEY, '1');
+    } catch {
+      // private window: the notice comes back next time
+    }
+    setView('form');
+  }
+
+  async function send() {
+    const invalid = requestProblem(text);
+    if (invalid) return setProblem(invalid);
+    setProblem(null);
+    setView('busy');
+    const paths = shows.flatMap((show) => show.episodes.slice(0, 3).map((episode) => episode.path));
+    await Promise.race([durations.load(paths).catch(() => {}), new Promise((resolve) => setTimeout(resolve, IA_DURATION_WAIT_MS))]);
+    const { status, body } = await assistant.propose({
+      pedido: text.trim(),
+      ...(current ? { atual: proposalToRaw(current) } : {}),
+      duracoes: typicalMinutes(shows, durations.get),
+    });
+    const reply = iaReply(status, body, library);
+    if (reply.kind === 'proposal') return onProposal(reply.proposal);
+    if (reply.kind === 'needs-pin') return setView('pin');
+    setProblem(reply.message);
+    setView('form');
+  }
+
+  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    // Backspace deletes a letter here; it must not reach the "go back" key handling of the overlay.
+    if (event.key === 'Backspace') event.stopPropagation();
+    // OK on the remote sends; Shift+Enter makes a new line on a keyboard.
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      void send();
+    }
+  };
+
+  if (view === 'pin') {
+    return <PinPage editing={assistant} message="Para usar a IA, este aparelho precisa do PIN." onPaired={() => void send()} onCancel={() => setView('form')} />;
+  }
+
+  return (
+    <div className="wizard-ia" ref={page}>
+      <h2>Pedir para a IA</h2>
+      {view === 'notice' ? (
+        <>
+          <p className="panel-note">Antes de usar, leia o que acontece:</p>
+          <ul className="panel-note" data-note="ia-aviso">
+            <li>{NOTICE.sent}</li>
+            <li>{NOTICE.key}</li>
+            <li>{NOTICE.review}</li>
+            <li>{NOTICE.off}</li>
+          </ul>
+          <div className="wizard-footer">
+            <button data-nav className="action-tile" onClick={onCancel}>
+              <span>Agora não</span>
+            </button>
+            <button data-nav data-autofocus data-ia-accept className="action-tile primary" onClick={accept}>
+              <Icon name="check" className="action-icon" />
+              <span>Entendi, quero usar</span>
+            </button>
+          </div>
+        </>
+      ) : view === 'busy' ? (
+        <p className="wizard-busy" role="status">
+          A IA está montando uma proposta. Pode levar até um minuto…
+        </p>
+      ) : (
+        <>
+          <label className="wizard-field">
+            <span className="row-label">O que você quer no canal?</span>
+            <textarea
+              data-nav
+              data-nav-adjust
+              data-autofocus
+              data-ia-text
+              value={text}
+              maxLength={MAX_REQUEST_LENGTH}
+              rows={3}
+              placeholder={EXAMPLES[0]}
+              autoComplete="off"
+              onChange={(event) => setText(event.target.value)}
+              onKeyDown={onKeyDown}
+            />
+          </label>
+          <p className="panel-note">
+            Exemplos: {EXAMPLES.map((example) => `“${example}”`).join('; ')}. {text.length}/{MAX_REQUEST_LENGTH} letras.
+          </p>
+          <p className="panel-note">{NOTICE.sent}</p>
+          {problem && (
+            <p className="wizard-problem" role="alert">
+              {problem}
+            </p>
+          )}
+          <div className="wizard-footer">
+            <button data-nav className="action-tile" onClick={onCancel}>
+              <span>Cancelar</span>
+            </button>
+            <button data-nav data-ia-send className="action-tile primary" aria-disabled={requestProblem(text) ? true : undefined} onClick={() => void send()}>
+              <Icon name="check" className="action-icon" />
+              <span>Pedir proposta</span>
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 const KEYPAD = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'delete', '0', 'ok'] as const;
 
 /**
@@ -1081,7 +1292,7 @@ const KEYPAD = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'delete', '0', 'ok'
  * remote's number keys or with the on-screen keypad (arrows and OK). Asked once; the server remembers
  * the device by a cookie until it is turned off.
  */
-export function PinPage({ editing, message, onPaired, onCancel }: { editing: ServerEditing; message?: string; onPaired(): void; onCancel(): void }) {
+export function PinPage({ editing, message, onPaired, onCancel }: { editing: { pair(pin: string): Promise<PairOutcome> }; message?: string; onPaired(): void; onCancel(): void }) {
   const [pin, setPin] = useState('');
   const [problem, setProblem] = useState(message ?? null);
   const [busy, setBusy] = useState(false);
@@ -1117,7 +1328,7 @@ export function PinPage({ editing, message, onPaired, onCancel }: { editing: Ser
     <div className="wizard-pin" onKeyDown={onKeyDown}>
       <h2>Digite o PIN</h2>
       <p className="panel-note">
-        Para salvar por aqui, digite o PIN de {PIN_LENGTH} números que o <code>tv-gominho servir --editar</code> mostra no computador. Só uma vez neste
+        Para salvar ou usar a IA por aqui, digite o PIN de {PIN_LENGTH} números que o <code>tv-gominho servir</code> mostra no computador. Só uma vez neste
         aparelho.
       </p>
       <p className="wizard-pin-digits" aria-label={`PIN: ${pin.length} de ${PIN_LENGTH} números`} data-pin-length={pin.length}>

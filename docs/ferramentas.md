@@ -246,7 +246,7 @@ Confere cada vídeo como o player USB de uma TV faria: formato, codecs, perfil e
 ## `servir`
 
 ```
-tv-gominho servir <biblioteca> [--porta 8080] [--rede] [--abrir] [--editar]
+tv-gominho servir <biblioteca> [--porta 8080] [--rede] [--abrir] [--editar] [--ia]
 ```
 
 Entrega o app e a biblioteca por HTTP: abra `http://localhost:8080` em qualquer navegador e a TV já começa, sem escolher pasta. É o que o [Raspberry Pi](raspberry-pi.md) usa.
@@ -288,9 +288,47 @@ Para quem integra (rotas, todas sob o mesmo endereço do app):
 
 | Rota | O que faz |
 |---|---|
-| `GET /__tv-gominho/capacidades` | `{"editar": true/false, "pareado": true/false}` |
+| `GET /__tv-gominho/capacidades` | `{"editar": true/false, "ia": true/false, "pareado": true/false}` |
 | `POST /__tv-gominho/pareamento` | JSON `{"pin": "123456"}` → 200 e o cookie; 403 PIN errado; 429 travado (`Retry-After`) |
 | `PUT /__tv-gominho/arquivos/<caminho>` | corpo = o arquivo. 201 criado, 200 substituído (`?substituir=1`; com `&copia=1` a resposta traz `"copia"`, o caminho do `.bak`), 401 sem pareamento, 403 origem, 400 caminho ou conteúdo inválido (ou `copia=1` fora de uma substituição de grade), 409 já existe, 413 grande demais |
+| `POST /__tv-gominho/ia/proposta` | só com `--ia` (abaixo). JSON `{"pedido": "...", "atual"?: {...}, "duracoes"?: {"id": minutos}}` → 200 `{"proposta": {...}}`; 401 sem pareamento, 403 origem, 400 pedido inválido, 413 grande demais, 422 proposta que não serve, 429 cedo demais (`Retry-After`), 502/504 falha da IA |
+
+### Assistente de IA (`--ia`)
+
+Opcional e **desligado por padrão**. Com ele, o "Montar a semana" ganha o botão **Pedir para a IA**: a pessoa descreve o canal em português ("uma manhã de 3 horas com desenhos calmos") e o Claude, da Anthropic, propõe as escolhas do assistente (horários, dias, programas e ordem, comerciais, marca e época das vinhetas, nome). A proposta abre direto na **Prévia**: dá para salvar, voltar aos passos para ajustar, ou descartar. A IA nunca grava nada; quem salva é a pessoa, do jeito de sempre.
+
+**Como ligar.** Precisa de uma chave da API da Anthropic (crie em [console.anthropic.com](https://console.anthropic.com)). Coloque a chave no arquivo `.env` da raiz do projeto (veja `.env.example`), que o `npm run cli` lê sozinho, ou na variável de ambiente `ANTHROPIC_API_KEY`, e rode o `servir` com `--ia`:
+
+```
+ANTHROPIC_API_KEY=sua-chave
+```
+
+```
+npm run cli -- servir ./biblioteca --rede --editar --ia
+...
+IA: LIGADA (Anthropic, modelo claude-opus-5-5), com a chave de ANTHROPIC_API_KEY. Cada pedido custa dinheiro na sua conta.
+PIN para parear um aparelho: 482913
+```
+
+- Só liga com as duas coisas: a opção `--ia` **e** a chave. Sem a opção, ou sem a chave (o terminal avisa "IA: DESLIGADA"), nada muda: o botão não aparece e nenhuma chamada é feita.
+- Usa o PIN do `--editar`: só um aparelho pareado pede propostas. Com `--ia` sem `--editar`, o servidor também mostra o PIN, mas continua sem gravar nada (o canal proposto se salva pela pasta do Chrome/Edge ou por download).
+- O modelo padrão é o Claude mais recente e mais capaz (`claude-opus-5-5`). Para usar outro: `--ia-modelo <id>` (por exemplo `claude-sonnet-5-5`, mais barato).
+
+**Custo.** Cada pedido é cobrado na conta da Anthropic dona da chave: um pedido manda alguns milhares de *tokens* (a lista de programas) e recebe uma resposta curta, com um limite de 8.000 *tokens* de saída. O servidor aceita no máximo um pedido a cada 5 segundos, um de cada vez, e 30 por hora.
+
+**O que sai do computador.** Só metadados: o id e o título de cada programa com episódios, quantos episódios tem, a duração típica de um episódio (em minutos, quando o app já mediu), as marcas e os anos das vinhetas, as escolhas que já estavam no assistente e o pedido. **Nunca** vídeos, imagens, nomes de arquivos de episódio, sinopses, caminhos de pastas ou a chave. O app mostra esse aviso antes do primeiro uso.
+
+**Como desligar.** Rode o `servir` sem `--ia`. Para tirar a chave do computador, apague a linha `ANTHROPIC_API_KEY` do `.env` (e revogue a chave no console da Anthropic, se quiser).
+
+Segurança:
+
+- A chave fica no processo do `servir`: não vai para o navegador, para URLs, para o terminal, para arquivos da biblioteca nem para as mensagens de erro. O terminal só registra `IA: proposta pedida.`, `IA: proposta ok.` ou `IA: proposta com erro.`, sem o pedido nem a resposta.
+- A rota da IA tem as mesmas proteções da gravação: pareamento com PIN, origem conferida (CSRF) e `Host` conferido.
+- Títulos de programas vêm de pastas baixadas da internet: no pedido à IA eles vão como dados, dentro de marcadores e em JSON, com a instrução de nunca segui-los como ordens.
+- A resposta vem num formato fixo (JSON com as escolhas do assistente, nunca YAML) e é conferida duas vezes, no servidor e no app: todo programa, marca e época de vinheta precisa existir na biblioteca, os horários precisam formar faixas válidas, e os números de comerciais ficam nos limites das configurações. Se algo não serve, a pessoa vê uma mensagem clara e nada muda.
+- Pedidos com tempo limite (90 s), novas tentativas quando a Anthropic está ocupada, e no máximo 500 letras no pedido.
+
+Para quem desenvolve: `TV_GOMINHO_IA_URL` troca o endereço da API por outro (só `https` ou `http://localhost`), para testar com um servidor falso local. Não é para uso normal: a chave vai para esse endereço.
 
 ## Pacote portátil
 
@@ -301,9 +339,10 @@ Para quem integra (rotas, todas sob o mesmo endereço do app):
 O código fica em `pacotes/cli/` e é compilado em um arquivo só com o Vite (modo SSR para Node), porque o Node roda TypeScript mas não resolve os imports sem extensão do núcleo. Cada comando é um módulo em `src/commands/` registrado em `src/commands/index.ts`. Os módulos reutilizáveis:
 
 - `src/ffmpeg/`: localizar o ffmpeg (`locateFfmpeg`), analisar arquivos (`probe`) e rodar com progresso e cancelamento (`run`).
-- `src/serve/`: o HTTP do `servir` (`http.ts`: arquivos com Range, lista, app comprimido) e a gravação com PIN de `--editar` (`edit.ts`), testada em `commands/servir.editar.test.ts`.
+- `src/serve/`: o HTTP do `servir` (`http.ts`: arquivos com Range, lista, app comprimido) a gravação com PIN de `--editar` (`edit.ts`), testada em `commands/servir.editar.test.ts`, e a rota da IA de `--ia` (`ia.ts`), testada em `commands/servir.ia.test.ts`.
 - `src/node-source.ts`: lê uma pasta do disco como biblioteca (`openNodeLibrary`), para usar com `scanLibrary`.
 - `src/jev/client.ts`: cliente mínimo da API do Jev (TypeSafe), com `fetch`, novas tentativas e cache em disco; sem SDK, para a ferramenta continuar pequena.
+- `src/ia/`: o assistente de IA do `servir --ia`. `provider.ts` (a interface de provedor, para dar para acrescentar o ChatGPT depois), `anthropic.ts` (cliente mínimo da API da Anthropic com `fetch`, sem SDK, como o do Jev; testado com `fetch` falso, nenhum teste chama a API), `prompt.ts` (o pedido, só com metadados). A validação da proposta fica no núcleo (`proposal.ts`), usada pelo servidor e pelo app.
 - `src/organizar/`: o comando `organizar`. `questions.ts` (as perguntas ao Jev e por que têm esse formato), `classify.ts` (quem é perguntado e quando), `plan.ts` (para onde vai cada arquivo, sem rede nem disco, por isso testado sem o Jev). `avaliacao.test.ts` mede as perguntas contra o Jev de verdade com nomes de arquivo realistas: rode `npm run avaliar:jev` depois de mudar as perguntas ou os limites de confiança (gasta tokens, por isso o `npm test` pula).
 - `src/convert/plan.ts`: decisões do conversor (converter, só trocar o contêiner ou pular) e argumentos do ffmpeg, sem nenhuma chamada ao ffmpeg, por isso testados sem ele.
 - `src/pendrive/`: o comando `pendrive`. `rundown.ts` (dias, itens e trechos de episódio, com o motor do núcleo), `parts.ts` (divisão em partes de menos de 4 GB), `crt.ts` (o efeito CRT: máscara e filtros), `segment.ts` (argumentos do ffmpeg e chaves de cache de cada item), `render.ts` (renderizar, juntar, retomar), `settings.ts` (configurações da biblioteca + opções), `names.ts`, `readme.ts`, `copy.ts`, `dest.ts`. Tudo que não chama o ffmpeg é testado sem ele; `commands/pendrive.e2e.test.ts` renderiza de verdade (e é pulado se não houver ffmpeg).
