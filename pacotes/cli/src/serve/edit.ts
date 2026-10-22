@@ -1,7 +1,7 @@
 // Saving channels through `tv-gominho servir --editar` (docs/ferramentas.md#servir). Off unless asked
 // for. A device pairs once with the PIN shown in the terminal and gets a session cookie; with it, the
-// app may write grades/<nome>.yaml and nao-passar.yaml, and nothing else. `--ia` uses the same pairing
-// for the AI assistant's route (serve/ia.ts), with or without saving.
+// app may write grades/<nome>.yaml and nao-passar.yaml, and nothing else. The AI assistant's route
+// (serve/ia.ts) uses the same pairing, with or without saving; this computer's own browser needs no PIN for it.
 
 import { randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { constants } from 'node:fs';
@@ -41,10 +41,12 @@ const WINDOWS_DEVICES = /^(?:con|prn|aux|nul|com\d|lpt\d)$/i;
 
 export interface EditOptions {
   pin: string;
-  /** Saving channels (--editar). False when only the assistant needs the pairing (--ia alone). Default true. */
+  /** Saving channels (--editar). False when only the assistant needs the pairing. Default true. */
   write?: boolean;
-  /** The AI assistant (--ia, serve/ia.ts): asked for proposals by paired devices only. */
-  assistant?: { handle(req: IncomingMessage, res: ServerResponse): Promise<void> };
+  /** The AI assistant (serve/ia.ts): asked for proposals by paired devices and this computer, while it is available. */
+  assistant?: { available(): boolean; handle(req: IncomingMessage, res: ServerResponse): Promise<void> };
+  /** The request comes from this computer (serve/ia-config.ts isLoopback): it may use the AI without the PIN. */
+  isLocal?(req: IncomingMessage): boolean;
   /** Lines for the terminal (lockouts, files written). */
   log(message: string): void;
   now?(): number;
@@ -177,11 +179,11 @@ export function createEditor(library: string, options: EditOptions) {
 
   return {
     /** Handles the request when it is one of the editing routes; false otherwise. */
+    /** What CAPABILITIES_PATH says about saving, the assistant and this device's pairing. */
+    capabilities(req: IncomingMessage) {
+      return { editar: canWrite, ia: assistant?.available() ?? false, pareado: hasSession(req) };
+    },
     async handle(req: IncomingMessage, res: ServerResponse, url: string, query: string): Promise<boolean> {
-      if (url === CAPABILITIES_PATH && (req.method === 'GET' || req.method === 'HEAD')) {
-        sendJson(req, res, { editar: canWrite, ia: assistant !== undefined, pareado: hasSession(req) });
-        return true;
-      }
       const isPair = url === PAIRING_PATH && req.method === 'POST';
       const isWrite = canWrite && url.startsWith(WRITE_PATH) && req.method === 'PUT';
       const isIa = assistant !== undefined && url === IA_PATH && req.method === 'POST';
@@ -193,7 +195,7 @@ export function createEditor(library: string, options: EditOptions) {
       }
       if (isPair) await pair(req, res);
       else if (isIa) {
-        if (hasSession(req)) await assistant!.handle(req, res);
+        if (hasSession(req) || options.isLocal?.(req)) await assistant!.handle(req, res);
         else fail(req, res, 401, 'Digite o PIN que aparece no computador.');
       }
       else await write(req, res, url.slice(WRITE_PATH.length), new URLSearchParams(query).get('substituir') === '1', new URLSearchParams(query).get('copia') === '1');
@@ -230,7 +232,7 @@ async function backupFile(dir: string, file: string, entries: readonly string[],
 }
 
 /** Same origin as the address the page was opened at (already checked against allowedHost). */
-function sameOrigin(req: IncomingMessage): boolean {
+export function sameOrigin(req: IncomingMessage): boolean {
   const site = req.headers['sec-fetch-site'];
   if (site !== undefined && site !== 'same-origin') return false;
   const origin = req.headers.origin;

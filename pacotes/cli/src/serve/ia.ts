@@ -1,10 +1,10 @@
-// The optional AI assistant of `tv-gominho servir --ia` (docs/ferramentas.md#ia): the app sends a request in
-// Portuguese, this server asks the provider for a proposal with the library's metadata, checks it and answers with
-// the wizard's choices. The key stays in this process; the app only ever sees proposals and our own messages.
+// The optional AI assistant of `tv-gominho servir` (docs/ferramentas.md#assistente-de-ia), when there is a key and the AI is on
+// (serve/ia-config.ts): the app sends a request in Portuguese, this server asks the provider for a proposal with the
+// library's metadata, checks it and answers with the wizard's choices. The key stays in this process; the app only
+// ever sees proposals and our own messages.
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { MAX_REQUEST_LENGTH, parseProposal, proposalSchema, scanLibrary, validateProposal, type Library, type Proposal } from '@tv-gominho/nucleo';
-import { buildProposalPrompt } from '../ia/prompt';
+import { buildProposalPrompt, MAX_REQUEST_LENGTH, parseProposal, proposalSchema, scanLibrary, validateProposal, type Library, type Proposal } from '@tv-gominho/nucleo';
 import { IaError, type IaProvider } from '../ia/provider';
 import { openNodeLibrary } from '../node-source';
 import { fail, readBody } from './edit';
@@ -20,7 +20,8 @@ const BODY_TIMEOUT_MS = 10_000;
 const MAX_DURATION_MIN = 300;
 
 export interface AssistantOptions {
-  provider: IaProvider;
+  /** The provider while the AI is on and has a key; undefined otherwise. */
+  provider(): IaProvider | undefined;
   /** Lines for the terminal: never the request or the answer. */
   log(message: string): void;
   now?(): number;
@@ -53,8 +54,12 @@ export function createAssistant(libraryDir: string, options: AssistantOptions) {
   }
 
   return {
+    /** The AI is on and has a key. */
+    available: () => options.provider() !== undefined,
     /** POST IA_PATH, after the caller checked the origin and the session. */
     async handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
+      const provider = options.provider();
+      if (!provider) return fail(req, res, 409, 'A IA está desligada. Ligue em Configurações, Assistente de IA, no computador que roda o servidor.');
       if (!String(req.headers['content-type'] ?? '').startsWith('application/json')) return fail(req, res, 415, 'Envie o pedido como JSON.');
       if (Number(req.headers['content-length'] ?? 0) > MAX_IA_BODY) return fail(req, res, 413, 'Pedido grande demais.');
       if (refuseIfLimited(res, req)) return;
@@ -85,7 +90,7 @@ export function createAssistant(libraryDir: string, options: AssistantOptions) {
         const { system, prompt } = buildProposalPrompt({ library, request, current: current?.ok ? current.proposal : null, durations });
         let proposal: Proposal;
         try {
-          const text = await options.provider.propose({ system, prompt, schema: proposalSchema(library) });
+          const text = await provider.propose({ system, prompt, schema: proposalSchema(library) });
           const result = parseProposal(text, library);
           if (!result.ok) throw new IaError(`A proposta da IA não serve: ${result.error}`, 422);
           proposal = result.proposal;

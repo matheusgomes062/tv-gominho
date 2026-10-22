@@ -92,16 +92,16 @@ describe('servir without --editar', () => {
     expect((await send(readOnly, 'PUT', '/__tv-gominho/arquivos/grades/nova.yaml', { origin: `http://${readOnly}` }, GRADE)).status).toBe(405);
     expect((await send(readOnly, 'POST', '/__tv-gominho/pareamento', { origin: `http://${readOnly}`, 'content-type': 'application/json' }, '{"pin":"1"}')).status).toBe(405);
     const caps = await send(readOnly, 'GET', '/__tv-gominho/capacidades');
-    expect(JSON.parse(caps.body)).toEqual({ editar: false, ia: false, pareado: false });
+    expect(JSON.parse(caps.body)).toEqual({ editar: false, ia: false, pareado: false, configIa: false });
     await expect(readdir(path.join(library, 'grades'))).resolves.not.toContain('nova.yaml');
   });
 });
 
 describe('servir --editar', () => {
   it('reports editing on, and the pairing of this device', async () => {
-    expect(JSON.parse((await send(editing, 'GET', '/__tv-gominho/capacidades')).body)).toEqual({ editar: true, ia: false, pareado: false });
+    expect(JSON.parse((await send(editing, 'GET', '/__tv-gominho/capacidades')).body)).toEqual({ editar: true, ia: false, pareado: false, configIa: false });
     const cookie = await session();
-    expect(JSON.parse((await send(editing, 'GET', '/__tv-gominho/capacidades', { cookie })).body)).toEqual({ editar: true, ia: false, pareado: true });
+    expect(JSON.parse((await send(editing, 'GET', '/__tv-gominho/capacidades', { cookie })).body)).toEqual({ editar: true, ia: false, pareado: true, configIa: false });
   });
 
   it('pairs with the right PIN only, with an HttpOnly SameSite=Strict cookie', async () => {

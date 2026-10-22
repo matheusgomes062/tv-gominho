@@ -1,4 +1,4 @@
-// The optional AI assistant of `tv-gominho servir --ia` (docs/ferramentas.md#ia) talks to a provider through this
+// The optional AI assistant of `tv-gominho servir` (docs/ferramentas.md#assistente-de-ia) talks to a provider through this
 // interface only, so another one (ChatGPT) can be added next to anthropic.ts without touching the server route.
 
 export interface ProposalRequest {

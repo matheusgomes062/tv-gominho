@@ -348,6 +348,8 @@ export const CATEGORIES: Category[] = [
   { id: 'schedule', label: 'Como a TV passa', icon: 'calendar', rows: ['schedule', 'interstitials', 'commercials'] },
   { id: 'channels', label: 'Canais', icon: 'tv', rows: ['startMode', 'startChannel', 'channelsPerShow', 'channelChangeStatic'] },
   { id: 'ads', label: 'Intervalos comerciais', icon: 'ads', rows: ['adBreaks.every', 'adBreaks.ads', 'adBreaks.afterEpisode', 'adBreaks.bumpers'] },
+  // Drawn by overlays/AiSettings.tsx: the key and the switch of "Pedir para a IA".
+  { id: 'ia', label: 'Assistente de IA', icon: 'text', rows: [] },
   { id: 'about', label: 'Sobre e restaurar', icon: 'info', rows: [] },
 ];
 

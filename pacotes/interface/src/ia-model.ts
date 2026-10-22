@@ -1,7 +1,7 @@
 import { MAX_REQUEST_LENGTH, proposalToRaw, validateProposal, type Library, type Proposal, type Show } from '@tv-gominho/nucleo';
 import { RANGE_PRESETS, initialState, type WizardState } from './wizard-model';
 
-// "Pedir para a IA" in the "Criar uma programação" wizard, when `tv-gominho servir --ia` runs with a key: what the app
+// "Pedir para a IA" in the "Criar uma programação" wizard, when the AI has a key and is on (ai-settings-model.ts): what the app
 // tells the person before using it, what it sends, and how a proposal becomes the wizard's answers. No DOM or fetch.
 
 export { MAX_REQUEST_LENGTH };
@@ -11,8 +11,8 @@ export const NOTICE_KEY = 'tv-gominho.ia.aviso-lido';
 
 export const NOTICE = {
   sent: 'Saem do computador só os títulos dos programas, quantos episódios cada um tem, as durações típicas, as marcas e anos das vinhetas e o seu pedido. Nunca os vídeos nem os nomes dos arquivos.',
-  key: 'O pedido vai para a Anthropic (Claude) com a chave que está no computador, em ANTHROPIC_API_KEY. Cada pedido custa um pouco de dinheiro nessa conta.',
-  off: 'Para desligar, rode o tv-gominho servir sem --ia. Para tirar a chave do computador, apague a linha ANTHROPIC_API_KEY do arquivo .env.',
+  cost: 'O pedido vai para a Anthropic (Claude) com a sua chave. Cada pedido custa um pouco de dinheiro na conta dessa chave.',
+  off: 'Para desligar a IA ou tirar a chave, vá em Configurações, Assistente de IA (com o servidor, no computador que roda o servidor).',
   review: 'A IA só propõe: você vê a prévia e decide se salva, ajusta ou descarta.',
 } as const;
 

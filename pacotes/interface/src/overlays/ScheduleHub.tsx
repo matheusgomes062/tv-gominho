@@ -42,7 +42,6 @@ export function ScheduleHub({ library, focus = null, onWizard, onEdit, onBlockli
         </header>
 
         <div className="wizard-body hub-body">
-          <h2>Uma programação nova</h2>
           <button data-nav data-autofocus={autofocus({ kind: 'wizard' })} data-hub="wizard" className="row wizard-row" onClick={onWizard}>
             <Icon name="plus" className="row-lead" />
             <span className="row-text">
@@ -80,7 +79,6 @@ export function ScheduleHub({ library, focus = null, onWizard, onEdit, onBlockli
             </div>
           )}
 
-          <h2>O que não passa</h2>
           <button data-nav data-autofocus={autofocus({ kind: 'blocklist' })} data-hub="blocklist" className="row wizard-row" onClick={onBlocklist}>
             <Icon name="close" className="row-lead" />
             <span className="row-text">

@@ -1839,7 +1839,7 @@ h2 {
 /* --- Settings panel ---------------------------------------------------------------------------------- */
 .panel {
   display: grid;
-  grid-template-columns: calc(12.4 * var(--u)) minmax(0, 1fr);
+  grid-template-columns: calc(14.8 * var(--u)) minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
   height: 100%;
 }
@@ -1903,7 +1903,7 @@ h2 {
   display: flex;
   align-items: center;
   gap: calc(0.65 * var(--u));
-  padding: calc(0.7 * var(--u)) calc(0.75 * var(--u));
+  padding: calc(0.5 * var(--u)) calc(0.75 * var(--u));
   min-width: 0;
   text-align: left;
   line-height: 1.12;
@@ -2549,6 +2549,33 @@ h2 {
 .row-icon {
   width: calc(1.6 * var(--u));
   height: calc(1.6 * var(--u));
+}
+
+/* Configurações, Assistente de IA (overlays/AiSettings.tsx) */
+.ai-settings {
+  display: grid;
+  gap: calc(0.7 * var(--u));
+}
+
+.ai-status {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: calc(0.9 * var(--u));
+  margin: 0;
+  padding: calc(0.6 * var(--u)) calc(0.3 * var(--u));
+}
+
+.ai-settings .wizard-footer {
+  justify-content: flex-start;
+  padding: 0;
+  border-top: 0;
+}
+
+.ai-notices {
+  display: grid;
+  gap: calc(0.3 * var(--u));
+  padding-left: calc(1.2 * var(--u));
 }
 
 /* --- Menu / Ajustes buttons on the TV (mouse only) ----------------------------------------------------------- */

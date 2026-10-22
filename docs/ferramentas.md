@@ -246,7 +246,7 @@ Confere cada vídeo como o player USB de uma TV faria: formato, codecs, perfil e
 ## `servir`
 
 ```
-tv-gominho servir <biblioteca> [--porta 8080] [--rede] [--abrir] [--editar] [--ia]
+tv-gominho servir <biblioteca> [--porta 8080] [--rede] [--abrir] [--editar] [--ia-modelo <id>] [--ia]
 ```
 
 Entrega o app e a biblioteca por HTTP: abra `http://localhost:8080` em qualquer navegador e a TV já começa, sem escolher pasta. É o que o [Raspberry Pi](raspberry-pi.md) usa.
@@ -288,45 +288,56 @@ Para quem integra (rotas, todas sob o mesmo endereço do app):
 
 | Rota | O que faz |
 |---|---|
-| `GET /__tv-gominho/capacidades` | `{"editar": true/false, "ia": true/false, "pareado": true/false}` |
+| `GET /__tv-gominho/capacidades` | `{"editar": true/false, "ia": true/false, "pareado": true/false, "configIa": true}` (`ia`: há chave e a IA está ligada) |
 | `POST /__tv-gominho/pareamento` | JSON `{"pin": "123456"}` → 200 e o cookie; 403 PIN errado; 429 travado (`Retry-After`) |
 | `PUT /__tv-gominho/arquivos/<caminho>` | corpo = o arquivo. 201 criado, 200 substituído (`?substituir=1`; com `&copia=1` a resposta traz `"copia"`, o caminho do `.bak`), 401 sem pareamento, 403 origem, 400 caminho ou conteúdo inválido (ou `copia=1` fora de uma substituição de grade), 409 já existe, 413 grande demais |
-| `POST /__tv-gominho/ia/proposta` | só com `--ia` (abaixo). JSON `{"pedido": "...", "atual"?: {...}, "duracoes"?: {"id": minutos}}` → 200 `{"proposta": {...}}`; 401 sem pareamento, 403 origem, 400 pedido inválido, 413 grande demais, 422 proposta que não serve, 429 cedo demais (`Retry-After`), 502/504 falha da IA |
+| `POST /__tv-gominho/ia/proposta` | a IA (abaixo). JSON `{"pedido": "...", "atual"?: {...}, "duracoes"?: {"id": minutos}}` → 200 `{"proposta": {...}}`; 401 sem pareamento (o navegador do próprio computador não precisa), 403 origem, 409 IA desligada ou sem chave, 400 pedido inválido, 413 grande demais, 422 proposta que não serve, 429 cedo demais (`Retry-After`), 502/504 falha da IA |
+| `GET /__tv-gominho/ia/estado` | `{"chave": "nenhuma"/"salva"/"ambiente", "final"?: "…a1B2", "ligada", "disponivel", "local", "modelo"}`. `final` só vai para o navegador do próprio computador |
+| `PUT /__tv-gominho/ia/chave` | só do próprio computador. JSON `{"chave": "sk-ant-..."}` (até 2 KB) → 200 e o estado; 403 outro aparelho ou origem, 400 não parece chave, 409 chave em `ANTHROPIC_API_KEY`, 413, 415 |
+| `DELETE /__tv-gominho/ia/chave` | só do próprio computador. Apaga o arquivo da chave → 200 e o estado; 409 se a chave vem de `ANTHROPIC_API_KEY` |
+| `PUT /__tv-gominho/ia/ligada` | só do próprio computador. JSON `{"ligada": true/false}` → 200 e o estado |
 
-### Assistente de IA (`--ia`)
+### Assistente de IA
 
 Opcional e **desligado por padrão**. Com ele, o "Criar uma programação" ganha o botão **Pedir para a IA**: a pessoa descreve o canal em português ("uma manhã de 3 horas com desenhos calmos") e o Claude, da Anthropic, propõe as escolhas do assistente (horários, dias, programas e ordem, comerciais, marca e época das vinhetas, nome). A proposta abre direto na **Prévia**: dá para salvar, voltar aos passos para ajustar, ou descartar. A IA nunca grava nada; quem salva é a pessoa, do jeito de sempre.
 
-**Como ligar.** Precisa de uma chave da API da Anthropic (crie em [console.anthropic.com](https://console.anthropic.com)). Coloque a chave no arquivo `.env` da raiz do projeto (veja `.env.example`), que o `npm run cli` lê sozinho, ou na variável de ambiente `ANTHROPIC_API_KEY`, e rode o `servir` com `--ia`:
+Precisa de uma chave da API da Anthropic (crie em [console.anthropic.com](https://console.anthropic.com), em *API Keys*). O botão só aparece com as duas coisas: **uma chave e a IA ligada**. Sem isso nada muda e nenhuma chamada é feita.
+
+**Como ligar pelo app (com o `servir`).** No navegador **do computador que roda o `servir`** (`http://localhost:8080`), abra **Configurações → Assistente de IA**, cole a chave no campo, toque em **Salvar chave** e ligue **Pedir para a IA**. Não precisa de `--ia` nem de arquivo `.env`.
+
+- **Onde a chave fica:** num arquivo `chave-anthropic.txt` da pasta de dados do app, no computador do servidor: `%LOCALAPPDATA%\TVGominho\` no Windows, `~/Library/Application Support/TVGominho/` no macOS e `$XDG_CONFIG_HOME/tv-gominho/` (ou `~/.config/tv-gominho/`) no Linux e no Raspberry Pi. No Linux e no macOS o arquivo só pode ser lido pelo seu usuário (permissão `0600`); no Windows essa pasta já é só do seu usuário. **Nunca** fica na biblioteca (que vai para pendrives); se a pasta de dados apontar para dentro da biblioteca, o servidor se recusa a guardar a chave. Ao lado dela, `ia.json` guarda se a IA está ligada (`{"ligada": true}`).
+- **O que aparece na tela:** depois de salva, só o final da chave (`Chave …a1B2`), e só no navegador do próprio computador. O campo é só de escrita: a chave nunca volta para navegador nenhum.
+- **Como remover:** **Remover chave** (com confirmação) apaga o arquivo. **Desligar** mantém a chave guardada, mas nenhum pedido é feito. Revogue a chave no console da Anthropic se quiser invalidá-la de vez.
+- **Quem pode mudar:** só o navegador do próprio computador do servidor. O servidor confere o endereço da conexão (`127.0.0.1` ou `::1`), nunca cabeçalhos como `Host` ou `X-Forwarded-For`, além da origem do pedido. Ali não precisa de PIN: quem está no computador já é o dono dele.
+- **Na TV e em outros aparelhos:** a seção mostra só o estado ("Chave salva no computador que roda o servidor") e diz para fazer a mudança no computador. Para **usar** a IA de outro aparelho, ele pareia com o **PIN** que aparece no terminal (o mesmo do `--editar`). Quando a IA é ligada pelo app, o terminal mostra o PIN.
+- **`ANTHROPIC_API_KEY` continua valendo**, para quem prefere o `.env` (veja `.env.example`) ou a variável do sistema, e **tem prioridade** sobre a chave salva pelo app. Nesse caso a seção mostra "Chave definida no computador (variável de ambiente)" e não deixa trocar nem remover: para tirar, apague a linha do `.env` ou a variável.
+- **`--ia`** virou atalho: liga a IA já ao abrir o `servir`, sem passar pelas configurações (ainda precisa de uma chave, salva pelo app ou em `ANTHROPIC_API_KEY`). Desligar pelo app continua funcionando.
+- O modelo padrão é o Claude mais recente e mais capaz (`claude-opus-5-5`). Para usar outro: `--ia-modelo <id>` (por exemplo `claude-sonnet-5-5`, mais barato).
 
 ```
-ANTHROPIC_API_KEY=sua-chave
-```
-
-```
-npm run cli -- servir ./biblioteca --rede --editar --ia
+npm run cli -- servir ./biblioteca --rede --editar
 ...
-IA: LIGADA (Anthropic, modelo claude-opus-5-5), com a chave de ANTHROPIC_API_KEY. Cada pedido custa dinheiro na sua conta.
+IA: chave salva pelo app neste computador.
+IA: ligada pelo app.
+IA: LIGADA. Só aparelhos pareados pedem, no máximo 30 por hora.
 PIN para parear um aparelho: 482913
 ```
 
-- Só liga com as duas coisas: a opção `--ia` **e** a chave. Sem a opção, ou sem a chave (o terminal avisa "IA: DESLIGADA"), nada muda: o botão não aparece e nenhuma chamada é feita.
-- Usa o PIN do `--editar`: só um aparelho pareado pede propostas. Com `--ia` sem `--editar`, o servidor também mostra o PIN, mas continua sem gravar nada (o canal proposto se salva pela pasta do Chrome/Edge ou por download).
-- O modelo padrão é o Claude mais recente e mais capaz (`claude-opus-5-5`). Para usar outro: `--ia-modelo <id>` (por exemplo `claude-sonnet-5-5`, mais barato).
+**Sem servidor (app aberto numa pasta, no Chrome ou no Edge).** A mesma seção **Configurações → Assistente de IA** guarda a chave **só naquele navegador** (o armazenamento local do site), e o próprio navegador chama a API da Anthropic, com o cabeçalho de acesso direto do navegador (`anthropic-dangerous-direct-browser-access`). O pedido, o formato da resposta e as conferências são os mesmos do servidor. **Atenção:** a chave fica naquele navegador, naquele aparelho, e qualquer código que rode na página poderia lê-la. O app não carrega código de outros sites, mas só guarde a chave num aparelho seu, e use **Remover chave** ao terminar. **Aberto direto de um arquivo** (`file://`, como o `interface/index.html` do pacote), o app **não guarda nem usa a chave**: nesse modo todas as páginas abertas do disco dividem o mesmo armazenamento no navegador, então qualquer outra página local poderia lê-la. A seção mostra a IA como indisponível e explica o motivo; uma chave guardada antes nesse modo é ignorada e só aparece para remover. Para usar a IA, abra o app pelo `tv-gominho servir` ou por um endereço `http`/`https`. No navegador, no máximo um pedido a cada 5 segundos.
 
 **Custo.** Cada pedido é cobrado na conta da Anthropic dona da chave: um pedido manda alguns milhares de *tokens* (a lista de programas) e recebe uma resposta curta, com um limite de 8.000 *tokens* de saída. O servidor aceita no máximo um pedido a cada 5 segundos, um de cada vez, e 30 por hora.
 
-**O que sai do computador.** Só metadados: o id e o título de cada programa com episódios, quantos episódios tem, a duração típica de um episódio (em minutos, quando o app já mediu), as marcas e os anos das vinhetas, as escolhas que já estavam no assistente e o pedido. **Nunca** vídeos, imagens, nomes de arquivos de episódio, sinopses, caminhos de pastas ou a chave. O app mostra esse aviso antes do primeiro uso.
-
-**Como desligar.** Rode o `servir` sem `--ia`. Para tirar a chave do computador, apague a linha `ANTHROPIC_API_KEY` do `.env` (e revogue a chave no console da Anthropic, se quiser).
+**O que sai do computador.** Só metadados: o id e o título de cada programa com episódios, quantos episódios tem, a duração típica de um episódio (em minutos, quando o app já mediu), as marcas e os anos das vinhetas, as escolhas que já estavam no assistente e o pedido. **Nunca** vídeos, imagens, nomes de arquivos de episódio, sinopses, caminhos de pastas ou a chave (que vai só no cabeçalho do pedido à Anthropic). O app mostra esse aviso na seção de configurações e antes do primeiro uso.
 
 Segurança:
 
-- A chave fica no processo do `servir`: não vai para o navegador, para URLs, para o terminal, para arquivos da biblioteca nem para as mensagens de erro. O terminal só registra `IA: proposta pedida.`, `IA: proposta ok.` ou `IA: proposta com erro.`, sem o pedido nem a resposta.
-- A rota da IA tem as mesmas proteções da gravação: pareamento com PIN, origem conferida (CSRF) e `Host` conferido.
+- Com o servidor, a chave fica no computador do servidor: não vai para o navegador (só os 4 últimos caracteres, e só para o próprio computador), para URLs, para o terminal, para arquivos da biblioteca nem para as mensagens de erro, que são sempre textos fixos do app. O terminal só registra `IA: chave salva pelo app neste computador.`, `IA: chave removida deste computador.`, `IA: ligada pelo app.`, `IA: proposta pedida.`, `IA: proposta ok.` ou `IA: proposta com erro.`, sem a chave, o pedido nem a resposta.
+- Gravar, remover a chave e ligar ou desligar: só conexões do próprio computador (endereço da conexão, não cabeçalhos), com `Origin` igual ao endereço aberto (contra CSRF de outros sites abertos no mesmo computador) e o `Host` conferido de sempre (contra *DNS rebinding*). Corpo de até 2 KB.
+- A rota da IA tem as mesmas proteções da gravação: pareamento com PIN para outros aparelhos, origem conferida (CSRF) e `Host` conferido.
 - Títulos de programas vêm de pastas baixadas da internet: no pedido à IA eles vão como dados, dentro de marcadores e em JSON, com a instrução de nunca segui-los como ordens.
 - A resposta vem num formato fixo (JSON com as escolhas do assistente, nunca YAML) e é conferida duas vezes, no servidor e no app: todo programa, marca e época de vinheta precisa existir na biblioteca, os horários precisam formar faixas válidas, e os números de comerciais ficam nos limites das configurações. Se algo não serve, a pessoa vê uma mensagem clara e nada muda.
-- Pedidos com tempo limite (90 s), novas tentativas quando a Anthropic está ocupada, e no máximo 500 letras no pedido.
+- Pedidos com tempo limite (90 s), novas tentativas quando a Anthropic está ocupada (no servidor), e no máximo 500 letras no pedido.
+- A conexão entre a TV e o `servir` é HTTP sem criptografia, como o resto do `servir`: a chave nunca passa por ela (só é colada no próprio computador), mas use a IA só na rede de casa.
 
 Para quem desenvolve: `TV_GOMINHO_IA_URL` troca o endereço da API por outro (só `https` ou `http://localhost`), para testar com um servidor falso local. Não é para uso normal: a chave vai para esse endereço.
 
@@ -339,10 +350,10 @@ Para quem desenvolve: `TV_GOMINHO_IA_URL` troca o endereço da API por outro (s�
 O código fica em `pacotes/cli/` e é compilado em um arquivo só com o Vite (modo SSR para Node), porque o Node roda TypeScript mas não resolve os imports sem extensão do núcleo. Cada comando é um módulo em `src/commands/` registrado em `src/commands/index.ts`. Os módulos reutilizáveis:
 
 - `src/ffmpeg/`: localizar o ffmpeg (`locateFfmpeg`), analisar arquivos (`probe`) e rodar com progresso e cancelamento (`run`).
-- `src/serve/`: o HTTP do `servir` (`http.ts`: arquivos com Range, lista, app comprimido) a gravação com PIN de `--editar` (`edit.ts`), testada em `commands/servir.editar.test.ts`, e a rota da IA de `--ia` (`ia.ts`), testada em `commands/servir.ia.test.ts`.
+- `src/serve/`: o HTTP do `servir` (`http.ts`: arquivos com Range, lista, app comprimido) a gravação com PIN de `--editar` (`edit.ts`), testada em `commands/servir.editar.test.ts`, a rota da IA (`ia.ts`), testada em `commands/servir.ia.test.ts`, e as configurações da IA, com a chave só pelo próprio computador (`ia-config.ts`), testadas em `commands/servir.ia-chave.test.ts`.
 - `src/node-source.ts`: lê uma pasta do disco como biblioteca (`openNodeLibrary`), para usar com `scanLibrary`.
 - `src/jev/client.ts`: cliente mínimo da API do Jev (TypeSafe), com `fetch`, novas tentativas e cache em disco; sem SDK, para a ferramenta continuar pequena.
-- `src/ia/`: o assistente de IA do `servir --ia`. `provider.ts` (a interface de provedor, para dar para acrescentar o ChatGPT depois), `anthropic.ts` (cliente mínimo da API da Anthropic com `fetch`, sem SDK, como o do Jev; testado com `fetch` falso, nenhum teste chama a API), `prompt.ts` (o pedido, só com metadados). A validação da proposta fica no núcleo (`proposal.ts`), usada pelo servidor e pelo app.
+- `src/ia/`: o assistente de IA do `servir`. `provider.ts` (a interface de provedor, para dar para acrescentar o ChatGPT depois), `anthropic.ts` (cliente mínimo da API da Anthropic com `fetch`, sem SDK, como o do Jev, com novas tentativas e tempo limite; testado com `fetch` falso, nenhum teste chama a API), `chave.ts` (a pasta de dados do app, onde ficam a chave e o `ia.json`). O pedido (`proposal-prompt.ts`), o formato da chamada à Anthropic e da resposta (`anthropic.ts`) e a validação da proposta (`proposal.ts`) ficam no núcleo, usados pelo servidor e pelo app sem servidor (`interface/src/sources/ai-browser.ts`).
 - `src/organizar/`: o comando `organizar`. `questions.ts` (as perguntas ao Jev e por que têm esse formato), `classify.ts` (quem é perguntado e quando), `plan.ts` (para onde vai cada arquivo, sem rede nem disco, por isso testado sem o Jev). `avaliacao.test.ts` mede as perguntas contra o Jev de verdade com nomes de arquivo realistas: rode `npm run avaliar:jev` depois de mudar as perguntas ou os limites de confiança (gasta tokens, por isso o `npm test` pula).
 - `src/convert/plan.ts`: decisões do conversor (converter, só trocar o contêiner ou pular) e argumentos do ffmpeg, sem nenhuma chamada ao ffmpeg, por isso testados sem ele.
 - `src/pendrive/`: o comando `pendrive`. `rundown.ts` (dias, itens e trechos de episódio, com o motor do núcleo), `parts.ts` (divisão em partes de menos de 4 GB), `crt.ts` (o efeito CRT: máscara e filtros), `segment.ts` (argumentos do ffmpeg e chaves de cache de cada item), `render.ts` (renderizar, juntar, retomar), `settings.ts` (configurações da biblioteca + opções), `names.ts`, `readme.ts`, `copy.ts`, `dest.ts`. Tudo que não chama o ffmpeg é testado sem ele; `commands/pendrive.e2e.test.ts` renderiza de verdade (e é pulado se não houver ffmpeg).

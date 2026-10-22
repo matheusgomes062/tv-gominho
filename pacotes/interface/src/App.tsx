@@ -178,7 +178,7 @@ function Main({ session, onChangeFolder, onLibraryChange }: { session: Session; 
           }}
           onBack={closeOverlay} />}
       {overlay === 'settings' && (
-        <SettingsPanel channels={channels} libraryName={source.name} focusSchedule={settingsFromHub} onSchedule={() => openHub(true)} onBack={closeOverlay} />
+        <SettingsPanel channels={channels} libraryName={source.name} ai={source.ai} focusSchedule={settingsFromHub} onSchedule={() => openHub(true)} onBack={closeOverlay} />
       )}
       {overlay === 'blocklist' && <BlocklistScreen source={source} library={library} onSaved={reloadLibrary} onBack={closeOverlay} />}
       {overlay === 'schedule' && (

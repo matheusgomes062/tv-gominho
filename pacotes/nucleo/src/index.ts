@@ -113,3 +113,18 @@ export {
   type Proposal,
   type ProposalResult,
 } from './proposal';
+export { buildProposalPrompt, SYSTEM_PROMPT, type PromptInput } from './proposal-prompt';
+export {
+  anthropicRequest,
+  anthropicAnswer,
+  anthropicStatusFailure,
+  apiKeyProblem,
+  keyEnding,
+  ANTHROPIC_URL,
+  ANTHROPIC_MODEL,
+  ANTHROPIC_VERSION,
+  MAX_TOKENS,
+  BROWSER_ACCESS_HEADER,
+  type AnthropicCall,
+  type AnthropicFailure,
+} from './anthropic';

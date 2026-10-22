@@ -1,11 +1,16 @@
+import { aiStatusFromServer } from '../ai-settings-model';
 import { pairOutcome, writeOutcome, type PairOutcome } from '../pin-model';
-import type { BrowserLibrary, ServerAssistant, ServerEditing } from './types';
+import { browserAi } from './ai-browser';
+import type { AiBackend, AiChange, BrowserLibrary, ServerEditing } from './types';
 
 const LIST = '/__biblioteca/lista';
 const CAPABILITIES = '/__tv-gominho/capacidades';
 const PAIRING = '/__tv-gominho/pareamento';
 const FILES = '/__tv-gominho/arquivos/';
 const IA = '/__tv-gominho/ia/proposta';
+const IA_STATE = '/__tv-gominho/ia/estado';
+const IA_KEY = '/__tv-gominho/ia/chave';
+const IA_SWITCH = '/__tv-gominho/ia/ligada';
 
 /**
  * The library served over HTTP: by `tv-gominho servir` (PC, Raspberry Pi, other
@@ -21,7 +26,8 @@ export async function openServerLibrary(): Promise<BrowserLibrary> {
     name: data.name,
     files: data.files,
     ...(offered.editar === true ? { editing: serverEditing() } : {}),
-    ...(offered.ia === true ? { assistant: serverAssistant() } : {}),
+    // A server that keeps the AI's settings; anything else (the dev server) gets the browser's own.
+    ai: offered.configIa === true ? serverAi() : browserAi(),
     async readText(path) {
       return (await fetch(url(path))).text();
     },
@@ -38,9 +44,10 @@ export async function openServerLibrary(): Promise<BrowserLibrary> {
 interface Capabilities {
   editar?: unknown;
   ia?: unknown;
+  configIa?: unknown;
 }
 
-/** What the server offers (--editar, --ia); the dev server and older versions answer something else, or nothing. */
+/** What the server offers (--editar, the AI); the dev server and older versions answer something else, or nothing. */
 async function capabilities(): Promise<Capabilities> {
   try {
     const response = await fetch(CAPABILITIES);
@@ -88,9 +95,36 @@ function serverEditing(): ServerEditing {
   };
 }
 
-/** The AI assistant, when the server was started with --ia and has a key. */
-function serverAssistant(): ServerAssistant {
+/** The AI through `tv-gominho servir`: the key stays on that computer; only its browser may change it. */
+function serverAi(): AiBackend {
+  async function status() {
+    try {
+      const response = await fetch(IA_STATE);
+      return response.ok ? aiStatusFromServer(await response.json()) : null;
+    } catch {
+      return null;
+    }
+  }
+  async function change(method: string, path: string, body?: unknown): Promise<AiChange> {
+    try {
+      const response = await fetch(path, {
+        method,
+        ...(body === undefined ? {} : { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+      });
+      const answer = (await response.json().catch(() => null)) as { erro?: unknown } | null;
+      const parsed = response.ok ? aiStatusFromServer(answer) : null;
+      if (parsed) return { ok: true, status: parsed };
+      return { ok: false, message: typeof answer?.erro === 'string' && answer.erro ? answer.erro : 'Não deu para falar com o computador. Ele ainda está ligado?' };
+    } catch {
+      return { ok: false, message: 'Não deu para falar com o computador. Ele ainda está ligado?' };
+    }
+  }
   return {
+    place: 'server',
+    status,
+    saveKey: (key) => change('PUT', IA_KEY, { chave: key }),
+    removeKey: () => change('DELETE', IA_KEY),
+    setEnabled: (on) => change('PUT', IA_SWITCH, { ligada: on }),
     pair,
     async propose(request) {
       try {
