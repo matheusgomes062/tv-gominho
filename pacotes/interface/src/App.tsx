@@ -6,6 +6,8 @@ import { Menu } from './screens/Menu';
 import { QuickSettings } from './overlays/QuickSettings';
 import { SettingsPanel } from './overlays/SettingsPanel';
 import { BlocklistScreen } from './overlays/BlocklistScreen';
+import { ChannelEditor } from './overlays/ChannelEditor';
+import { ScheduleHub } from './overlays/ScheduleHub';
 import { WeekWizard } from './overlays/WeekWizard';
 import { Player } from './screens/Player';
 import { ShowPage } from './screens/ShowPage';
@@ -32,7 +34,7 @@ type View =
   | { name: 'player'; showId: string; index: number };
 
 /** Layers over the live picture (TV or Player), newest last: Back closes the last one. */
-type Overlay = 'menu' | 'quick' | 'settings' | 'wizard' | 'blocklist';
+type Overlay = 'menu' | 'quick' | 'settings' | 'schedule' | 'wizard' | 'editor' | 'blocklist';
 
 const CHANNEL_KEY = 'tv-gominho.canal';
 
@@ -124,6 +126,9 @@ function Main({ session, onChangeFolder, onLibraryChange }: { session: Session; 
   }, []);
   const onPicture = view.name === 'tv' || view.name === 'player';
   const overlay = onPicture ? overlays.at(-1) : undefined;
+  // The grade being edited in the channel editor (its id, the grade file name).
+  const [editing, setEditing] = useState<string | null>(null);
+  const editedSchedule = editing === null ? undefined : library.schedules.find((entry) => entry.id === editing);
 
   const toTv = useCallback(() => goTo({ name: 'tv' }), [goTo]);
   const toLibrary = useCallback((focusShow?: string) => goTo({ name: 'library', focusShow }), [goTo]);
@@ -149,8 +154,7 @@ function Main({ session, onChangeFolder, onLibraryChange }: { session: Session; 
           onWarnings={() => goTo({ name: 'warnings' })}
           onQuick={() => openOverlay('quick', true)}
           onSettings={() => openOverlay('settings', true)}
-          onSchedule={() => openOverlay('wizard', true)}
-          onBlocklist={() => openOverlay('blocklist', true)}
+          onSchedule={() => openOverlay('schedule', true)}
           onChangeFolder={onChangeFolder}
           onBack={closeOverlay}
         />
@@ -158,6 +162,32 @@ function Main({ session, onChangeFolder, onLibraryChange }: { session: Session; 
       {overlay === 'quick' && <QuickSettings channels={channels} onAll={() => openOverlay('settings', true)} onBack={closeOverlay} />}
       {overlay === 'settings' && <SettingsPanel channels={channels} libraryName={source.name} onBack={closeOverlay} />}
       {overlay === 'blocklist' && <BlocklistScreen source={source} library={library} onSaved={reloadLibrary} onBack={closeOverlay} />}
+      {overlay === 'schedule' && (
+        <ScheduleHub
+          library={library}
+          onWizard={() => openOverlay('wizard', true)}
+          onBlocklist={() => openOverlay('blocklist', true)}
+          onEdit={(id) => {
+            setEditing(id);
+            openOverlay('editor', true);
+          }}
+          onBack={closeOverlay}
+        />
+      )}
+      {overlay === 'editor' && editedSchedule && (
+        <ChannelEditor
+          source={source}
+          library={library}
+          schedule={editedSchedule}
+          onSaved={reloadLibrary}
+          onWatch={(id) => {
+            const index = findChannelIndex(channels, id);
+            if (index >= 0) setChannel(index);
+            closeOverlays();
+          }}
+          onBack={closeOverlay}
+        />
+      )}
       {overlay === 'wizard' && (
         <WeekWizard
           source={source}

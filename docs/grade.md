@@ -18,7 +18,7 @@ No app, **Menu → Programação** abre o assistente "Montar a semana": uma sequ
 
 Cada faixa de horário vira um bloco da grade, preenchido com os programas em rodízio, com abertura, chamadas e encerramento, como em `tv-gominho grade` (a marca padrão é a TV Globinho, sem época específica). Voltar (Esc) recua um passo; no primeiro, fecha o assistente.
 
-**O assistente sempre cria um canal novo.** O nome do arquivo vem do nome do canal (letras, números e hífens: "Manhãs da Turma" vira `grades/manhas-da-turma.yaml`) e, se já existe, ganha `-2`, `-3`... Nenhum arquivo existente é trocado. Para mudar um canal que já existe, edite o arquivo (formato abaixo).
+**O assistente sempre cria um canal novo.** O nome do arquivo vem do nome do canal (letras, números e hífens: "Manhãs da Turma" vira `grades/manhas-da-turma.yaml`) e, se já existe, ganha `-2`, `-3`... Nenhum arquivo existente é trocado. Para mudar um canal que já existe, use o [editor de canal](#editar-um-canal-pelo-app) ou edite o arquivo (formato abaixo).
 
 ### Onde o canal é salvo
 
@@ -27,6 +27,22 @@ Cada faixa de horário vira um bloco da grade, preenchido com os programas em ro
 - **Em qualquer outro caso** (Firefox, Safari, pasta aberta pelo campo de pasta comum, `tv-gominho servir` sem `--editar`, ou permissão negada): o app **baixa o arquivo** `.yaml` e mostra onde colocá-lo: dentro da pasta `grades/` da biblioteca (a mesma pasta, no pendrive e no Raspberry Pi). Depois é só abrir a biblioteca de novo para o canal aparecer.
 
 Para os blocos fecharem perto do fim de cada faixa, o assistente lê a duração dos vídeos (o navegador lê os metadados dos arquivos, sem ffmpeg). Se isso demorar mais de 12 segundos numa biblioteca grande, valem as durações típicas (22 minutos por episódio) para o que faltou.
+
+## Editar um canal pelo app
+
+No PC, **Menu → Programação → Editar** (ao lado do nome do canal) abre o editor da grade, com mouse e teclado. Só as grades de verdade (os arquivos de `grades/`) podem ser editadas; o "Canal Automático" e os canais por programa não têm arquivo. O editor mostra os blocos e os itens como estão no arquivo e deixa:
+
+- mudar o **nome**, a **descrição** e os **dias**;
+- **acrescentar e remover blocos** e mudar o **horário** de cada um (`HH:MM`, como `08:00`). Dois blocos não podem começar no mesmo horário, e os blocos ficam sempre em ordem de horário;
+- **acrescentar, remover e reordenar os itens** de um bloco (os botões ▲ ▼ ou Alt+↑ / Alt+↓): **programa** (qual e quantos episódios), **vinheta** (a categoria e, dentro dela, "sortear de toda a pasta", "sortear da pasta" de uma subpasta ou um arquivo específico) e **comerciais** (quantos).
+
+Itens que não existem na biblioteca (um programa ou uma vinheta que sumiu) aparecem com o mesmo aviso que o app mostra em Avisos, e a grade continua podendo ser salva: o motor só pula o item. Já um horário inválido, dois blocos no mesmo horário, um bloco sem itens, uma quantidade que não seja um número inteiro de 1 a 99 ou um canal sem nome impedem de salvar, com o motivo na tela.
+
+**Salvar não deixa nenhum programa pular.** Ao salvar, o app grava as [posições salvas](#posições-salvas) de hoje, para cada programa seguir do episódio em que estava (isso só é preciso quando a edição muda o que passa: itens ou dias; mudar só o nome, a descrição ou um horário não grava posições). O que o editor não mexe é mantido como estava: `data_inicio`, `vinhetas_intervalo`, `intervalos`, as `posicoes` que já existiam e a `agenda`. A agenda acompanha os itens: se você reordena itens ou muda o horário de um bloco, cada escolha continua no mesmo programa; se o item, o bloco ou o dia saiu do canal, ou o item passou a ser outro programa, aquela escolha é descartada (o app avisa quantas ao salvar).
+
+Salvar **troca o arquivo da grade** (`grades/<canal>.yaml`) pelo texto novo, sem pedir uma segunda confirmação; faça uma cópia do arquivo antes se quiser guardar a versão antiga. O arquivo é reescrito pelo app: **os comentários que você escreveu nele não são mantidos** (o app põe só uma linha de comentário no topo), mas o conteúdo, sim. Fica igual ao formato deste documento.
+
+Onde grava é como no assistente: no Chrome ou no Edge, com a biblioteca aberta por "Escolher biblioteca", o navegador pede permissão de escrita na pasta quando você salva (Ctrl+S também salva) e o canal novo já vale na troca de canais, sem reiniciar. Nos outros casos (Firefox, Safari, pasta aberta pelo campo de pasta comum, biblioteca servida por `tv-gominho servir`, com ou sem `--editar`, ou permissão negada), o app **baixa o arquivo** com o mesmo nome e mostra onde colocá-lo: por cima do arquivo antigo em `grades/`.
 
 ## Exemplo
 
