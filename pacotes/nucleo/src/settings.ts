@@ -4,7 +4,7 @@
 // `PartialSettings`; `mergeSettings` stacks them into a complete `Settings`.
 
 import { parse } from 'yaml';
-import { fold } from './paths';
+import { fold, isImage } from './paths';
 import { applyTheme } from './themes';
 import type { LibraryWarning, Schedule } from './types';
 
@@ -67,7 +67,11 @@ export interface Settings {
   theme: Theme;
   /** The OSD skin. A theme sets it; with 'custom' it stays whatever it was. Not a yaml option on its own. */
   osdSkin: OsdSkin;
-  // TODO(phase 2): `marca_dagua` (watermark image) and `idioma`.
+  /**
+   * The watermark image (`marca_dagua`), or null. `parseSettings` returns the path as written in the file,
+   * relative to the library root; `scanLibrary` resolves it to the file's path in the library source.
+   */
+  watermark: string | null;
 }
 
 export type PartialSettings = Partial<Omit<Settings, 'crt' | 'adBreaks'>> & {
@@ -94,6 +98,7 @@ export const DEFAULT_SETTINGS: Settings = {
   clock: false,
   theme: 'classic',
   osdSkin: 'classic',
+  watermark: null,
 };
 
 /** Layers `partial` on top of `base`; fields missing from `partial` keep the base value. */
@@ -171,7 +176,8 @@ function clampedNumber(value: unknown, limits: { min: number; max: number }): nu
 
 const THEME_NAMES: Record<string, Theme> = { tv_antiga: 'classic', vhs: 'vhs', tv_moderna: 'modern', personalizado: 'custom' };
 
-const UNSUPPORTED_YET = new Set(['marca_dagua', 'idioma']);
+/** Options the docs list but the app does not implement; they only produce a warning. */
+const UNSUPPORTED_YET = new Set(['idioma']);
 
 /**
  * Parses a configuracoes.yaml. Returns only what the file sets (valid values);
@@ -240,6 +246,9 @@ export function parseSettings(path: string, text: string, warnings: LibraryWarni
       case 'relogio_na_tela':
         set('clock', bool(key, value, warn));
         break;
+      case 'marca_dagua':
+        set('watermark', watermarkPath(key, value, warn));
+        break;
       case 'crt': {
         const crt = parseCrt(value, warn);
         if (Object.keys(crt).length > 0) result.crt = crt;
@@ -255,6 +264,25 @@ export function parseSettings(path: string, text: string, warnings: LibraryWarni
   const preset = applyTheme(themeFromFile);
   const crt = { ...preset.crt, ...result.crt };
   return { ...preset, ...result, ...(Object.keys(crt).length > 0 ? { crt } : {}), theme: themeFromFile };
+}
+
+/**
+ * The image path of `marca_dagua`, relative to the library root: forward slashes, no leading "./".
+ * Absolute paths, ".." and non-image files are refused with a warning (a bad value never breaks the TV).
+ */
+function watermarkPath(key: string, value: unknown, warn: (message: string) => void): string | undefined {
+  if (value === null || value === undefined) return undefined;
+  const text = typeof value === 'string' ? value.trim().replaceAll('\\', '/').replace(/^(?:\.\/)+/, '') : '';
+  const segments = text.split('/');
+  if (!text || text.startsWith('/') || /^[a-z]:/i.test(text) || segments.includes('..') || segments.includes('')) {
+    warn(`"${key}" deve ser o caminho de uma imagem dentro da biblioteca, por exemplo "marca.png" (recebi ${show(value)}). Ela foi ignorada.`);
+    return undefined;
+  }
+  if (!isImage(text)) {
+    warn(`"${key}" deve ser uma imagem PNG, WebP ou JPG (recebi ${show(value)}). Ela foi ignorada.`);
+    return undefined;
+  }
+  return text;
 }
 
 function parseAdBreaks(value: unknown, warn: (message: string) => void): Partial<AdBreakSettings> {

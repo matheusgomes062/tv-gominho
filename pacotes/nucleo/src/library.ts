@@ -98,6 +98,16 @@ export async function scanLibrary(source: LibrarySource): Promise<Library> {
   const settingsFile: PartialSettings = settingsPath
     ? parseSettings(settingsPath, await source.readText(settingsPath), warnings)
     : {};
+  if (settingsPath && settingsFile.watermark) {
+    // `marca_dagua` is relative to the library root; keep it only if the file is really there.
+    const wanted = (root + settingsFile.watermark).toLowerCase();
+    const found = source.files.find((path) => path.toLowerCase() === wanted);
+    if (found) settingsFile.watermark = found;
+    else {
+      warnings.push({ path: settingsPath, message: `A marca d'água "${settingsFile.watermark}" não foi encontrada na biblioteca e foi ignorada.` });
+      delete settingsFile.watermark;
+    }
+  }
   const settings = mergeSettings(DEFAULT_SETTINGS, settingsFile);
 
   const library: Library = { root, shows, interstitials, schedules, settings, settingsFile, warnings };

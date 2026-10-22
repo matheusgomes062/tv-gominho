@@ -25,7 +25,7 @@ Sem servidor e sem instalação: uma página que lê a pasta `biblioteca` direto
 
 ### Fase 2: Experiência de TV (pronta)
 - Efeito CRT (WebGL), chuvisco na troca de canal, proporção 4:3 ✅ (tela curva, linhas, máscara, brilho; chuvisco desenhado dentro do tubo; reserva em CSS sem WebGL)
-- Menu de configurações ✅ (base pronta: camadas padrão/arquivo/menu, tela navegável pelo controle, modo e canal inicial, canais por programa, chuvisco, proporção, vinhetas, comerciais, relógio; faltam `marca_dagua` e `idioma`)
+- Menu de configurações ✅ (base pronta: camadas padrão/arquivo/menu, tela navegável pelo controle, modo e canal inicial, canais por programa, chuvisco, proporção, vinhetas, comerciais, relógio, `marca_dagua`; falta `idioma`)
 - Comerciais ✅, tela de "fora do ar" ✅, horários `real` e `do_inicio` ✅ (tela de teste de cores com a hora da volta e volta automática, sobra de meia-noite; maratona que segue pelos próximos dias da grade e retoma ao voltar ao canal)
 
 ### Fase 3: Ferramentas e pendrive

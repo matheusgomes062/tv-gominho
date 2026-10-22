@@ -15,7 +15,7 @@ interface Props {
   /** What the tube shows right now: the picture, channel-change snow, or black. */
   view: CrtView;
   /**
-   * The TV's on-screen display (channel OSD, info box, clock). It is painted into the tube, so it gets curvature,
+   * The TV's on-screen display (channel OSD, info box, clock, watermark). It is painted into the tube, so it gets curvature,
    * scanlines, glow and the rest of the CRT treatment. Null draws nothing.
    */
   osd?: OsdState | null;
@@ -92,7 +92,7 @@ export function Crt({ video, settings, aspect, view, osd = null, onActive }: Pro
     if (state.channel) l.last.channel = state.channel;
     if (state.info) l.last.info = state.info;
     const painted: OsdState = { ...state, channel: state.channel ?? l.last.channel, info: state.info ?? l.last.info };
-    const visible = !!painted.clock || l.fade.channel > 0 || l.fade.info > 0;
+    const visible = !!painted.clock || !!painted.watermark || l.fade.channel > 0 || l.fade.info > 0;
     if (visible) {
       const { width: bufW, height: bufH } = target.size();
       const cssW = host_.clientWidth;

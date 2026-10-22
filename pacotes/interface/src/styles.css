@@ -831,6 +831,19 @@ h2 {
   text-align: right;
 }
 
+/* The `marca_dagua` bug: same box as WATERMARK in components/osd-painter.ts. */
+.tv-watermark {
+  position: absolute;
+  top: 6%;
+  right: 6%;
+  width: 11%;
+  max-height: 20%;
+  object-fit: contain;
+  object-position: top right;
+  opacity: 0.65;
+  pointer-events: none;
+}
+
 .osd-clock {
   position: absolute;
   top: 6%;

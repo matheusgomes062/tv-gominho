@@ -24,7 +24,9 @@ import { Crt } from '../components/Crt';
 import { ChannelOsd, formatTimecode, useVideoSeconds } from '../components/Osd';
 import type { OsdState } from '../components/osd-painter';
 import { Static } from '../components/Static';
+import { useFileUrl } from '../components/useFileUrl';
 import { useFlash } from '../components/useFlash';
+import { useImage } from '../components/useImage';
 import type { Durations } from '../media';
 import { BACK_KEYS } from '../nav';
 import { aspectClass, useSettings } from '../settings';
@@ -456,6 +458,9 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
   const infoSubtitle =
     info && entry && item?.kind === 'episode' ? `${item.episode.title}${entry.part ? ` (parte ${entry.part.index} de ${entry.part.count})` : ''}` : null;
   const channelName = schedule?.name;
+  // The `marca_dagua` bug stays on while a program plays; bumpers, commercials, static and the test card hide it.
+  const watermarkImage = useImage(useFileUrl(source, settings.watermark ?? undefined));
+  const watermark = status.name === 'playing' && item?.kind === 'episode' ? watermarkImage : null;
   const osdState = useMemo<OsdState>(
     () => ({
       skin: settings.osdSkin,
@@ -465,8 +470,9 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
           : null,
       info: infoTitle !== null ? { title: infoTitle, subtitle: infoSubtitle } : null,
       clock: settings.clock ? clockText : null,
+      watermark,
     }),
-    [settings.osdSkin, settings.clock, channelShown, channelName, channel, videoSeconds, infoTitle, infoSubtitle, clockText],
+    [settings.osdSkin, settings.clock, channelShown, channelName, channel, videoSeconds, infoTitle, infoSubtitle, clockText, watermark],
   );
   const hidden = crtActive ? 'osd-sr' : '';
 
@@ -520,6 +526,9 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
         {(osd || status.name === 'tuning') && schedule && (
           <ChannelOsd skin={settings.osdSkin} number={channel + 1} name={schedule.name} video={video} className={hidden} timecode={!crtActive} />
         )}
+
+        {/* With the WebGL tube the watermark is painted into it (components/osd-painter.ts); this is the plain screen's copy. */}
+        {!crtActive && watermark && <img className="tv-watermark" src={watermark.src} alt="" draggable={false} />}
 
         {settings.clock && <Clock className={hidden} time={crtActive ? clockText : undefined} />}
 

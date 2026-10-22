@@ -196,11 +196,32 @@ canal_inicial: 3
     expect(warnings.every((w) => w.path === 'configuracoes.yaml')).toBe(true);
   });
 
-  it('says marca_dagua and idioma are not supported yet', () => {
-    const { settings, warnings } = parse('marca_dagua: logo.png\nidioma: en\n');
+  it('says idioma is not supported yet and ignores it', () => {
+    const { settings, warnings } = parse('idioma: en\n');
     expect(settings).toEqual({});
-    expect(warnings).toHaveLength(2);
-    expect(warnings[0]!.message).toContain('ainda não é suportada');
+    expect(warnings).toEqual([expect.objectContaining({ message: expect.stringContaining('"idioma" ainda não é suportada') })]);
+  });
+
+  describe('marca_dagua', () => {
+    it('reads a path relative to the library, with forward slashes and no leading "./"', () => {
+      expect(parse('marca_dagua: marca.png\n')).toEqual({ settings: { watermark: 'marca.png' }, warnings: [] });
+      expect(parse('marca_dagua: ./imagens\\marca.WebP\n').settings).toEqual({ watermark: 'imagens/marca.WebP' });
+      expect(parse('marca_dagua: "  marca.jpg "\n').settings).toEqual({ watermark: 'marca.jpg' });
+    });
+
+    it('has no watermark by default and when the value is empty', () => {
+      expect(DEFAULT_SETTINGS.watermark).toBeNull();
+      expect(parse('marca_dagua:\n')).toEqual({ settings: {}, warnings: [] });
+    });
+
+    it('refuses absolute paths, "..", and values that are not an image path, with a warning', () => {
+      for (const value of ['/etc/marca.png', 'C:\\marca.png', 'c:marca.png', '../marca.png', 'a/../../marca.png', 'a//marca.png', 'marca.gif', 'marca', '42', 'true', '[marca.png]']) {
+        const { settings, warnings } = parse(`marca_dagua: ${JSON.stringify(value)}\n`);
+        expect(settings, value).toEqual({});
+        expect(warnings, value).toHaveLength(1);
+        expect(warnings[0]!.message, value).toContain('"marca_dagua"');
+      }
+    });
   });
 
   it('warns about broken YAML and non-mapping files', () => {
@@ -294,5 +315,23 @@ describe('scanLibrary settings', () => {
       expect(library.warnings.map((w) => w.message)).toEqual([expect.stringContaining('"horario2"')]);
       expect(library.warnings[0]!.path).toBe(`${prefix}configuracoes.yaml`);
     }
+  });
+
+  it('resolves marca_dagua against the library root, ignoring case', async () => {
+    for (const prefix of ['', 'biblioteca/']) {
+      const library = await scanLibrary(
+        memorySource(Object.fromEntries([...Object.entries(files), ['configuracoes.yaml', 'marca_dagua: Imagens/Marca.png\n'], ['imagens/marca.PNG', '']].map(([k, v]) => [prefix + k, v]))),
+      );
+      expect(library.settings.watermark).toBe(`${prefix}imagens/marca.PNG`);
+      expect(library.settingsFile).toEqual({ watermark: `${prefix}imagens/marca.PNG` });
+      expect(library.warnings).toEqual([]);
+    }
+  });
+
+  it('warns and ignores a marca_dagua whose file is missing', async () => {
+    const library = await scanLibrary(memorySource({ ...files, 'configuracoes.yaml': 'marca_dagua: marca.png\nhorario: real\n' }));
+    expect(library.settings.watermark).toBeNull();
+    expect(library.settings.schedule).toBe('real');
+    expect(library.warnings).toEqual([{ path: 'configuracoes.yaml', message: expect.stringContaining('"marca.png" não foi encontrada') }]);
   });
 });

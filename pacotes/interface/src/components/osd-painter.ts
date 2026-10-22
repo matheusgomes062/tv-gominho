@@ -15,6 +15,8 @@ export interface OsdState {
   info: { title: string; subtitle: string | null } | null;
   /** The clock text ("20:30"), or null when the clock is off. */
   clock: string | null;
+  /** The `marca_dagua` image, loaded, or null while hidden. */
+  watermark: HTMLImageElement | null;
 }
 
 /** Colours the stylesheet defines as custom properties. */
@@ -498,6 +500,33 @@ function modern(f: Frame, state: OsdState, fade: OsdFade): void {
   }
 }
 
+// The watermark bug: top right of the picture, inside the safe area. `.tv-watermark` in styles.css is the same
+// box for the plain (no CRT) screen; keep the two in step.
+export const WATERMARK = {
+  /** The biggest box the image fits in, as fractions of the tube. */
+  maxWidth: 0.11,
+  maxHeight: 0.2,
+  /** Distance of the box from the top and right edges, as fractions of the tube (the classic skin's safe area). */
+  margin: 0.06,
+  opacity: 0.65,
+} as const;
+
+/** Where the watermark goes in a tube of `width` x `height`: contained in its box, anchored top right, aspect kept. */
+export function watermarkRect(width: number, height: number, imageWidth: number, imageHeight: number) {
+  const fit = Math.min((width * WATERMARK.maxWidth) / imageWidth, (height * WATERMARK.maxHeight) / imageHeight);
+  const w = imageWidth * fit;
+  return { x: width * (1 - WATERMARK.margin) - w, y: height * WATERMARK.margin, width: w, height: imageHeight * fit };
+}
+
+function drawWatermark(f: Frame, image: HTMLImageElement): void {
+  if (!image.naturalWidth || !image.naturalHeight) return;
+  const { ctx } = f.pen;
+  const box = watermarkRect(f.w, f.h, image.naturalWidth, image.naturalHeight);
+  ctx.globalAlpha = WATERMARK.opacity;
+  ctx.drawImage(image, box.x, box.y, box.width, box.height);
+  ctx.globalAlpha = 1;
+}
+
 const SKINS: Record<OsdSkin, (f: Frame, state: OsdState, fade: OsdFade) => void> = { classic, vhs, modern };
 
 /**
@@ -512,6 +541,8 @@ export function paintOsd(canvas: HTMLCanvasElement | OffscreenCanvas, state: Osd
   ctx.globalAlpha = 1;
   ctx.setTransform(metrics.scale, 0, 0, metrics.scale, 0, 0);
   const frame: Frame = { pen: { ctx, skin: state.skin }, w: metrics.width, h: metrics.height, em: metrics.em, colors: metrics.colors };
+  // Under the OSD text, like a broadcaster's bug under the graphics.
+  if (state.watermark) drawWatermark(frame, state.watermark);
   SKINS[state.skin](frame, state, fade);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 }

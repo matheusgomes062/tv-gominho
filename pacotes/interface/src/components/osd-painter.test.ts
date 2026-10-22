@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { OSD_FONTS, wrapWords } from './osd-painter';
+import { OSD_FONTS, WATERMARK, watermarkRect, wrapWords } from './osd-painter';
 
 // The painter draws the OSD into the CRT tube with its own copy of the skins' fonts: keep it in step with styles.css
 // and keep the Press Start 2P rule (digits and ASCII only: its accented capitals read as lowercase).
@@ -52,5 +52,32 @@ describe('wrapWords', () => {
   });
   it('returns one empty line for empty text', () => {
     expect(wrapWords(measure, '', 50)).toEqual(['']);
+  });
+});
+
+describe('watermarkRect', () => {
+  it('puts a wide image in the top right corner, 11% of the tube wide, keeping its shape', () => {
+    const box = watermarkRect(1000, 750, 400, 100);
+    expect(box.width).toBeCloseTo(110);
+    expect(box.height).toBeCloseTo(27.5);
+    expect(box.x + box.width).toBeCloseTo(940);
+    expect(box.y).toBeCloseTo(45);
+  });
+
+  it('shrinks a tall image to 20% of the tube height', () => {
+    const box = watermarkRect(1000, 750, 100, 400);
+    expect(box.height).toBeCloseTo(150);
+    expect(box.width).toBeCloseTo(37.5);
+    expect(box.x + box.width).toBeCloseTo(940);
+  });
+
+  it('is the same box the stylesheet gives the plain screen', () => {
+    const rule = css.match(/\.tv-watermark\s*\{([^}]*)\}/)?.[1] ?? '';
+    const percent = (property: string) => Number(rule.match(new RegExp(String.raw`${property}:\s*([\d.]+)%`))?.[1]) / 100;
+    expect(percent('width')).toBe(WATERMARK.maxWidth);
+    expect(percent('max-height')).toBe(WATERMARK.maxHeight);
+    expect(percent('top')).toBe(WATERMARK.margin);
+    expect(percent('right')).toBe(WATERMARK.margin);
+    expect(Number(rule.match(/opacity:\s*([\d.]+)/)?.[1])).toBe(WATERMARK.opacity);
   });
 });
