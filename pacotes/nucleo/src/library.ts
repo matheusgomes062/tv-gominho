@@ -1,4 +1,6 @@
 import { parse } from 'yaml';
+import { findEpisodeByRef } from './agenda';
+import { formatTimeOfDay } from './dates';
 import {
   basename,
   extension,
@@ -291,6 +293,7 @@ function validateReferences(schedule: Schedule, library: Library) {
       message: `A grade usa "vinhetas_intervalo: ${schedule.breakBumpersRef}", que não existe em vinhetas/. Os intervalos usarão as vinhetas de vinhetas/intervalos/.`,
     });
   }
+  validateAgenda(schedule, library);
   const showIds = new Set(library.shows.map((show) => show.id.toLowerCase()));
   for (const block of schedule.blocks) {
     for (const item of block.items) {
@@ -307,6 +310,28 @@ function validateReferences(schedule: Schedule, library: Library) {
       }
     }
   }
+}
+
+/** Drops (with a warning) the agenda picks whose episode is not in the show. A pick of a missing show stays: that show is already reported. */
+function validateAgenda(schedule: Schedule, library: Library) {
+  if (!schedule.agenda) return;
+  schedule.agenda = schedule.agenda.filter((pick) => {
+    const item = schedule.blocks.find((block) => block.start === pick.blockStart)?.items[pick.item - 1];
+    const show = item?.type === 'show' ? findShow(library, item.show) : undefined;
+    if (!show) return true;
+    const found = findEpisodeByRef(show, pick.episode);
+    if (!('error' in found)) return true;
+    const where = `Agenda de ${pick.date}, ${formatTimeOfDay(pick.blockStart)}, item ${pick.item}`;
+    library.warnings.push({
+      path: schedule.path,
+      message:
+        found.error === 'ambiguous'
+          ? `${where}: o programa "${show.id}" tem mais de um episódio ${pick.episode} (temporadas). Escreva a temporada, por exemplo "temporada-01/${pick.episode}". A escolha foi ignorada.`
+          : `${where}: o programa "${show.id}" não tem o episódio ${pick.episode}. A escolha foi ignorada.`,
+    });
+    return false;
+  });
+  if (schedule.agenda.length === 0) delete schedule.agenda;
 }
 
 export function findShow(library: Library, id: string): Show | undefined {

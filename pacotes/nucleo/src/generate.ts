@@ -259,5 +259,18 @@ export function scheduleToYaml(generated: GeneratedSchedule, header: string[] = 
       }
     }
   });
+  if (schedule.agenda && schedule.agenda.length > 0) {
+    lines.push('', 'agenda:');
+    let day: string | undefined;
+    for (const pick of schedule.agenda) {
+      if (pick.date !== day) {
+        lines.push(`  ${quote(pick.date)}:`);
+        day = pick.date;
+      }
+      const item = schedule.blocks.find((block) => block.start === pick.blockStart)?.items[pick.item - 1];
+      const show = item?.type === 'show' ? `   # ${item.show}` : '';
+      lines.push(`    - bloco: "${formatTimeOfDay(pick.blockStart)}"`, `      item: ${pick.item}${show}`, `      episodio: ${/^\d+$/.test(pick.episode) ? pick.episode : quote(pick.episode)}`);
+    }
+  }
   return `${lines.join('\n')}\n`;
 }

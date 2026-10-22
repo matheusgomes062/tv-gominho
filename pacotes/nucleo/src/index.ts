@@ -1,6 +1,7 @@
 export * from './types';
 export { scanLibrary, findShow, resolveInterstitials } from './library';
 export { parseSchedule } from './schedule';
+export { findEpisodeByRef, normalizeEpisodeRef, type Anchor, type AnchorSource, type EpisodeLookup } from './agenda';
 export { bumperRole, groupBumpers, bumpersOf, NO_BUMPERS, type BumperRole, type BumperGroup, type BreakBumpers } from './bumpers';
 export {
   DEFAULT_SETTINGS,

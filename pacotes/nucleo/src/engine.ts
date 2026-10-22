@@ -13,6 +13,7 @@ import {
   WEEKDAYS,
   type Weekday,
 } from './dates';
+import { createEpisodeIndexOf, showAirings } from './agenda';
 import { bumpersOf, groupBumpers, NO_BUMPERS, type BreakBumpers } from './bumpers';
 import { findShow, resolveInterstitials } from './library';
 import { createRng, hashString, pick, shuffled, type Rng } from './random';
@@ -78,16 +79,12 @@ export function planDay(schedule: Schedule, library: Library, date: string, opti
   const seed = hashString(`${schedule.id}|${dayNumberToIso(airingDay)}`);
   const rng = createRng(seed);
 
-  // Each airing of a show advances one episode, counted from the premiere day.
+  // Each airing of a show advances one episode, counted from the premiere day or from the latest
+  // episode picked in the agenda (see agenda.ts).
   const airingsBefore = countDaysInSet(isoToDayNumber(schedule.startDate), airingDay, days);
-  const perDay = new Map<string, number>();
-  for (const block of schedule.blocks) {
-    for (const item of block.items) {
-      if (item.type === 'show') perDay.set(item.show.toLowerCase(), (perDay.get(item.show.toLowerCase()) ?? 0) + item.count);
-    }
-  }
+  const episodeIndexOf = createEpisodeIndexOf(schedule, library, days);
   const counters = new Map<string, number>();
-  for (const [show, count] of perDay) counters.set(show, airingsBefore * count);
+  for (const [show, count] of showAirings(schedule).perDay) counters.set(show, airingsBefore * count);
 
   const blocks: PlannedBlock[] = schedule.blocks.map((block) => {
     const items: PlannedItem[] = [];
@@ -99,10 +96,10 @@ export function planDay(schedule: Schedule, library: Library, date: string, opti
           const counter = counters.get(key) ?? 0;
           counters.set(key, counter + 1);
           if (!show || show.episodes.length === 0) continue;
-          const episodeIndex =
-            show.order === 'aleatoria'
-              ? Math.floor(rng() * show.episodes.length)
-              : mod(counter, show.episodes.length);
+          const random = show.order === 'aleatoria';
+          // A random show always draws, even when a pick decides, so the day's other draws don't change.
+          const drawn = random ? Math.floor(rng() * show.episodes.length) : 0;
+          const episodeIndex = episodeIndexOf(key, counter, show.episodes.length, random) ?? drawn;
           const episode = show.episodes[episodeIndex]!;
           items.push({ kind: 'episode', path: episode.path, show, episode, episodeIndex });
         }
