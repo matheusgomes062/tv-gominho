@@ -12,7 +12,7 @@ import {
   type Show,
 } from '@tv-gominho/nucleo';
 
-// The model of the "Não passar" screen: which shows and episodes are blocked, how a toggle changes
+// The model of the "Desenhos que não passam" screen: which shows and episodes are blocked, how a toggle changes
 // the list, and what saving has to write (the list, and the grades whose saved positions move with it).
 // No React or DOM in here, so it is all testable (see blocklist-model.test.ts).
 

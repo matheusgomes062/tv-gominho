@@ -36,7 +36,7 @@ type Phase =
   | { name: 'done'; result: SaveFilesResult; files: SaveFile[]; reread: boolean };
 
 /**
- * "Não passar": the shows and episodes the dynamic mode never picks by itself (nao-passar.yaml). A show can
+ * "Desenhos que não passam": the shows and episodes the dynamic mode never picks by itself (nao-passar.yaml). A show can
  * be blocked whole, or opened to block single episodes. Saving writes the list and, because the list moves the
  * sequence of each show, the saved positions of the grades too. Everything is reachable with arrows, OK and Back.
  */
@@ -44,6 +44,7 @@ export function BlocklistScreen({ source, library, onSaved, onBack }: Props) {
   const [list, setList] = useState<Blocklist>(() => copyBlocklist(library.blocklist));
   const [phase, setPhase] = useState<Phase>({ name: 'editing' });
   const [error, setError] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
   const body = useRef<HTMLDivElement>(null);
 
   const shows = useMemo(() => library.shows.filter((show) => show.episodes.length > 0), [library]);
@@ -63,8 +64,16 @@ export function BlocklistScreen({ source, library, onSaved, onBack }: Props) {
     if (phase.name === 'done') return onBack();
     if (phase.name === 'pin') return setPhase({ name: 'editing' });
     if (openShow) return setPhase({ name: 'editing' });
-    onBack();
+    leave();
   };
+  /** Closes the screen; with unsaved changes the first try only asks (the second one leaves). */
+  const leave = () => {
+    if (phase.name === 'saving') return;
+    if (!changed || leaving) return onBack();
+    setLeaving(true);
+  };
+  // Marking or unmarking something takes the question back.
+  useEffect(() => setLeaving(false), [list, phase.name]);
 
   async function save() {
     if (!changed) return;
@@ -101,12 +110,12 @@ export function BlocklistScreen({ source, library, onSaved, onBack }: Props) {
   }
 
   return (
-    <Overlay edge="left" label="Não passar" onBack={goBack} className="wizard-overlay">
+    <Overlay edge="left" label="Desenhos que não passam" onBack={goBack} className="wizard-overlay">
       <div className="wizard">
         <header className="panel-header">
           <Icon name="close" />
-          <h1>{openShow ? openShow.title : 'Não passar'}</h1>
-          <button className="panel-close" onClick={onBack} aria-label="Fechar" title="Fechar" tabIndex={-1} disabled={phase.name === 'saving'}>
+          <h1>{openShow ? openShow.title : 'Desenhos que não passam'}</h1>
+          <button className="panel-close" onClick={openShow ? goBack : leave} aria-label="Fechar" title="Fechar" tabIndex={-1} disabled={phase.name === 'saving'}>
             <Icon name="close" />
           </button>
         </header>
@@ -125,6 +134,7 @@ export function BlocklistScreen({ source, library, onSaved, onBack }: Props) {
           ) : phase.name === 'pin' ? (
             <PinPage
               editing={phase.editing}
+              what="salvar os desenhos que não passam"
               message={phase.message}
               onPaired={() =>
                 void write(phase.files, 'unavailable', 'O computador pediu o PIN de novo. Confira o número no terminal.').catch((failure) => {
@@ -145,11 +155,17 @@ export function BlocklistScreen({ source, library, onSaved, onBack }: Props) {
           )}
         </div>
 
+        {phase.name === 'editing' && leaving && (
+          <p className="wizard-problem wizard-leaving" role="alert" data-leaving>
+            Há mudanças que ainda não foram salvas. Aperte Voltar (ou Esc) de novo para sair sem salvar, ou salve a lista.
+          </p>
+        )}
+
         {phase.name === 'editing' && (
           <footer className="wizard-footer">
             <button data-nav className="action-tile" onClick={goBack}>
               <Icon name="back" className="action-icon" />
-              <span>{openShow ? 'Voltar à lista' : 'Fechar sem salvar'}</span>
+              <span>{openShow ? 'Voltar à lista' : changed ? 'Sair sem salvar' : 'Fechar'}</span>
             </button>
             <button data-nav data-save className="action-tile primary" aria-disabled={changed ? undefined : true} onClick={() => void save()}>
               <Icon name="check" className="action-icon" />
@@ -162,7 +178,7 @@ export function BlocklistScreen({ source, library, onSaved, onBack }: Props) {
           hints={[
             ['↑ ↓ ← →', 'escolher'],
             ['OK', 'marcar'],
-            ['Voltar', openShow ? 'voltar à lista' : 'fechar'],
+            ['Voltar', phase.name === 'pin' ? 'cancelar' : openShow ? 'voltar à lista' : 'fechar'],
           ]}
         />
       </div>

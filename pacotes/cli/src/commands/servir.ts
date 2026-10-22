@@ -41,7 +41,7 @@ Opções:
   --rede                aceita outros aparelhos da rede (TV, celular, outro PC). Sem ela, só
                         este computador abre o endereço
   --abrir               abre o navegador neste computador
-  --editar              deixa salvar canais pelo app ("Montar a semana"). Mostra um PIN aqui;
+  --editar              deixa salvar canais pelo app ("Criar uma programação"). Mostra um PIN aqui;
                         cada aparelho digita o PIN uma vez. Só grava grades/<nome>.yaml e
                         nao-passar.yaml, nada mais
   --ia-modelo <id>      outro modelo Claude para o "Pedir para a IA". Padrão: ${ANTHROPIC_MODEL}

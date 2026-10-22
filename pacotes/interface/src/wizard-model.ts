@@ -22,7 +22,7 @@ import {
   type Weekday,
 } from '@tv-gominho/nucleo';
 
-// The model of the "Montar a semana" wizard: steps, what each step needs, how the answers
+// The model of the "Criar uma programação" wizard: steps, what each step needs, how the answers
 // become generator options and how the channel file is named. No React or DOM in here, so
 // it is all testable (see wizard-model.test.ts); WeekWizard.tsx only draws it.
 
@@ -139,6 +139,19 @@ export function previousStep(step: StepId): StepId | null {
 
 export function stepIndex(step: StepId): number {
   return STEPS.findIndex((entry) => entry.id === step);
+}
+
+/** The one-line header of a step: "Passo 3 de 8 · Programas". */
+export function stepHeading(step: StepId): string {
+  return `Passo ${stepIndex(step) + 1} de ${STEPS.length} · ${STEPS[stepIndex(step)]!.title}`;
+}
+
+/**
+ * Whether leaving the wizard would lose something: it is past the first step, or an answer differs from the
+ * state it opened with (`fresh`, from initialState).
+ */
+export function wizardDirty(step: StepId, state: WizardState, fresh: WizardState): boolean {
+  return stepIndex(step) >= 1 || JSON.stringify(state) !== JSON.stringify(fresh);
 }
 
 // ---------------------------------------------------------------- time ranges

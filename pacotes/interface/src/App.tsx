@@ -1,5 +1,6 @@
 import { createAutoSchedule, createShowChannels, findChannelIndex, type Library, type Schedule } from '@tv-gominho/nucleo';
 import { useCallback, useMemo, useRef, useState } from 'react';
+import type { HubTarget } from './hub-model';
 import { Durations } from './media';
 import { LibraryMode } from './screens/LibraryMode';
 import { Menu } from './screens/Menu';
@@ -128,6 +129,15 @@ function Main({ session, onChangeFolder, onLibraryChange }: { session: Session; 
   const overlay = onPicture ? overlays.at(-1) : undefined;
   // The grade being edited in the channel editor (its id, the grade file name).
   const [editing, setEditing] = useState<string | null>(null);
+  // The row of the schedule screen a sub-screen was opened from: focus goes back there when it closes.
+  const [hubFocus, setHubFocus] = useState<HubTarget | null>(null);
+  // The schedule screen was opened from Configurações: that panel focuses its "Programação" row when it comes back.
+  const [settingsFromHub, setSettingsFromHub] = useState(false);
+  const openHub = (fromSettings: boolean) => {
+    setHubFocus(null);
+    setSettingsFromHub(fromSettings);
+    openOverlay('schedule', true);
+  };
   const editedSchedule = editing === null ? undefined : library.schedules.find((entry) => entry.id === editing);
 
   const toTv = useCallback(() => goTo({ name: 'tv' }), [goTo]);
@@ -153,21 +163,38 @@ function Main({ session, onChangeFolder, onLibraryChange }: { session: Session; 
           onLibrary={() => toLibrary()}
           onWarnings={() => goTo({ name: 'warnings' })}
           onQuick={() => openOverlay('quick', true)}
-          onSettings={() => openOverlay('settings', true)}
-          onSchedule={() => openOverlay('schedule', true)}
+          onSettings={() => {
+            setSettingsFromHub(false);
+            openOverlay('settings', true);
+          }}
+          onSchedule={() => openHub(false)}
           onChangeFolder={onChangeFolder}
           onBack={closeOverlay}
         />
       )}
-      {overlay === 'quick' && <QuickSettings channels={channels} onAll={() => openOverlay('settings', true)} onBack={closeOverlay} />}
-      {overlay === 'settings' && <SettingsPanel channels={channels} libraryName={source.name} ai={source.ai} onBack={closeOverlay} />}
+      {overlay === 'quick' && <QuickSettings channels={channels} onAll={() => {
+            setSettingsFromHub(false);
+            openOverlay('settings', true);
+          }}
+          onBack={closeOverlay} />}
+      {overlay === 'settings' && (
+        <SettingsPanel channels={channels} libraryName={source.name} ai={source.ai} focusSchedule={settingsFromHub} onSchedule={() => openHub(true)} onBack={closeOverlay} />
+      )}
       {overlay === 'blocklist' && <BlocklistScreen source={source} library={library} onSaved={reloadLibrary} onBack={closeOverlay} />}
       {overlay === 'schedule' && (
         <ScheduleHub
           library={library}
-          onWizard={() => openOverlay('wizard', true)}
-          onBlocklist={() => openOverlay('blocklist', true)}
+          focus={hubFocus}
+          onWizard={() => {
+            setHubFocus({ kind: 'wizard' });
+            openOverlay('wizard', true);
+          }}
+          onBlocklist={() => {
+            setHubFocus({ kind: 'blocklist' });
+            openOverlay('blocklist', true);
+          }}
           onEdit={(id) => {
+            setHubFocus({ kind: 'edit', id });
             setEditing(id);
             openOverlay('editor', true);
           }}

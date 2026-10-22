@@ -163,7 +163,7 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
       <div className="editor" onKeyDown={onKeyDown}>
         <header className="panel-header">
           <Icon name="clock" />
-          <h1>Editar canal</h1>
+          <h1>Mudar uma programação</h1>
           <button className="panel-close" onClick={goBack} aria-label="Fechar" title="Fechar" tabIndex={-1} disabled={phase.name === 'saving'}>
             <Icon name="close" />
           </button>
@@ -175,6 +175,7 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
           ) : phase.name === 'pin' ? (
             <PinPage
               editing={phase.editing}
+              what={`salvar a programação “${state.name.trim()}”`}
               message={phase.message}
               onPaired={() =>
                 void phase.again('O computador pediu o PIN de novo. Confira o número no terminal.').catch((failure) => {

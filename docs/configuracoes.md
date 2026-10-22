@@ -20,7 +20,7 @@ Menu, ajustes rápidos e configurações são painéis translúcidos **por cima 
 
 | Tecla | O que faz |
 |---|---|
-| Esc / Backspace / Voltar (na TV) | Abre o **menu**: canais, Biblioteca, Programação ([montar um canal novo](grade.md#montar-a-semana-pelo-app) ou [editar um existente](grade.md#editar-um-canal-pelo-app)), Ajustes rápidos, Configurações, Avisos, Trocar pasta |
+| Esc / Backspace / Voltar (na TV) | Abre o **menu** (a TV mostra a dica "Voltar = Menu" ao ligar pela primeira vez e quando fica parada por alguns minutos): canais, Biblioteca, Programação ([criar uma programação nova](grade.md#criar-uma-programacao-pelo-app) ou [mudar uma existente](grade.md#mudar-uma-programacao-pelo-app)), Ajustes rápidos, Configurações, Avisos, Trocar pasta |
 | `S`, `←` ou `→` (na TV; `S` também no player) | Abre os **ajustes rápidos** |
 | Esc / Voltar (num painel) | Fecha um nível: lista de valores, depois o painel, depois o painel de baixo (por exemplo, configurações → menu → TV) |
 
@@ -28,7 +28,7 @@ Enquanto um painel está aberto, ↑ ↓ ← → e Enter só mexem nele: o canal
 
 **Ajustes rápidos** (barra na parte de baixo da tela, como nas TVs Samsung): uma fileira de blocos, cada um com o nome e o valor atual da opção: Tema, Efeito CRT, Curvatura, Proporção, Horário, Comerciais e Relógio, e no fim "Todas as configurações". ← → escolhem o bloco; ↑ ↓ mudam o valor (na curvatura, ↑ aumenta de 10 em 10); OK liga/desliga, ou mostra a lista de valores quando há vários.
 
-**Configurações** (painel à esquerda): categorias Tema, Imagem, Programação, Canais, Intervalos comerciais e Sobre e restaurar. ↑ ↓ escolhem a categoria; → ou OK entram nas opções, onde ← → mudam o valor (interruptores: ← desliga, → liga; barras: ← → mexem um passo, ou arraste com o mouse) e Voltar retorna às categorias. "Restaurar padrões" fica em Sobre e restaurar.
+**Configurações** (painel à esquerda): no topo, a entrada **Programação ›** abre a mesma tela do Menu (criar e mudar programações, desenhos que não passam); depois vêm as categorias Tema, Imagem, Como a TV passa, Canais, Intervalos comerciais e Sobre e restaurar. ↑ ↓ escolhem a categoria; → ou OK entram nas opções, onde ← → mudam o valor (interruptores: ← desliga, → liga; barras: ← → mexem um passo, ou arraste com o mouse) e Voltar retorna às categorias. "Restaurar padrões" fica em Sobre e restaurar.
 
 ## Temas (`tema`)
 

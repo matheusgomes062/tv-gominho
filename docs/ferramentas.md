@@ -188,7 +188,7 @@ O custo é pequeno: o programa é perguntado uma vez por pasta, e o tipo de cada
 
 ## `grade`
 
-Prefere montar pela tela? No app, Menu → Programação abre o assistente "Montar a semana", que usa este mesmo gerador (veja [grade.md](grade.md#montar-a-semana-pelo-app)).
+Prefere montar pela tela? No app, Menu → Programação abre o assistente "Criar uma programação", que usa este mesmo gerador (veja [grade.md](grade.md#criar-uma-programacao-pelo-app)).
 
 ```
 tv-gominho grade <biblioteca> [opções]
@@ -258,7 +258,7 @@ Entrega o app e a biblioteca por HTTP: abra `http://localhost:8080` em qualquer 
 
 ### Salvar canais pelo servidor (`--editar`)
 
-Sem `--editar`, o servidor não grava nada. Com ela, o assistente "Montar a semana" salva o canal direto na biblioteca, de qualquer aparelho que abriu o endereço (a TV, o celular, outro PC):
+Sem `--editar`, o servidor não grava nada. Com ela, o assistente "Criar uma programação" salva o canal direto na biblioteca, de qualquer aparelho que abriu o endereço (a TV, o celular, outro PC):
 
 ```
 tv-gominho servir ./biblioteca --rede --editar
@@ -271,7 +271,7 @@ Salvar canais pelo app: LIGADO. PIN para parear um aparelho: 482913
 - A grade precisa ser uma grade válida (a mesma leitura do app), em UTF-8, com até 256 KB. A lista "não passar" precisa ser lida pelo app sem nenhum aviso (só `programas` e `episodios`, veja [biblioteca.md](biblioteca.md)).
 - Nunca substitui um arquivo que já existe sem pedir: o assistente cria um canal novo, e quem quer substituir pede explicitamente, com `?substituir=1` no endereço.
 - **Cópia de segurança de uma grade** (`?substituir=1&copia=1`): o **próprio servidor** copia a grade atual para `grades/<nome>.AAAA-MM-DD.yaml.bak` (pela data do computador; `-2`, `-3`... se o nome já existe, e uma cópia que já existe nunca é trocada) antes de gravar por cima. A cópia nunca troca uma que já existe (sem links, então funciona em pendrive FAT32/exFAT) e é lida de volta e conferida byte a byte antes de gravar; se algo falha, a grade fica como estava e o pedido dá erro. O app nunca grava um caminho `.bak`: o servidor segue recusando qualquer caminho que não seja `grades/<nome>.yaml` ou `nao-passar.yaml`. A TV não lê o `.bak` como canal. Para **restaurar**, renomeie a cópia, tirando a data e o `.bak` (`manha.2026-10-22.yaml.bak` vira `manha.yaml`, no lugar do atual). É o que o editor de canal e o "Trocar o canal" do assistente usam.
-- `nao-passar.yaml` **não** tem cópia de segurança (`copia=1` nele é recusado): é uma lista curta que o app reescreve inteira a cada mudança, sem comentários seus para perder, e dá para refazê-la na própria tela "Não passar".
+- `nao-passar.yaml` **não** tem cópia de segurança (`copia=1` nele é recusado): é uma lista curta que o app reescreve inteira a cada mudança, sem comentários seus para perder, e dá para refazê-la na própria tela "Desenhos que não passam".
 - Cada arquivo gravado aparece no terminal (`Gravado: grades/manha.yaml`), e cada cópia de segurança também (`Cópia de segurança: grades/manha.2026-10-22.yaml.bak`).
 
 Segurança:
@@ -299,7 +299,7 @@ Para quem integra (rotas, todas sob o mesmo endereço do app):
 
 ### Assistente de IA
 
-Opcional e **desligado por padrão**. Com ele, o "Montar a semana" ganha o botão **Pedir para a IA**: a pessoa descreve o canal em português ("uma manhã de 3 horas com desenhos calmos") e o Claude, da Anthropic, propõe as escolhas do assistente (horários, dias, programas e ordem, comerciais, marca e época das vinhetas, nome). A proposta abre direto na **Prévia**: dá para salvar, voltar aos passos para ajustar, ou descartar. A IA nunca grava nada; quem salva é a pessoa, do jeito de sempre.
+Opcional e **desligado por padrão**. Com ele, o "Criar uma programação" ganha o botão **Pedir para a IA**: a pessoa descreve o canal em português ("uma manhã de 3 horas com desenhos calmos") e o Claude, da Anthropic, propõe as escolhas do assistente (horários, dias, programas e ordem, comerciais, marca e época das vinhetas, nome). A proposta abre direto na **Prévia**: dá para salvar, voltar aos passos para ajustar, ou descartar. A IA nunca grava nada; quem salva é a pessoa, do jeito de sempre.
 
 Precisa de uma chave da API da Anthropic (crie em [console.anthropic.com](https://console.anthropic.com), em *API Keys*). O botão só aparece com as duas coisas: **uma chave e a IA ligada**. Sem isso nada muda e nenhuma chamada é feita.
 

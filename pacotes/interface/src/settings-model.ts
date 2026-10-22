@@ -345,7 +345,7 @@ export interface Category {
 export const CATEGORIES: Category[] = [
   { id: 'theme', label: 'Tema', icon: 'palette', rows: ['osdSkin'] },
   { id: 'picture', label: 'Imagem', icon: 'picture', rows: ['aspect', 'crt.enabled', 'crt.intensity', 'crt.curvature', 'crt.scanlines', 'clock', 'watermarkEnabled'] },
-  { id: 'schedule', label: 'Programação', icon: 'calendar', rows: ['schedule', 'interstitials', 'commercials'] },
+  { id: 'schedule', label: 'Como a TV passa', icon: 'calendar', rows: ['schedule', 'interstitials', 'commercials'] },
   { id: 'channels', label: 'Canais', icon: 'tv', rows: ['startMode', 'startChannel', 'channelsPerShow', 'channelChangeStatic'] },
   { id: 'ads', label: 'Intervalos comerciais', icon: 'ads', rows: ['adBreaks.every', 'adBreaks.ads', 'adBreaks.afterEpisode', 'adBreaks.bumpers'] },
   // Drawn by overlays/AiSettings.tsx: the key and the switch of "Pedir para a IA".

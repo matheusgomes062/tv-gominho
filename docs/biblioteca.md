@@ -109,7 +109,7 @@ Por padrão, o app divide cada episódio em atos iguais e coloca um intervalo co
 
 O episódio passa até 7:32, vêm os comerciais, e ele continua de 7:32 até 14:10, e assim por diante. Esses pontos valem no lugar da divisão automática; só são ignorados se os intervalos no meio do episódio estiverem desligados (`intervalos.a_cada: 0`) ou os comerciais estiverem desligados. Pontos fora da duração do episódio são ignorados, e tempos que não fazem sentido geram um aviso na tela de Avisos.
 
-## Não passar (`nao-passar.yaml`)
+## Desenhos que não passam (`nao-passar.yaml`)
 
 Para um episódio impróprio, ou um programa que as crianças ainda não podem ver, nunca passar sozinho: coloque-o em `nao-passar.yaml`, **na raiz da biblioteca** (ao lado de `configuracoes.yaml`). Nenhum arquivo é apagado.
 
@@ -130,9 +130,9 @@ episodios:
 
 ### Pela tela do app
 
-Você não precisa escrever o arquivo à mão. No menu da TV, **Não passar** lista os programas: OK em um programa o bloqueia (ou libera) inteiro, e **Episódios** abre a lista dele para marcar só alguns. Tudo funciona com as setas, OK e Voltar, ou com o mouse. **Salvar** grava o `nao-passar.yaml` (trocando o que já existe) e, como mudar a lista muda a contagem da sequência, grava também a posição de cada programa nas grades que usam os programas alterados (`posicoes`, veja [a grade](grade.md)), para nenhum episódio pular. Nas grades, só essa seção muda; o resto do arquivo e seus comentários ficam como estão. Já os comentários do `nao-passar.yaml` não são mantidos, porque o arquivo é escrito de novo.
+Você não precisa escrever o arquivo à mão. Em **Menu → Programação → Desenhos que não passam**, a tela lista os programas: OK em um programa o bloqueia (ou libera) inteiro, e **Episódios** abre a lista dele para marcar só alguns. Tudo funciona com as setas, OK e Voltar, ou com o mouse. **Salvar** grava o `nao-passar.yaml` (trocando o que já existe) e, como mudar a lista muda a contagem da sequência, grava também a posição de cada programa nas grades que usam os programas alterados (`posicoes`, veja [a grade](grade.md)), para nenhum episódio pular. Nas grades, só essa seção muda; o resto do arquivo e seus comentários ficam como estão. Já os comentários do `nao-passar.yaml` não são mantidos, porque o arquivo é escrito de novo. Sair com mudanças ainda não salvas pede confirmação.
 
-O jeito de gravar é o mesmo de "Montar a semana": direto na pasta (Chrome e Edge, com a permissão pedida só ao salvar), pelo `tv-gominho servir --editar` (com o PIN) ou, sem isso, baixando os arquivos. Nesse último caso, copie **todos** os arquivos baixados para a biblioteca, trocando os que já existem (`nao-passar.yaml` na raiz, as grades em `grades/`), e abra a biblioteca de novo. As grades são gravadas antes da lista: se um arquivo falhar no meio, o app para, diz o que ficou gravado e baixa o que faltou, e a lista antiga continua valendo.
+O jeito de gravar é o mesmo de "Criar uma programação": direto na pasta (Chrome e Edge, com a permissão pedida só ao salvar), pelo `tv-gominho servir --editar` (com o PIN) ou, sem isso, baixando os arquivos. Nesse último caso, copie **todos** os arquivos baixados para a biblioteca, trocando os que já existem (`nao-passar.yaml` na raiz, as grades em `grades/`), e abra a biblioteca de novo. As grades são gravadas antes da lista: se um arquivo falhar no meio, o app para, diz o que ficou gravado e baixa o que faltou, e a lista antiga continua valendo.
 
 ## Formatos
 

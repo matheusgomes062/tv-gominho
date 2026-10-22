@@ -58,6 +58,8 @@ import {
   replaceableChannels,
   sortedRanges,
   stepAd,
+  stepHeading,
+  wizardDirty,
   stepEra,
   stepIndex,
   stepProblem,
@@ -105,7 +107,7 @@ const DURATION_WAIT_MS = 12_000;
 const SAMPLE_EPISODES = 12;
 
 /**
- * "Montar a semana": a short sequence of steps (time ranges, days, shows, commercials, bumpers, name, preview, save) that
+ * "Criar uma programação": a short sequence of steps (time ranges, days, shows, commercials, bumpers, name, preview, save) that
  * builds a channel with the same generator as `tv-gominho grade` and saves it as a file in grades/: a new one, or in
  * the place of an existing one (with a backup copy of the old file). Everything is reachable with arrows, OK and Back;
  * Back goes one step back, and from the first step closes the wizard.
@@ -114,6 +116,9 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
   const { settings } = useSettings();
   const [step, setStep] = useState<StepId>('ranges');
   const [state, setState] = useState<WizardState>(() => initialState(settings.adBreaks));
+  const [fresh] = useState<WizardState>(() => initialState(settings.adBreaks));
+  // Leaving with answers that would be lost asks once (as the channel editor does).
+  const [leaving, setLeaving] = useState(false);
   const [phase, setPhase] = useState<Phase>({ name: 'editing' });
   const [error, setError] = useState<string | null>(null);
   const [prepared, setPrepared] = useState<Prepared | null>(null);
@@ -198,8 +203,16 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
     setError(null);
     const before = previousStep(step);
     if (before) setStep(before);
-    else onBack();
+    else leave();
   };
+  /** Closes the wizard; with answers that would be lost, the first try only asks (the second one leaves). */
+  const leave = () => {
+    if (phase.name === 'saving') return;
+    if (phase.name === 'done' || leaving || !wizardDirty(step, state, fresh)) return onBack();
+    setLeaving(true);
+  };
+  // Any change of answer or step takes the question back.
+  useEffect(() => setLeaving(false), [stateKey, step, phase.name]);
   const goOn = () => {
     if (problem) return;
     setStep(nextStep(step));
@@ -233,7 +246,7 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
       // The channel the preview showed; built again only if the answers changed since.
       const { built, today } = prepared?.key === stateKey ? prepared : await build();
       const yaml = scheduleToYaml(built.generated, [
-        `Montada pelo assistente "Montar a semana" em ${today}. Pode editar à vontade (veja docs/grade.md).`,
+        `Criada pelo assistente "Criar uma programação" em ${today}. Pode editar à vontade (veja docs/grade.md).`,
         'Os horários nos comentários são estimativas, com os intervalos comerciais.',
         ...(built.replaces ? ['Troca a grade anterior, que ficou guardada ao lado, com a data no nome e a terminação .bak.'] : []),
       ]);
@@ -271,24 +284,19 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
   const index = stepIndex(step);
 
   return (
-    <Overlay edge="left" label="Montar a semana" onBack={goBack} className="wizard-overlay">
+    <Overlay edge="left" label="Criar uma programação" onBack={goBack} className="wizard-overlay">
       <div className="wizard">
         <header className="panel-header">
           <Icon name="calendar" />
-          <h1>Montar a semana</h1>
-          <button className="panel-close" onClick={onBack} aria-label="Fechar" title="Fechar" tabIndex={-1} disabled={phase.name === 'saving'}>
+          <h1>Criar uma programação</h1>
+          <button className="panel-close" onClick={leave} aria-label="Fechar" title="Fechar" tabIndex={-1} disabled={phase.name === 'saving'}>
             <Icon name="close" />
           </button>
         </header>
 
-        <ol className="wizard-steps" aria-label="Passos">
-          {STEPS.map((entry, i) => (
-            <li key={entry.id} aria-current={i === index ? 'step' : undefined} className={i < index ? 'past' : i === index ? 'current' : ''}>
-              <span className="wizard-step-number">{i < index ? <Icon name="check" /> : i + 1}</span>
-              <span className="wizard-step-title">{entry.title}</span>
-            </li>
-          ))}
-        </ol>
+        <p className="wizard-progress" aria-label="Passo atual" data-step={index + 1}>
+          {stepHeading(step)}
+        </p>
 
         <div className="wizard-body" ref={body} key={`${step}-${phase.name}`}>
           {phase.name === 'done' ? (
@@ -296,6 +304,7 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
           ) : phase.name === 'pin' ? (
             <PinPage
               editing={phase.editing}
+              what={state.target ? `trocar a programação “${state.name.trim()}”` : `salvar a programação “${state.name.trim()}”`}
               message={phase.message}
               onPaired={() =>
                 void phase.again('O computador pediu o PIN de novo. Confira o número no terminal.').catch((failure) => {
@@ -370,6 +379,12 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
           )}
         </div>
 
+        {phase.name === 'editing' && leaving && (
+          <p className="wizard-problem wizard-leaving" role="alert" data-leaving>
+            Suas escolhas ainda não foram salvas. Aperte Voltar de novo para sair sem salvar, ou siga até o fim e salve.
+          </p>
+        )}
+
         {phase.name === 'editing' && (
           <footer className="wizard-footer">
             <button data-nav data-nav-adjust className="action-tile" onClick={goBack} onKeyDown={footerKeys}>
@@ -395,7 +410,10 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
             ['↑ ↓', 'escolher'],
             ['← →', 'mudar'],
             ['OK', 'confirmar'],
-            ['Voltar', index === 0 || phase.name === 'done' ? 'fechar' : 'passo anterior'],
+            [
+              'Voltar',
+              phase.name === 'pin' || phase.name === 'ia' ? 'cancelar' : index === 0 || phase.name === 'done' ? 'fechar' : 'passo anterior',
+            ],
           ]}
         />
       </div>
@@ -1234,7 +1252,7 @@ function IaPage({
   };
 
   if (view === 'pin' && assistant.pair) {
-    return <PinPage editing={{ pair: assistant.pair }} message="Para usar a IA, este aparelho precisa do PIN." onPaired={() => void send()} onCancel={() => setView('form')} />;
+    return <PinPage editing={{ pair: assistant.pair }} what="pedir uma proposta à IA" message="Para usar a IA, este aparelho precisa do PIN." onPaired={() => void send()} onCancel={() => setView('form')} />;
   }
 
   return (
@@ -1312,7 +1330,7 @@ const KEYPAD = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'delete', '0', 'ok'
  * remote's number keys or with the on-screen keypad (arrows and OK). Asked once; the server remembers
  * the device by a cookie until it is turned off.
  */
-export function PinPage({ editing, message, onPaired, onCancel }: { editing: { pair(pin: string): Promise<PairOutcome> }; message?: string; onPaired(): void; onCancel(): void }) {
+export function PinPage({ editing, what, message, onPaired, onCancel }: { editing: { pair(pin: string): Promise<PairOutcome> }; what: string; message?: string; onPaired(): void; onCancel(): void }) {
   const [pin, setPin] = useState('');
   const [problem, setProblem] = useState(message ?? null);
   const [busy, setBusy] = useState(false);
@@ -1347,9 +1365,11 @@ export function PinPage({ editing, message, onPaired, onCancel }: { editing: { p
   return (
     <div className="wizard-pin" onKeyDown={onKeyDown}>
       <h2>Digite o PIN</h2>
+      <p className="wizard-pin-what" data-pin-what>
+        Para: {what}
+      </p>
       <p className="panel-note">
-        Para salvar ou usar a IA por aqui, digite o PIN de {PIN_LENGTH} números que o <code>tv-gominho servir</code> mostra no computador. Só uma vez neste
-        aparelho.
+        O PIN de {PIN_LENGTH} números aparece na tela do computador onde o TV Gominho está ligado. Só é pedido uma vez neste aparelho.
       </p>
       <p className="wizard-pin-digits" aria-label={`PIN: ${pin.length} de ${PIN_LENGTH} números`} data-pin-length={pin.length}>
         {Array.from({ length: PIN_LENGTH }, (_, i) => (
@@ -1375,12 +1395,12 @@ export function PinPage({ editing, message, onPaired, onCancel }: { editing: { p
         ))}
       </div>
       {problem && (
-        <p className="wizard-problem" role="alert">
+        <p className="wizard-problem wizard-pin-problem" role="alert">
           {problem}
         </p>
       )}
       <div className="wizard-footer">
-        <button data-nav className="action-tile" onClick={onCancel}>
+        <button data-nav data-cancel className="action-tile" onClick={onCancel}>
           <span>Cancelar</span>
         </button>
       </div>

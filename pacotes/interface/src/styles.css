@@ -788,7 +788,8 @@ h2 {
     0.09em -0.09em 0 #000, -0.09em -0.09em 0 #000;
 }
 
-.tv-tuning {
+.tv-tuning,
+.tv-hint {
   position: absolute;
   left: 50%;
   bottom: 8%;
@@ -801,6 +802,24 @@ h2 {
   color: var(--osd);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+/* "Voltar = Menu": the same small OSD text as "Sintonizando…", in the bottom-left corner, clear of the clock, the
+   channel number, the watermark and the program info. Not clickable, and it fades out by itself. */
+.tv-hint {
+  left: 6%;
+  bottom: 6%;
+  transform: none;
+  font-size: calc(0.95em * var(--oz));
+  white-space: nowrap;
+  pointer-events: none;
+  animation: ov-fade 0.4s var(--ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tv-hint {
+    animation: none;
+  }
 }
 
 .osd-channel {
@@ -1105,7 +1124,8 @@ h2 {
   color: rgb(255 255 255 / 0.8);
 }
 
-.skin-modern .tv-tuning {
+.skin-modern .tv-tuning,
+.skin-modern .tv-hint {
   border-radius: 99px;
   color: #fff;
   text-transform: none;
@@ -1124,7 +1144,8 @@ h2 {
   letter-spacing: 0.06em;
 }
 
-.skin-vhs .tv-tuning {
+.skin-vhs .tv-tuning,
+.skin-vhs .tv-hint {
   color: #fff;
 }
 
@@ -1210,6 +1231,7 @@ h2 {
   --ov-text: #ffffff;
   --ov-dim: rgb(176 198 247 / 0.82);
   --ov-focus: #5dff6a;
+  --ov-focus-alt: #ffffff;
   --ov-on-focus: #03200a;
   --ov-on-focus-dim: rgb(3 32 10 / 0.8);
   --ov-accent: #5dff6a;
@@ -1817,7 +1839,7 @@ h2 {
 /* --- Settings panel ---------------------------------------------------------------------------------- */
 .panel {
   display: grid;
-  grid-template-columns: calc(12.4 * var(--u)) minmax(0, 1fr);
+  grid-template-columns: calc(14.8 * var(--u)) minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
   height: 100%;
 }
@@ -1881,7 +1903,7 @@ h2 {
   display: flex;
   align-items: center;
   gap: calc(0.65 * var(--u));
-  padding: calc(0.7 * var(--u)) calc(0.75 * var(--u));
+  padding: calc(0.5 * var(--u)) calc(0.75 * var(--u));
   min-width: 0;
   text-align: left;
   line-height: 1.12;
@@ -1894,6 +1916,20 @@ h2 {
   border-radius: calc(var(--k-md) * var(--u));
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
+}
+
+/* "Programação ›" at the top of the settings: opens another screen instead of a page of options. */
+.cat-link {
+  margin-bottom: calc(0.35 * var(--u));
+  border-bottom: var(--bw) solid var(--ov-line);
+}
+
+.cat-chevron {
+  width: calc(1.1 * var(--u));
+  height: calc(1.1 * var(--u));
+  margin-left: auto;
+  flex: none;
+  opacity: 0.7;
 }
 
 .cat-icon {
@@ -2575,53 +2611,22 @@ h2 {
   height: 100%;
 }
 
-.wizard-steps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(0.3 * var(--u)) calc(1.1 * var(--u));
+/* One line, never wrapped: "Passo 3 de 8 · Programas". */
+.wizard-progress {
   margin: 0;
   padding: calc(0.2 * var(--u)) calc(1.5 * var(--u)) calc(0.5 * var(--u));
-  list-style: none;
   font-family: var(--ff-body);
   font-size: var(--fs-meta);
+  font-variant-numeric: tabular-nums;
   color: var(--ov-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.wizard-steps li {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-}
-
-.wizard-step-number {
-  display: grid;
-  place-items: center;
-  width: 1.7em;
-  height: 1.7em;
-  border-radius: var(--r-pill);
-  border: var(--bw) solid var(--ov-line);
-  font-weight: 700;
-  line-height: 1;
-}
-
-.wizard-step-number .icon {
-  width: 1em;
-  height: 1em;
-}
-
-.wizard-steps .current {
-  color: var(--ov-text);
-}
-
-.wizard-steps .current .wizard-step-number {
-  background: var(--ov-accent);
-  border-color: var(--ov-accent);
-  color: var(--ov-on-accent);
-}
-
-.wizard-steps .past .wizard-step-number {
-  border-color: var(--ov-accent);
-  color: var(--ov-accent);
+.wizard-leaving {
+  margin: 0;
+  padding: calc(0.4 * var(--u)) calc(1.5 * var(--u)) 0;
 }
 
 .wizard-body {
@@ -2703,6 +2708,15 @@ h2 {
 .action-tile.primary:focus-visible {
   color: var(--ov-on-focus);
   background: var(--ov-focus);
+  /* A ring marks the focused main button; without it, in the classic skin it looks the same as an unfocused one. */
+  box-shadow: 0 0 0 calc(0.18 * var(--u)) var(--ov-text);
+}
+
+/* A focused secondary button must not look like the main one (the classic skin focuses in the same green as its
+   main buttons), so it takes the text color instead of the focus color. */
+.wizard-footer .action-tile:not(.primary):focus-visible {
+  background: var(--ov-focus-alt, var(--ov-focus));
+  border-color: var(--ov-focus-alt, var(--ov-focus));
 }
 
 .action-tile[aria-disabled='true'] {
@@ -2724,9 +2738,36 @@ h2 {
   border-top: var(--bw) solid var(--ov-line);
 }
 
+/* Texts and "Cancelar" on the left, the keypad on the right, so every button fits at 1280×720. */
 .wizard-pin {
   display: grid;
-  gap: calc(0.8 * var(--u));
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: start;
+  align-items: start;
+  gap: calc(0.6 * var(--u)) calc(1.5 * var(--u));
+}
+
+.wizard-pin > * {
+  grid-column: 1;
+}
+
+.wizard-pin > .wizard-keypad {
+  grid-column: 2;
+  grid-row: 1 / span 6;
+}
+
+.wizard-pin-what {
+  margin: 0;
+  color: var(--ov-text);
+  overflow-wrap: anywhere;
+}
+
+.wizard-pin .panel-note {
+  margin: 0;
+}
+
+.wizard-pin-problem {
+  margin: 0;
 }
 
 .wizard-pin h2 {
