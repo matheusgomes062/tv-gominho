@@ -323,7 +323,7 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
   const first = nav.trail.length === 0;
 
   return (
-    <Overlay edge="left" label="Criar uma programação" onBack={goBack} className="wizard-overlay">
+    <Overlay edge="left" label="Criar uma programação" onBack={goBack} className={`wizard-overlay${phase.name === 'editing' && step === 'review' ? ' overlay-wide' : ''}`}>
       <div className="wizard">
         <header className="panel-header">
           <Icon name="calendar" />

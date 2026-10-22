@@ -12,8 +12,11 @@ import {
   moveFocus,
   refocus,
   scrollWindow,
-  slotLabels,
+  showHues,
+  showKey,
+  timeTicks,
   windowFor,
+  windowSlotsFor,
   type GuideBlock,
   type GuideFocus,
   type GuideRow,
@@ -29,7 +32,7 @@ interface Props {
   onPick?(airing: Airing): void;
 }
 
-const LABELS = slotLabels();
+const TICKS = timeTicks();
 const KEY_MOVES: Record<string, Move> = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
 const percent = (seconds: number) => `${dayFraction(seconds) * 100}%`;
 
@@ -70,8 +73,35 @@ export function Guide({ week, label, onPick }: Props) {
   const grid = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const top = useRef<HTMLDivElement>(null);
+  const hues = useMemo(() => showHues(guide), [guide]);
+  const key = useMemo(() => showKey(guide), [guide]);
   const [focus, setFocus] = useState<GuideFocus | null>(() => initialFocus(guide, now));
+  // How many half hours fit across: the window is as wide as the screen allows (see windowSlotsFor).
+  const [slots, setSlots] = useState(WINDOW_SLOTS);
   const [start, setStart] = useState(() => windowFor(focusedBlock(guide, focus)));
+
+  useEffect(() => {
+    const element = grid.current;
+    if (!element) return;
+    const measure = () => {
+      const lane = element.querySelector('.guide-lane');
+      const unit = parseFloat(getComputedStyle(element).fontSize);
+      if (lane && unit > 0) setSlots(windowSlotsFor(lane.getBoundingClientRect().width / unit));
+    };
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(element);
+    return () => watch.disconnect();
+  }, []);
+
+  // The window changed its length: keep the block in focus in it.
+  useEffect(() => {
+    setStart((current) => {
+      const target = focusedBlock(guide, focus);
+      return target ? scrollWindow(current, target, slots) : current;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slots]);
 
   // The week was built again (the real durations came in, a pick changed what airs): keep the place.
   const known = useRef(guide);
@@ -89,7 +119,7 @@ export function Guide({ week, label, onPick }: Props) {
     const target = focusedBlock(guide, next);
     setFocus(next);
     if (target) {
-      setStart((current) => scrollWindow(current, target));
+      setStart((current) => scrollWindow(current, target, slots));
       reveal(grid.current?.querySelector<HTMLElement>(`[data-guide-row="${next.row}"]`));
     }
   };
@@ -133,7 +163,7 @@ export function Guide({ week, label, onPick }: Props) {
   };
 
   return (
-    <div className="guide" data-guide ref={root} style={{ '--guide-x': `${-dayFraction(start) * 100}%`, '--guide-span': `${(DAY_SLOTS / WINDOW_SLOTS) * 100}%` } as CSSProperties}>
+    <div className="guide" data-guide ref={root} style={{ '--guide-x': `${-dayFraction(start) * 100}%`, '--guide-span': `${(DAY_SLOTS / slots) * 100}%` } as CSSProperties}>
       {/* The strip and the time axis stay on top while the days scroll under them. */}
       <div className="guide-top" ref={top}>
         <Details block={block} row={focus ? guide.rows[focus.row] : undefined} canPick={onPick !== undefined} />
@@ -141,8 +171,8 @@ export function Guide({ week, label, onPick }: Props) {
           <span className="guide-corner">Dia</span>
           <div className="guide-lane">
             <div className="guide-track">
-              {LABELS.map(({ seconds, label: text, hour }) => (
-                <span key={seconds} className="guide-slot" data-hour={hour || undefined} style={{ left: percent(seconds) }}>
+              {TICKS.map(({ seconds, label: text, kind }) => (
+                <span key={seconds} className="guide-slot" data-tick={kind} style={{ left: percent(seconds) }}>
                   {text}
                 </span>
               ))}
@@ -189,7 +219,7 @@ export function Guide({ week, label, onPick }: Props) {
                       data-blocked={b.airing.blocked ? '' : undefined}
                       data-cut={b.start < start ? '' : undefined}
                       aria-label={blockSpeech(b, row.today)}
-                      style={{ left: percent(b.start), width: percent(b.end - b.start) }}
+                      style={{ left: percent(b.start), width: percent(b.end - b.start), '--hue': hues[b.airing.showId] } as CSSProperties}
                       onClick={() => open(b)}
                     >
                       <span className="guide-block-title">{b.airing.showTitle}</span>
@@ -210,6 +240,16 @@ export function Guide({ week, label, onPick }: Props) {
           </div>
         ))}
       </div>
+      {key.length > 0 && (
+        <ul className="guide-key" aria-label="Cor de cada desenho">
+          {key.map((entry) => (
+            <li key={entry.showId} style={{ '--hue': entry.hue } as CSSProperties}>
+              <i aria-hidden="true" />
+              {entry.title}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

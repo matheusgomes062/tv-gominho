@@ -14,8 +14,12 @@ import {
   moveFocus,
   refocus,
   scrollWindow,
-  slotLabels,
+  showHues,
+  showKey,
+  timeTicks,
   windowFor,
+  windowSlotsFor,
+  WINDOW_SLOTS,
   type Guide,
 } from './guide-model';
 import { buildWeekModel } from './week-model';
@@ -151,8 +155,8 @@ describe('the focus', () => {
     expect(initialFocus(guide, hm(8, 25))).toEqual({ row: 2, index: 1, time: hm(8, 22) });
     expect(initialFocus(guide, hm(9))).toEqual({ row: 2, index: 3, time: hm(10, 30) });
     expect(initialFocus(guide, hm(6))).toEqual({ row: 2, index: 0, time: hm(8) });
-    // After the last block of the day: the last one.
-    expect(initialFocus(guide, hm(23))).toEqual({ row: 2, index: 3, time: hm(10, 30) });
+    // After the last block of the day: the first of today, so the day opens at its start.
+    expect(initialFocus(guide, hm(23))).toEqual({ row: 2, index: 0, time: hm(8) });
   });
 
   it('starts on the first block of the first day when today is not in the week', async () => {
@@ -219,8 +223,8 @@ describe('the window on the day', () => {
     const row = (await guideOf()).rows[0]!;
     const start = hm(7, 30);
     expect(scrollWindow(start, row.blocks[1]!)).toBe(start);
-    // The 10:30 block is past the right edge (09:30): its end comes in, on a slot.
-    expect(scrollWindow(start, row.blocks[3]!)).toBe(hm(9));
+    // The 10:30 block is past the right edge (09:00): its end comes in, on a slot.
+    expect(scrollWindow(start, row.blocks[3]!)).toBe(hm(9, 30));
     // And back: a slot of what comes before it.
     expect(scrollWindow(hm(10), row.blocks[1]!)).toBe(hm(7, 30));
   });
@@ -232,13 +236,49 @@ describe('the window on the day', () => {
     expect(scrollWindow(hm(0), long)).toBe(hm(8));
   });
 
-  it('labels every slot of the day and places times on it', () => {
-    const labels = slotLabels();
-    expect(labels).toHaveLength(48);
-    expect(labels[17]).toEqual({ seconds: 17 * SLOT, label: '08:30', hour: false });
-    expect(labels[16]!.hour).toBe(true);
+  it('marks the time every 15 minutes, with a label on the hours and half hours', () => {
+    const ticks = timeTicks();
+    expect(ticks).toHaveLength(96);
+    expect(ticks[32]).toEqual({ seconds: hm(8), label: '08:00', kind: 'hour' });
+    expect(ticks[34]).toEqual({ seconds: hm(8, 30), label: '08:30', kind: 'half' });
+    expect(ticks[33]).toEqual({ seconds: hm(8, 15), label: null, kind: 'quarter' });
     expect(dayFraction(hm(12))).toBe(0.5);
     expect(dayFraction(-5)).toBe(0);
+  });
+
+  it('shows an hour and a half on a TV and more on a wider screen, never fewer than two slots', () => {
+    expect(WINDOW_SLOTS).toBe(3);
+    // The lane of the panel at 16:9 is about 50 units wide.
+    expect(windowSlotsFor(50)).toBe(3);
+    expect(windowSlotsFor(100)).toBe(6);
+    expect(windowSlotsFor(400)).toBe(6);
+    expect(windowSlotsFor(10)).toBe(2);
+    expect(windowSlotsFor(NaN)).toBe(3);
+    // The window of a wider screen scrolls with its own length.
+    expect(windowFor({ start: hm(23, 40), end: hm(23, 59) } as never, 6)).toBe(DAY_SECONDS - 6 * SLOT);
+  });
+});
+
+describe('a colour for every show', () => {
+  it('gives each show of the week its own hue, the same one on every block', async () => {
+    const guide = await guideOf();
+    const hues = showHues(guide);
+    expect(Object.keys(hues).sort()).toEqual(['bob', 'dbz']);
+    expect(hues.bob).not.toBe(hues.dbz);
+    expect(Object.values(hues).every((hue) => hue >= 0 && hue < 360)).toBe(true);
+    expect(showHues(guide)).toEqual(hues);
+  });
+
+  it('lists the shows by title for the key of the colours', async () => {
+    const key = showKey(await guideOf());
+    expect(key.map((entry) => entry.title)).toEqual(['Bob Esponja', 'DBZ']);
+    expect(key.map((entry) => entry.showId)).toEqual(['bob', 'dbz']);
+  });
+
+  it('has nothing to colour in a week with nothing on the air', async () => {
+    const off = await guideOf('2003-03-03', ['2003-03-08']);
+    expect(showHues(off)).toEqual({});
+    expect(showKey(off)).toEqual([]);
   });
 });
 

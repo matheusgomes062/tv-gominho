@@ -224,7 +224,7 @@ export function ChannelEditor({ source, library, durations, schedule, onSaved, o
   const editing = phase.name === 'editing';
 
   return (
-    <Overlay edge="left" label={`Editar o canal ${schedule.name}`} onBack={goBack} className="wizard-overlay">
+    <Overlay edge="left" label={`Editar o canal ${schedule.name}`} onBack={goBack} className={`wizard-overlay${editing && view === 'week' ? ' overlay-wide' : ''}`}>
       <div className="editor" onKeyDown={onKeyDown}>
         <header className="panel-header">
           <Icon name="clock" />

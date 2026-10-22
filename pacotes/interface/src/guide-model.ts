@@ -10,9 +10,19 @@ import type { Airing, WeekModel } from './week-model';
 export const SLOT = 30 * 60;
 export const DAY_SECONDS = 24 * 3600;
 export const DAY_SLOTS = DAY_SECONDS / SLOT;
-/** How many slots the screen shows at once: two hours. */
-export const WINDOW_SLOTS = 4;
+/** How many slots the screen shows at once on a screen like a TV: an hour and a half. */
+export const WINDOW_SLOTS = 3;
 export const WINDOW_SECONDS = WINDOW_SLOTS * SLOT;
+/** Room a slot needs, in the font size of the screen (`u`): enough for a cartoon of 11 minutes to carry a readable name. */
+const SLOT_UNITS = 16;
+export const MIN_SLOTS = 2;
+export const MAX_SLOTS = 6;
+
+/** How many slots fit in a lane `laneUnits` wide (in the font size of the screen): more on a wider screen. */
+export function windowSlotsFor(laneUnits: number): number {
+  if (!Number.isFinite(laneUnits)) return WINDOW_SLOTS;
+  return Math.min(Math.max(Math.floor(laneUnits / SLOT_UNITS), MIN_SLOTS), MAX_SLOTS);
+}
 /** A block shorter than this is drawn as long as this, so it can still be seen. */
 const MIN_BLOCK = 60;
 
@@ -96,13 +106,17 @@ export function blockAt(row: GuideRow, time: number): number {
 
 // ---------------------------------------------------------------- the focus
 
-/** Where the focus starts: what plays on today's row now (or comes next); otherwise the first block of the first day with one. */
+/**
+ * Where the focus starts: what plays on today's row now (or comes next); when today is over, the first block of today;
+ * on a week without today, the first block of the first day with one. Never the middle of nowhere: the window then
+ * opens on a block that is on the air.
+ */
 export function initialFocus(guide: Guide, now: number | null): GuideFocus | null {
   const today = guide.rows.findIndex((row) => row.today && row.blocks.length > 0);
   if (today >= 0 && now !== null) {
     const row = guide.rows[today]!;
     const playing = row.blocks.find((block) => now < block.end);
-    const block = playing ?? row.blocks[row.blocks.length - 1]!;
+    const block = playing ?? row.blocks[0]!;
     return { row: today, index: block.index, time: block.start };
   }
   const first = today >= 0 ? today : guide.rows.findIndex((row) => row.blocks.length > 0);
@@ -147,30 +161,62 @@ export function refocus(guide: Guide, focus: GuideFocus | null): GuideFocus | nu
 
 const floorSlot = (seconds: number) => Math.floor(seconds / SLOT) * SLOT;
 const ceilSlot = (seconds: number) => Math.ceil(seconds / SLOT) * SLOT;
-const clampWindow = (start: number) => Math.min(Math.max(start, 0), DAY_SECONDS - WINDOW_SECONDS);
+const clampWindow = (start: number, slots: number) => Math.min(Math.max(start, 0), DAY_SECONDS - slots * SLOT);
 
 /** Where the window starts (seconds, a whole slot) to show `block`, with a slot of what comes before it. */
-export function windowFor(block: GuideBlock | null): number {
-  return block ? clampWindow(floorSlot(block.start) - SLOT) : clampWindow(8 * 3600);
+export function windowFor(block: GuideBlock | null, slots = WINDOW_SLOTS): number {
+  return block ? clampWindow(floorSlot(block.start) - SLOT, slots) : clampWindow(8 * 3600, slots);
 }
 
 /**
  * The window after the focus moved to `block`: where it was when the block is all in it; otherwise moved just enough to
  * show it (a block longer than the window shows its start).
  */
-export function scrollWindow(start: number, block: GuideBlock): number {
-  const end = start + WINDOW_SECONDS;
+export function scrollWindow(start: number, block: GuideBlock, slots = WINDOW_SLOTS): number {
+  const length = slots * SLOT;
+  const end = start + length;
   if (block.start >= start && block.end <= end) return start;
-  if (block.start < start) return clampWindow(floorSlot(block.start) - SLOT);
+  if (block.start < start) return clampWindow(floorSlot(block.start) - SLOT, slots);
   // Longer than the window and already starting in it: nothing more to show by moving.
-  if (block.end - block.start >= WINDOW_SECONDS && block.start < end) return start;
+  if (block.end - block.start >= length && block.start < end) return start;
   // Past the right edge: bring its end in, but never push its start out of sight.
-  return clampWindow(Math.min(ceilSlot(block.end) - WINDOW_SECONDS, floorSlot(block.start)));
+  return clampWindow(Math.min(ceilSlot(block.end) - length, floorSlot(block.start)), slots);
 }
 
-/** The labels of the time axis: one per slot of the day, "08:30". */
-export function slotLabels(): Array<{ seconds: number; label: string; hour: boolean }> {
-  return Array.from({ length: DAY_SLOTS }, (_, slot) => ({ seconds: slot * SLOT, label: formatTimeOfDay(slot * SLOT), hour: slot % 2 === 0 }));
+export interface Tick {
+  seconds: number;
+  /** "08:30" on the hours and half hours; the quarters are a tick with no label. */
+  label: string | null;
+  /** 'hour' (00), 'half' (30) or 'quarter' (15 and 45). */
+  kind: 'hour' | 'half' | 'quarter';
+}
+
+/** The time axis: a mark every 15 minutes of the day, labelled on the hours and half hours. */
+export function timeTicks(): Tick[] {
+  return Array.from({ length: DAY_SECONDS / (SLOT / 2) }, (_, i) => {
+    const seconds = i * (SLOT / 2);
+    const quarter = i % 2 === 1;
+    return { seconds, label: quarter ? null : formatTimeOfDay(seconds), kind: quarter ? 'quarter' : i % 4 === 0 ? 'hour' : 'half' };
+  });
+}
+
+// ---------------------------------------------------------------- one colour per show
+
+/** Golden angle in degrees: the hues of a few shows end up far from each other. */
+const HUE_STEP = 137.508;
+
+/** Each show of the guide has a hue (0 to 360) of its own: the shows in order of id, so a block too narrow for a name still says which one it is. */
+export function showHues(guide: Guide): Record<string, number> {
+  const ids = [...new Set(guide.rows.flatMap((row) => row.blocks.map((block) => block.airing.showId)))].sort();
+  return Object.fromEntries(ids.map((id, i) => [id, Math.round((i * HUE_STEP + 210) % 360)]));
+}
+
+/** The shows of the guide with the hue of each, by title: the key that explains the colours. */
+export function showKey(guide: Guide): Array<{ showId: string; title: string; hue: number }> {
+  const hues = showHues(guide);
+  const titles = new Map<string, string>();
+  for (const row of guide.rows) for (const block of row.blocks) titles.set(block.airing.showId, block.airing.showTitle);
+  return [...titles].map(([showId, title]) => ({ showId, title, hue: hues[showId]! })).sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'));
 }
 
 /** Where a time is on the day, as a fraction (0 to 1): what the track of the day is drawn from. */

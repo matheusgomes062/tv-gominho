@@ -1350,6 +1350,20 @@ h2 {
   animation: ov-slide 0.34s var(--ease) both;
 }
 
+/* The guide wants the whole width, like the cable guides did: the panel grows (the picture stays dimmed behind it). */
+.overlay-left.overlay-wide .overlay-surface {
+  width: calc(100vw - 2.4vw);
+}
+
+.overlay-left .overlay-surface {
+  transition: width 0.25s var(--ease);
+}
+
+.overlay-wide .wizard-body > :not(.guide),
+.overlay-wide .agenda > :not(.guide) {
+  max-width: calc(62 * var(--u));
+}
+
 .overlay-bottom.menu-overlay .overlay-surface {
   left: 1.2vw;
   right: 1.2vw;
@@ -3312,8 +3326,10 @@ h2 {
   --g-lane: rgb(255 255 255 / 0.05);
   --g-head: rgb(255 255 255 / 0.1);
   --g-day: rgb(255 255 255 / 0.12);
-  --g-cell: color-mix(in srgb, var(--ov-accent) 26%, #1c2030);
-  --g-cell-line: color-mix(in srgb, var(--ov-accent) 55%, transparent);
+  --g-sat: 42%;
+  --g-light: 34%;
+  --g-cell-line: rgb(255 255 255 / 0.3);
+  --g-grid-line: rgb(255 255 255 / 0.08);
   --g-text: var(--ov-text);
   --g-dim: var(--ov-dim);
   --g-time: var(--ov-dim);
@@ -3328,7 +3344,7 @@ h2 {
   --g-details-title: var(--ov-text);
   --g-hatch: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.09) 0 0.35em, transparent 0.35em 0.7em);
   --g-day-w: calc(5.4 * var(--u));
-  --g-row-h: calc(2 * var(--u));
+  --g-row-h: calc(2.15 * var(--u));
   --g-head-h: calc(1.5 * var(--u));
   display: grid;
   gap: calc(0.5 * var(--u));
@@ -3342,8 +3358,10 @@ h2 {
   --g-lane: #06165a;
   --g-head: #020a2e;
   --g-day: #0b2290;
-  --g-cell: #1f46d6;
+  --g-sat: 62%;
+  --g-light: 36%;
   --g-cell-line: #9ec0ff;
+  --g-grid-line: rgb(143 179 255 / 0.3);
   --g-text: #ffffff;
   --g-dim: #bcd0ff;
   --g-time: #ffe14d;
@@ -3366,8 +3384,10 @@ h2 {
   --g-lane: #04085e;
   --g-head: #02053f;
   --g-day: #04085e;
-  --g-cell: #0a10a8;
+  --g-sat: 72%;
+  --g-light: 32%;
   --g-cell-line: #ffffff;
+  --g-grid-line: rgb(255 255 255 / 0.25);
   --g-text: #ffffff;
   --g-dim: rgb(255 255 255 / 0.78);
   --g-time: #ffffff;
@@ -3559,13 +3579,25 @@ h2 {
   font-variant-numeric: tabular-nums;
   color: var(--g-time);
   border-left: calc(var(--bw) * 1.5) solid var(--g-line);
-  opacity: 0.8;
 }
 
-.guide-slot[data-hour] {
+.guide-slot[data-tick='hour'] {
   color: var(--g-hour);
   font-weight: var(--fw-display);
-  opacity: 1;
+}
+
+/* The 15 minute marks: a short tick at the foot of the axis. */
+.guide-slot[data-tick='quarter'] {
+  top: auto;
+  height: 30%;
+  padding: 0;
+  opacity: 0.7;
+}
+
+/* Lines at every half hour behind the blocks. */
+.guide-row .guide-track {
+  background-image: linear-gradient(to right, var(--g-grid-line) var(--bw), transparent var(--bw));
+  background-size: calc(100% / 48) 100%;
 }
 
 .guide-block {
@@ -3579,9 +3611,11 @@ h2 {
   padding: 0 calc(0.45 * var(--u));
   overflow: hidden;
   color: var(--g-text);
-  background: var(--g-cell);
+  background-color: hsl(var(--hue, 220) var(--g-sat) var(--g-light));
   border: var(--bw) solid var(--g-cell-line);
   border-radius: calc(var(--k-sm) * var(--u));
+  /* Its own width decides what it can say (see the container queries below). */
+  container-type: inline-size;
   cursor: pointer;
   touch-action: manipulation;
   transition: background 0.15s ease-out, color 0.15s ease-out;
@@ -3589,12 +3623,11 @@ h2 {
 
 .guide-block-title {
   overflow: hidden;
-  /* Cut at the edge of the block, like the old guides: a short one still shows its first letters. */
-  text-overflow: clip;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: calc(var(--fs-label) * 0.8);
+  font-size: calc(var(--fs-label) * 0.74);
   font-weight: var(--fw-display);
-  line-height: 1.05;
+  line-height: 1.15;
   text-transform: var(--tt);
 }
 
@@ -3604,8 +3637,8 @@ h2 {
   overflow: hidden;
   white-space: nowrap;
   font-family: var(--ff-body);
-  font-size: calc(var(--fs-meta) * 0.9);
-  line-height: 1.05;
+  font-size: calc(var(--fs-meta) * 0.82);
+  line-height: 1.1;
   color: var(--g-dim);
 }
 
@@ -3613,6 +3646,21 @@ h2 {
   font-weight: 700;
   color: var(--g-pin);
   text-transform: uppercase;
+}
+
+/* What a block can say depends on its width: a name needs about 4 characters, the episode a little more. Narrower than
+   that it is only its colour (the key below the guide and the strip above say which show it is). */
+@container (max-width: 3.4em) {
+  .guide-block-title,
+  .guide-block-ep {
+    display: none;
+  }
+}
+
+@container (max-width: 5.6em) {
+  .guide-block-ep {
+    display: none;
+  }
 }
 
 /* A block that began before the window: its words would be cut in the middle, so it only points back. */
@@ -3666,7 +3714,7 @@ h2 {
 .guide-grid:focus-visible .guide-block[data-focus] {
   z-index: 1;
   color: var(--g-on-focus);
-  background: var(--g-focus);
+  background-color: var(--g-focus);
   border-color: var(--g-focus);
   outline: calc(var(--bw) * 2) solid var(--g-ring);
   outline-offset: calc(-0.1 * var(--u));
@@ -3684,6 +3732,33 @@ h2 {
   .guide-block:hover {
     filter: brightness(1.18);
   }
+}
+
+.guide-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(0.2 * var(--u)) calc(1 * var(--u));
+  margin: 0;
+  /* The foot is clear of the fade at the bottom of the panel. */
+  padding: 0 calc(0.3 * var(--u)) calc(1.4 * var(--u));
+  list-style: none;
+  font-family: var(--ff-body);
+  font-size: var(--fs-meta);
+  color: var(--g-dim);
+}
+
+.guide-key li {
+  display: flex;
+  align-items: center;
+  gap: 0.45em;
+}
+
+.guide-key i {
+  width: 1.1em;
+  height: 0.8em;
+  background-color: hsl(var(--hue) var(--g-sat) var(--g-light));
+  border: var(--bw) solid var(--g-cell-line);
+  border-radius: calc(var(--k-sm) * var(--u) * 0.5);
 }
 
 .guide-now {
