@@ -128,6 +128,36 @@ describe('servir --editar', () => {
     expect((await pair(PIN)).status).toBe(200);
   });
 
+  it('compares at most MAX_ATTEMPTS PINs from a burst of parallel requests', async () => {
+    const replies = await Promise.all(Array.from({ length: 40 }, (_, i) => pair(String(100000 + i))));
+    const compared = replies.filter((reply) => reply.status === 403).length;
+    expect(compared).toBeGreaterThan(0);
+    expect(compared).toBeLessThanOrEqual(MAX_ATTEMPTS);
+    expect(replies.every((reply) => reply.status === 403 || reply.status === 429)).toBe(true);
+  });
+
+  it('refuses the right PIN sent among wrong ones while locked', async () => {
+    for (let i = 0; i < MAX_ATTEMPTS; i++) expect((await pair('999999')).status).toBe(403);
+    const replies = await Promise.all([...Array.from({ length: 10 }, () => pair('999999')), pair(PIN), pair(PIN)]);
+    expect(replies.map((reply) => reply.status)).toEqual(Array(12).fill(429));
+    expect(replies.some((reply) => reply.headers['set-cookie'])).toBe(false);
+  });
+
+  it('frees the attempt when a request ends without a PIN', async () => {
+    await new Promise<void>((resolve) => {
+      const [hostname, port] = editing.split(':');
+      const req = request({ host: hostname, port: Number(port), method: 'POST', path: '/__tv-gominho/pareamento', headers: { 'content-type': 'application/json', origin: origin(), 'content-length': '100' } });
+      req.on('error', () => resolve());
+      req.write('{"pin":');
+      setTimeout(() => {
+        req.destroy();
+        resolve();
+      }, 50);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect((await pair(PIN)).status).toBe(200);
+  });
+
   it('refuses writes without a session', async () => {
     expect((await put('', 'grades/sem-sessao.yaml')).status).toBe(401);
     expect((await put('tvg_sessao=inventada', 'grades/sem-sessao.yaml')).status).toBe(401);

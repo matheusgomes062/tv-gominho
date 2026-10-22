@@ -20,6 +20,8 @@ export const MAX_ATTEMPTS = 5;
 /** First lock; each further lock doubles, up to MAX_LOCK_MS. */
 export const LOCK_MS = 60_000;
 const MAX_LOCK_MS = 60 * 60_000;
+/** How long a pairing request may take to send its PIN. */
+const PAIR_TIMEOUT_MS = 10_000;
 
 const COOKIE = 'tvg_sessao';
 const PIN_DIGITS = 6;
@@ -50,6 +52,7 @@ export function createEditor(library: string, options: EditOptions) {
   let failures = 0;
   let locks = 0;
   let lockedUntil = 0;
+  let pairing = false;
   // One write at a time: "is it there?" and the rename that follows cannot interleave with another request.
   let queue: Promise<unknown> = Promise.resolve();
 
@@ -58,41 +61,56 @@ export function createEditor(library: string, options: EditOptions) {
     return token !== undefined && sessions.has(token);
   };
 
+  /** Answers 429 while pairing is locked. */
+  const refuseIfLocked = (req: IncomingMessage, res: ServerResponse) => {
+    const wait = lockedUntil - now();
+    if (wait <= 0) return false;
+    res.setHeader('Retry-After', Math.ceil(wait / 1000));
+    fail(req, res, 429, `Muitas tentativas erradas. Tente de novo em ${Math.ceil(wait / 1000)} s.`);
+    return true;
+  };
+
   async function pair(req: IncomingMessage, res: ServerResponse) {
     if (!String(req.headers['content-type'] ?? '').startsWith('application/json')) return fail(req, res, 415, 'Envie o PIN como JSON.');
-    const wait = lockedUntil - now();
-    if (wait > 0) {
-      res.setHeader('Retry-After', Math.ceil(wait / 1000));
-      return fail(req, res, 429, `Muitas tentativas erradas. Tente de novo em ${Math.ceil(wait / 1000)} s.`);
-    }
-    const body = await readBody(req, 1024);
-    if (body === null) return fail(req, res, 413, 'Pedido grande demais.');
-    let pin = '';
+    // One attempt at a time, counted as a failure from the start: parallel requests cannot all slip
+    // past the lock while the others are still being read.
+    if (pairing) return fail(req, res, 429, 'Outra tentativa de pareamento em andamento. Tente de novo.');
+    if (refuseIfLocked(req, res)) return;
+    pairing = true;
+    failures++;
+    let paired = false;
+    // A client that never finishes sending its PIN must not hold the attempt forever.
+    req.setTimeout(PAIR_TIMEOUT_MS, () => req.destroy());
     try {
-      const value = JSON.parse(body.toString('utf8')) as { pin?: unknown };
-      if (typeof value.pin === 'string') pin = value.pin.trim();
-    } catch {
-      // not JSON: a wrong PIN like any other
-    }
-    if (!samePin(pin, options.pin)) {
-      failures++;
-      if (failures >= MAX_ATTEMPTS) {
+      const body = await readBody(req, 1024);
+      if (body === null) return fail(req, res, 413, 'Pedido grande demais.');
+      let pin = '';
+      try {
+        const value = JSON.parse(body.toString('utf8')) as { pin?: unknown };
+        if (typeof value.pin === 'string') pin = value.pin.trim();
+      } catch {
+        // not JSON: a wrong PIN like any other
+      }
+      if (!samePin(pin, options.pin)) return fail(req, res, 403, 'PIN errado.');
+      paired = true;
+      failures = 0;
+      locks = 0;
+      const token = randomBytes(32).toString('hex');
+      sessions.add(token);
+      // No Max-Age: the cookie lasts while the browser is open, the session while this server runs.
+      res.setHeader('Set-Cookie', `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict`);
+      options.log('Um aparelho foi pareado e pode salvar canais.');
+      sendJson(req, res, { pareado: true });
+    } finally {
+      pairing = false;
+      if (!paired && failures >= MAX_ATTEMPTS) {
         const ms = Math.min(LOCK_MS * 2 ** locks, MAX_LOCK_MS);
         locks++;
         failures = 0;
         lockedUntil = now() + ms;
         options.log(`Atenção: ${MAX_ATTEMPTS} PINs errados seguidos. Pareamento travado por ${Math.round(ms / 1000)} s.`);
       }
-      return fail(req, res, 403, 'PIN errado.');
     }
-    failures = 0;
-    locks = 0;
-    const token = randomBytes(32).toString('hex');
-    sessions.add(token);
-    // No Max-Age: the cookie lasts while the browser is open, the session while this server runs.
-    res.setHeader('Set-Cookie', `${COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict`);
-    options.log('Um aparelho foi pareado e pode salvar canais.');
-    sendJson(req, res, { pareado: true });
   }
 
   async function write(req: IncomingMessage, res: ServerResponse, raw: string, overwrite: boolean) {
@@ -206,6 +224,8 @@ function readBody(req: IncomingMessage, limit: number): Promise<Buffer | null> {
       chunks.push(chunk);
     });
     req.on('end', () => resolve(over ? null : Buffer.concat(chunks)));
+    // Cut off before the end (timeout, client gone): no body. After 'end' this changes nothing.
+    req.on('close', () => resolve(null));
     req.on('error', reject);
   });
 }
