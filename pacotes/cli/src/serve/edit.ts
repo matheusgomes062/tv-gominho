@@ -136,7 +136,9 @@ export function createEditor(library: string, options: EditOptions) {
       const dir = await targetDir(library, Boolean(nested), Boolean(gradeName));
       if (!dir) return fail(req, res, 400, 'A pasta de destino não fica dentro da biblioteca.');
       const name = gradeName ? `${gradeName}.yaml` : BLOCKLIST_FILE;
-      const file = path.join(dir, name);
+      // The library is read case-insensitively: "Manha.yaml" next to "manha.yaml" would be the same channel twice.
+      const same = (await readdir(dir)).find((entry) => entry.toLowerCase() === name.toLowerCase());
+      const file = path.join(dir, same ?? name);
       const existing = await lstat(file).catch(() => null);
       if (existing && (!overwrite || !existing.isFile())) return fail(req, res, 409, 'Esse arquivo já existe.');
       const temp = path.join(dir, `.tv-gominho-${randomBytes(6).toString('hex')}.tmp`);
