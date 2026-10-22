@@ -15,6 +15,7 @@ import {
 import type { BrowserLibrary } from '../sources/types';
 import { WarningList } from './Warnings';
 import { Icon } from '../components/Icon';
+import logo from '../assets/tv-gominho-logo.webp';
 
 interface Props {
   onOpen(source: BrowserLibrary, library: Library): void;
@@ -103,8 +104,8 @@ export function Welcome({ onOpen }: Props) {
     <main className="welcome">
       <Static className="welcome-static" />
       <div className="welcome-card">
-        <h1 className="logo">
-          TV <span>Gominho</span>
+        <h1 className="welcome-logo">
+          <img src={logo} alt="TV Gominho" width="960" height="640" />
         </h1>
         <p className="tagline">Os desenhos das manhãs da sua infância, como na TV.</p>
 

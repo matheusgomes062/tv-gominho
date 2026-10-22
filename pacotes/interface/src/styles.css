@@ -146,6 +146,18 @@ h2 {
   margin: 0.5em 0 1.5em;
 }
 
+.welcome-logo {
+  width: min(28rem, 100%);
+  margin-inline: auto;
+  line-height: 0;
+}
+
+.welcome-logo img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .welcome-actions {
   display: flex;
   flex-wrap: wrap;
