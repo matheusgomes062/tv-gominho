@@ -1,0 +1,44 @@
+name: Bug
+description: Algo não funciona como deveria
+labels: ["bug", "needs-triage"]
+body:
+  - type: textarea
+    id: aconteceu
+    attributes:
+      label: O que aconteceu
+      description: Descreva o problema. Se houver mensagem de erro, cole aqui.
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: O que você esperava
+    validations:
+      required: true
+  - type: textarea
+    id: passos
+    attributes:
+      label: Passos para reproduzir
+      placeholder: |
+        1. Abra o app
+        2. Escolha a biblioteca
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: onde
+    attributes:
+      label: Onde está rodando
+      options:
+        - Navegador no PC
+        - Smart TV
+        - Raspberry Pi
+        - Pendrive em uma TV
+        - Outro
+    validations:
+      required: true
+  - type: input
+    id: versao
+    attributes:
+      label: Versão ou commit
+      description: Saída de `git rev-parse --short HEAD`, ou a versão do pacote.
