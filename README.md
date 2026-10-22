@@ -38,6 +38,7 @@ Leve: o app tem ~1 MB e a ferramenta é um arquivo de ~245 KB. `npm run pacote` 
 7. [Ferramentas de linha de comando (converter, grade, pendrive, verificar, servir)](docs/ferramentas.md)
 8. [Roteiro e decisões em aberto](docs/roteiro.md)
 9. [Programas exibidos pela TV Globinho (lista para busca)](docs/programas-tv-globinho.md)
+10. [Como contribuir](CONTRIBUTING.md)
 
 ## Rodando o projeto
 

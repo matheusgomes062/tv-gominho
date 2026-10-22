@@ -1,0 +1,18 @@
+name: Sugestão
+description: Uma ideia para melhorar o projeto
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: textarea
+    id: ideia
+    attributes:
+      label: A ideia
+      description: O que você gostaria de ver no projeto.
+    validations:
+      required: true
+  - type: textarea
+    id: motivo
+    attributes:
+      label: Por que
+      description: Qual problema isso resolve ou o que melhora.
+    validations:
+      required: true
