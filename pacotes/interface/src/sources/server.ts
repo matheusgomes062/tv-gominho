@@ -51,9 +51,9 @@ async function serverEditing(): Promise<ServerEditing | undefined> {
         return 'failed';
       }
     },
-    async write(path, text) {
+    async write(path, text, overwrite = false) {
       try {
-        const target = FILES + path.split('/').map(encodeURIComponent).join('/');
+        const target = FILES + path.split('/').map(encodeURIComponent).join('/') + (overwrite ? '?substituir=1' : '');
         const response = await fetch(target, { method: 'PUT', headers: { 'Content-Type': 'text/yaml; charset=utf-8' }, body: text });
         return writeOutcome(response.status);
       } catch {

@@ -5,6 +5,7 @@ import { LibraryMode } from './screens/LibraryMode';
 import { Menu } from './screens/Menu';
 import { QuickSettings } from './overlays/QuickSettings';
 import { SettingsPanel } from './overlays/SettingsPanel';
+import { BlocklistScreen } from './overlays/BlocklistScreen';
 import { ChannelEditor } from './overlays/ChannelEditor';
 import { ScheduleHub } from './overlays/ScheduleHub';
 import { WeekWizard } from './overlays/WeekWizard';
@@ -33,7 +34,7 @@ type View =
   | { name: 'player'; showId: string; index: number };
 
 /** Layers over the live picture (TV or Player), newest last: Back closes the last one. */
-type Overlay = 'menu' | 'quick' | 'settings' | 'schedule' | 'wizard' | 'editor';
+type Overlay = 'menu' | 'quick' | 'settings' | 'schedule' | 'wizard' | 'editor' | 'blocklist';
 
 const CHANNEL_KEY = 'tv-gominho.canal';
 
@@ -160,10 +161,12 @@ function Main({ session, onChangeFolder, onLibraryChange }: { session: Session; 
       )}
       {overlay === 'quick' && <QuickSettings channels={channels} onAll={() => openOverlay('settings', true)} onBack={closeOverlay} />}
       {overlay === 'settings' && <SettingsPanel channels={channels} libraryName={source.name} onBack={closeOverlay} />}
+      {overlay === 'blocklist' && <BlocklistScreen source={source} library={library} onSaved={reloadLibrary} onBack={closeOverlay} />}
       {overlay === 'schedule' && (
         <ScheduleHub
           library={library}
           onWizard={() => openOverlay('wizard', true)}
+          onBlocklist={() => openOverlay('blocklist', true)}
           onEdit={(id) => {
             setEditing(id);
             openOverlay('editor', true);

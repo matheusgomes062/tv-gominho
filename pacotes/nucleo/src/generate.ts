@@ -7,7 +7,7 @@ import { resolveInterstitials } from './library';
 import { fold, naturalCompare } from './paths';
 import { hashString } from './random';
 import type { AdBreakSettings } from './settings';
-import type { Library, Schedule, ScheduleBlock, ScheduleItem, Show } from './types';
+import type { Library, SavedPosition, Schedule, ScheduleBlock, ScheduleItem, Show } from './types';
 
 export interface GenerateBlock {
   /** Seconds since midnight. */
@@ -293,17 +293,22 @@ export function scheduleToYaml(generated: Pick<GeneratedSchedule, 'schedule'> & 
       lines.push(`    - bloco: "${clock(pick.blockStart)}"`, `      item: ${pick.item}${show}`, `      episodio: ${/^\d+$/.test(pick.episode) ? pick.episode : quote(pick.episode)}`);
     }
   }
-  if (schedule.positions && schedule.positions.length > 0) {
-    lines.push('', 'posicoes:');
-    let day: string | undefined;
-    for (const position of schedule.positions) {
-      if (position.date !== day) {
-        lines.push(`  ${quote(position.date)}:`);
-        day = position.date;
-      }
-      const show = /^[A-Za-z][\w-]*$/.test(position.show) ? position.show : quote(position.show);
-      lines.push(`    ${show}: ${/^\d+$/.test(position.episode) ? position.episode : quote(position.episode)}`);
-    }
-  }
+  lines.push(...positionsToYaml(schedule.positions));
   return `${lines.join('\n')}\n`;
+}
+
+/** The `posicoes` section of a grade (docs/grade.md), starting with a blank line; no lines when there are no positions. */
+export function positionsToYaml(positions: readonly SavedPosition[] | undefined): string[] {
+  if (!positions || positions.length === 0) return [];
+  const lines = ['', 'posicoes:'];
+  let day: string | undefined;
+  for (const position of positions) {
+    if (position.date !== day) {
+      lines.push(`  ${quote(position.date)}:`);
+      day = position.date;
+    }
+    const show = /^[A-Za-z][\w-]*$/.test(position.show) ? position.show : quote(position.show);
+    lines.push(`    ${show}: ${/^\d+$/.test(position.episode) ? position.episode : quote(position.episode)}`);
+  }
+  return lines;
 }

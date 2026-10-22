@@ -581,7 +581,7 @@ const KEYPAD = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'delete', '0', 'ok'
  * remote's number keys or with the on-screen keypad (arrows and OK). Asked once; the server remembers
  * the device by a cookie until it is turned off.
  */
-function PinPage({ editing, message, onPaired, onCancel }: { editing: ServerEditing; message?: string; onPaired(): void; onCancel(): void }) {
+export function PinPage({ editing, message, onPaired, onCancel }: { editing: ServerEditing; message?: string; onPaired(): void; onCancel(): void }) {
   const [pin, setPin] = useState('');
   const [problem, setProblem] = useState(message ?? null);
   const [busy, setBusy] = useState(false);

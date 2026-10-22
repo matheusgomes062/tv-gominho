@@ -6,6 +6,8 @@ interface Props {
   library: Library;
   /** Opens "Montar a semana", which builds a new channel. */
   onWizard(): void;
+  /** Opens the "Não passar" screen. */
+  onBlocklist(): void;
   /** Opens the editor on the grade with this id (the grade file name). */
   onEdit(channelId: string): void;
   onBack(): void;
@@ -15,7 +17,7 @@ interface Props {
  * Menu → Programação: the place to build a new channel ("Montar a semana") or to edit one of the grades
  * of the library. The automatic channel and the per-show channels are not files, so they are not listed.
  */
-export function ScheduleHub({ library, onWizard, onEdit, onBack }: Props) {
+export function ScheduleHub({ library, onWizard, onEdit, onBlocklist, onBack }: Props) {
   return (
     <Overlay edge="left" label="Programação" onBack={onBack} className="wizard-overlay">
       <div className="wizard schedule-hub">
@@ -67,6 +69,16 @@ export function ScheduleHub({ library, onWizard, onEdit, onBack }: Props) {
             </div>
           )}
           <p className="panel-note">O canal automático e os canais por programa não têm arquivo de grade, então não são editados aqui.</p>
+
+          <h2>O que não passa</h2>
+          <button data-nav data-hub="blocklist" className="row wizard-row" onClick={onBlocklist}>
+            <Icon name="close" className="row-lead" />
+            <span className="row-text">
+              <span className="row-label">Não passar</span>
+              <span className="row-meta">Programas e episódios que nenhum canal escolhe sozinho.</span>
+            </span>
+            <Icon name="chevronRight" className="selector-arrow" />
+          </button>
         </div>
 
         <KeyHints

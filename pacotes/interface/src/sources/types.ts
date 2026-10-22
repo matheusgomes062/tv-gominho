@@ -4,8 +4,8 @@ import type { PairOutcome, WriteOutcome } from '../pin-model';
 /** Saving through `tv-gominho servir --editar`: pair once with the PIN, then write channel files. */
 export interface ServerEditing {
   pair(pin: string): Promise<PairOutcome>;
-  /** Writes a new file (never over an existing one) at a library path such as "grades/manha.yaml". */
-  write(path: string, text: string): Promise<WriteOutcome>;
+  /** Writes a file at a library path such as "grades/manha.yaml": a new one, or over an existing one when `overwrite` is set. */
+  write(path: string, text: string, overwrite?: boolean): Promise<WriteOutcome>;
 }
 
 /** A library folder opened in the browser. */

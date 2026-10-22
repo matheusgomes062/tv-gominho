@@ -87,6 +87,7 @@ export {
 export {
   generateSchedule,
   scheduleToYaml,
+  positionsToYaml,
   pickInterstitialRef,
   yearRange,
   DEFAULT_GENERATE_BLOCK,
