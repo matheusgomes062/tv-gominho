@@ -17,3 +17,6 @@ exemplo/
 # Answers cache and work folder the CLI writes next to the files it reads.
 .tv-gominho/
 .tv-gominho-tmp/
+
+# Worktrees of Claude Code sub-agents
+/.claude/worktrees/
