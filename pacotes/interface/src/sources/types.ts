@@ -6,6 +6,11 @@ export interface ServerEditing {
   pair(pin: string): Promise<PairOutcome>;
   /** Writes a file at a library path such as "grades/manha.yaml": a new one, or over an existing one when `overwrite` is set. */
   write(path: string, text: string, overwrite?: boolean): Promise<WriteOutcome>;
+  /**
+   * Overwrites the grade at `path`; the server first copies the old file to `<name>.AAAA-MM-DD.yaml.bak` next to it
+   * and says where (`backup`, a library path). The client never writes a backup path itself.
+   */
+  replaceWithBackup(path: string, text: string): Promise<{ status: WriteOutcome; backup?: string }>;
 }
 
 /** A library folder opened in the browser. */

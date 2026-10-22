@@ -498,6 +498,11 @@ export function prepareSave(state: EditorState, library: Library, date: string):
   return { ...built, schedule: preservePositions(state.base, built.schedule, library, date) };
 }
 
+/** Whether the file has a comment written by hand: a line whose first non-space character is `#`. Saving rewrites the file and drops them. */
+export function hasHandComments(text: string): boolean {
+  return /^\s*#/m.test(text);
+}
+
 /** The text of the grade file for an edited schedule. Comments of the old file are not kept (see docs/grade.md). */
 export function editedYaml(schedule: Schedule, date: string): string {
   return scheduleToYaml({ schedule }, [`Editada pelo app em ${date}. Pode editar à vontade (veja docs/grade.md).`]);

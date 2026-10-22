@@ -8,6 +8,7 @@ import {
   checkEditor,
   defaultItem,
   editedYaml,
+  hasHandComments,
   interstitialCategories,
   isDirty,
   moveItem,
@@ -562,5 +563,14 @@ describe('the file', () => {
     const yaml = editedYaml(buildEditor(state).schedule, '2026-10-22');
     expect(yaml.startsWith('# Editada pelo app em 2026-10-22.')).toBe(true);
     expect(yaml).not.toContain('no fim, com os intervalos');
+  });
+});
+
+describe('hasHandComments', () => {
+  it('is true when a line starts with # (after spaces), false for a # inside a value or no comments', () => {
+    expect(hasHandComments('# minha nota\nnome: A\n')).toBe(true);
+    expect(hasHandComments('nome: A\nblocos:\n    # entre linhas\n  - horario: "08:00"\n')).toBe(true);
+    expect(hasHandComments('nome: "A # B"\r\nblocos: []\r\n')).toBe(false);
+    expect(hasHandComments('')).toBe(false);
   });
 });
