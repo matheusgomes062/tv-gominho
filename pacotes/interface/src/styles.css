@@ -2909,6 +2909,21 @@ h2 {
   gap: calc(0.6 * var(--u));
 }
 
+.editor-fields .wizard-field {
+  min-width: 0;
+}
+
+.editor-fields input {
+  min-width: 0;
+  width: 100%;
+}
+
+@media (max-width: 720px) {
+  .editor-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .editor-days {
   grid-column: 1 / -1;
   display: grid;

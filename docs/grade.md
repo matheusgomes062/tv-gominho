@@ -42,7 +42,7 @@ Itens que não existem na biblioteca (um programa ou uma vinheta que sumiu) apar
 
 Salvar **troca o arquivo da grade** (`grades/<canal>.yaml`) pelo texto novo, sem pedir uma segunda confirmação; faça uma cópia do arquivo antes se quiser guardar a versão antiga. O arquivo é reescrito pelo app: **os comentários que você escreveu nele não são mantidos** (o app põe só uma linha de comentário no topo), mas o conteúdo, sim. Fica igual ao formato deste documento.
 
-Onde grava é como no assistente: no Chrome ou no Edge, com a biblioteca aberta por "Escolher biblioteca", o navegador pede permissão de escrita na pasta quando você salva (Ctrl+S também salva) e o canal novo já vale na troca de canais, sem reiniciar. Nos outros casos, o app **baixa o arquivo** com o mesmo nome e mostra onde colocá-lo: por cima do arquivo antigo em `grades/`.
+Onde grava é como no assistente: no Chrome ou no Edge, com a biblioteca aberta por "Escolher biblioteca", o navegador pede permissão de escrita na pasta quando você salva (Ctrl+S também salva) e o canal novo já vale na troca de canais, sem reiniciar. Nos outros casos (Firefox, Safari, pasta aberta pelo campo de pasta comum, biblioteca servida por `tv-gominho servir`, com ou sem `--editar`, ou permissão negada), o app **baixa o arquivo** com o mesmo nome e mostra onde colocá-lo: por cima do arquivo antigo em `grades/`.
 
 ## Exemplo
 
