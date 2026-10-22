@@ -30,7 +30,7 @@ describe('parseSettings', () => {
   it('reads every option with its pt-BR values', () => {
     const { settings, warnings } = parse(`
 modo_inicial: biblioteca
-canal_inicial: TV Globinho
+canal_inicial: TV Gominho
 canais_por_programa: não
 horario: do_inicio
 crt:
@@ -47,7 +47,7 @@ relogio_na_tela: sim
     expect(warnings).toEqual([]);
     expect(settings).toEqual({
       startMode: 'library',
-      startChannel: 'TV Globinho',
+      startChannel: 'TV Gominho',
       channelsPerShow: false,
       schedule: 'fromStart',
       crt: { enabled: true, intensity: 'strong', curvature: 35, scanlines: true },
@@ -261,12 +261,12 @@ describe('sanitizeSettings', () => {
 
 describe('findChannelIndex', () => {
   const channels = [
-    { id: 'manha', name: 'TV Globinho' },
+    { id: 'manha', name: 'TV Gominho' },
     { id: '__programa:bob', name: 'Bob Esponja' },
   ] as Schedule[];
 
   it('matches name or id, ignoring case and accents', () => {
-    expect(findChannelIndex(channels, 'tv globinho')).toBe(0);
+    expect(findChannelIndex(channels, 'tv gominho')).toBe(0);
     expect(findChannelIndex(channels, 'Manhã')).toBe(0);
     expect(findChannelIndex(channels, 'bob esponja')).toBe(1);
     expect(findChannelIndex(channels, 'nada')).toBe(-1);

@@ -37,7 +37,7 @@ const OPTIONS = {
   simular: { type: 'boolean' },
 } as const;
 
-const DEFAULT_FILE = 'tv-globinho';
+const DEFAULT_FILE = 'tv-gominho';
 
 const HELP = `Uso:
   tv-gominho grade <biblioteca> [opções]
@@ -52,7 +52,7 @@ passam dois episódios seguidos.
 A grade gerada é um arquivo comum: dá para abrir e editar à vontade (veja docs/grade.md).
 
 Opções:
-  --nome <texto>              nome do canal. Padrão: "TV Globinho"
+  --nome <texto>              nome do canal. Padrão: "TV Gominho"
   --programas, -p a,b,c       pastas dos programas, na ordem do rodízio.
                               Padrão: todos os programas com episódios
   --blocos, -b <horários>     blocos e duração, como "08:00-12:00" ou "08:00-10:00,14:00-17:30".
@@ -72,7 +72,7 @@ Opções:
 
 Exemplos:
   tv-gominho grade ./biblioteca --epoca 2004 --simular
-  tv-gominho grade ./biblioteca --epoca 2010 -b 08:00-12:00 --arquivo tv-globinho-2010
+  tv-gominho grade ./biblioteca --epoca 2010 -b 08:00-12:00 --arquivo tv-gominho-2010
   tv-gominho grade ./biblioteca -p dragon-ball-z,pokemon,digimon -b 08:00-10:00,10:30-12:00`;
 
 export const gradeCommand: Command = {

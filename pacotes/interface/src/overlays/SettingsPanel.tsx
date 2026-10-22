@@ -304,7 +304,7 @@ function ThemePreview({ theme }: { theme: Theme }) {
       {theme === 'classic' && (
         <>
           <b>CH 03</b>
-          <small>TV Globinho</small>
+          <small>TV Gominho</small>
         </>
       )}
       {theme === 'vhs' && (
@@ -318,7 +318,7 @@ function ThemePreview({ theme }: { theme: Theme }) {
       {theme === 'modern' && (
         <span className="preview-pill">
           <b>03</b>
-          <small>TV Globinho</small>
+          <small>TV Gominho</small>
         </span>
       )}
       {theme === 'custom' && <Icon name="settings" />}

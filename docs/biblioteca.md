@@ -33,7 +33,7 @@ biblioteca/
     comerciais/              # comerciais antigos (opcional)
     chamadas/                # chamadas de programação (opcional)
   grades/
-    globinho-2003.yaml       # grades de programação (veja grade.md)
+    gominho-2003.yaml        # grades de programação (veja grade.md)
   configuracoes.yaml         # configurações padrão (opcional, veja configuracoes.md)
 ```
 

@@ -112,7 +112,7 @@ maioria dos vídeos já tem), som AAC estéreo 48 kHz com o volume igualado.
 
 Exemplos:
   tv-gominho pendrive ./biblioteca --destino E:\\ --simular
-  tv-gominho pendrive ./biblioteca --destino E:\\ --grade globinho-2003 --dias 5
+  tv-gominho pendrive ./biblioteca --destino E:\\ --grade gominho-2003 --dias 5
   tv-gominho pendrive ./biblioteca -d E:\\ --sem-comerciais --crt suave --copiar-biblioteca
 
 Ctrl+C interrompe com segurança: arquivos pela metade são apagados e o que já foi

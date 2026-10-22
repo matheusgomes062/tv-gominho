@@ -4,7 +4,7 @@ import type { LibraryWarning } from './types';
 
 function parse(text: string) {
   const warnings: LibraryWarning[] = [];
-  const schedule = parseSchedule('grades/globinho-2003.yaml', text, warnings);
+  const schedule = parseSchedule('grades/gominho-2003.yaml', text, warnings);
   return { schedule, messages: warnings.map((w) => w.message) };
 }
 
@@ -28,7 +28,7 @@ blocos:
 `);
     expect(messages).toEqual([]);
     expect(schedule).toMatchObject({
-      id: 'globinho-2003',
+      id: 'gominho-2003',
       name: 'TV Globinho (2003)',
       startDate: '2003-03-03',
       days: ['seg', 'ter', 'qua', 'qui', 'sex'],

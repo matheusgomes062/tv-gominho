@@ -7,7 +7,7 @@ Não precisa escrever a grade à mão: `tv-gominho grade <biblioteca> --epoca 20
 ## Exemplo
 
 ```yaml
-nome: TV Globinho (2003)
+nome: TV Gominho (2003)
 descricao: Programação das manhãs de segunda a sexta.
 data_inicio: 2003-03-03     # dia em que a grade "estreou" (define qual episódio passa em cada dia)
 dias: [seg, ter, qua, qui, sex]
@@ -79,4 +79,4 @@ Como na TV de verdade, os episódios não passam direto: o motor insere **interv
 
 ## Grades da comunidade
 
-As grades históricas ficam em [`grades/`](../grades/) neste repositório, uma por arquivo (`globinho-2003.yaml`). Contribuições devem citar a fonte (guia de TV, jornal da época, gravação) na `descricao`.
+As grades históricas ficam em [`grades/`](../grades/) neste repositório, uma por arquivo (`gominho-2003.yaml`). Contribuições devem citar a fonte (guia de TV, jornal da época, gravação) na `descricao`.

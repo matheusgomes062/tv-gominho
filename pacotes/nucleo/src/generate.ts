@@ -17,7 +17,7 @@ export interface GenerateBlock {
 }
 
 export interface GenerateOptions {
-  /** Channel name. Default "TV Globinho". */
+  /** Channel name. Default "TV Gominho". */
   name?: string;
   description?: string;
   /** Show folder names, in the order they take turns. Default: every show with episodes, in library order. */
@@ -122,9 +122,9 @@ export function generateSchedule(
   });
 
   const schedule: Schedule = {
-    id: 'tv-globinho',
+    id: 'tv-gominho',
     path: '',
-    name: options.name ?? 'TV Globinho',
+    name: options.name ?? 'TV Gominho',
     description: options.description,
     startDate: options.startDate,
     days: options.days ?? WEEKDAYS.filter((day) => day !== 'sab' && day !== 'dom'),

@@ -207,7 +207,7 @@ export function parseSettings(path: string, text: string, warnings: LibraryWarni
         break;
       case 'canal_inicial':
         if (typeof value === 'string' && value.trim()) set('startChannel', value.trim());
-        else if (value !== null) warn('"canal_inicial" deve ser o nome de uma grade, por exemplo "TV Globinho".');
+        else if (value !== null) warn('"canal_inicial" deve ser o nome de uma grade, por exemplo "TV Gominho".');
         break;
       case 'canais_por_programa':
         set('channelsPerShow', bool(key, value, warn));

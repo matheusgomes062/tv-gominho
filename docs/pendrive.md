@@ -1,6 +1,6 @@
 # Pendrive para qualquer TV
 
-O objetivo: qualquer pessoa coloca o pendrive na TV, aperta play e assiste à TV Globinho, sem instalar nada.
+O objetivo: qualquer pessoa coloca o pendrive na TV, aperta play e assiste à TV Gominho, sem instalar nada.
 
 O player embutido das TVs só toca arquivos de vídeo. Ele não roda o app, então a programação é **pré-renderizada**: a ferramenta `tv-gominho pendrive` monta a grade e grava o resultado como arquivos MP4 comuns. Ela usa o [ffmpeg](https://ffmpeg.org) (veja [ferramentas.md](ferramentas.md) para instalar).
 
@@ -12,10 +12,10 @@ No computador, pela linha de comando (a tela "Criar pendrive" no app vem depois)
 tv-gominho pendrive <biblioteca> --destino <pasta> [opções]
 ```
 
-Por exemplo, 5 dias da grade `globinho-2003`, sem comerciais, no pendrive que o Windows chama de `E:`:
+Por exemplo, 5 dias da grade `gominho-2003`, sem comerciais, no pendrive que o Windows chama de `E:`:
 
 ```sh
-tv-gominho pendrive ./biblioteca --destino E:\ --grade globinho-2003 --dias 5 --sem-comerciais
+tv-gominho pendrive ./biblioteca --destino E:\ --grade gominho-2003 --dias 5 --sem-comerciais
 ```
 
 Dentro do projeto, troque `tv-gominho` por `npm run cli --` (por exemplo, `npm run cli -- pendrive ./biblioteca --destino E:\ --simular`).
