@@ -51,7 +51,7 @@ No navegador, clique em **Escolher biblioteca** e selecione a sua pasta `bibliot
 
 | Comando | O que faz |
 |---|---|
-| `npm run exemplo:real` | Baixa desenhos clássicos em domínio público (~570 MB) para `exemplo/dominio-publico/biblioteca` |
+| `npm run exemplo:real` | Baixa desenhos clássicos em domínio público, inclusive coloridos como Pica-Pau e Pernalonga (~830 MB) para `exemplo/dominio-publico/biblioteca` |
 | `npm run cli -- converter <biblioteca>` | Converte AVI, MKV e outros vídeos que o app não toca para MP4 (precisa do ffmpeg). Veja [ferramentas](docs/ferramentas.md) |
 | `npm run cli -- organizar <downloads> <biblioteca> --simular` | Arruma vídeos baixados na biblioteca com a ajuda do Jev (IA da TypeSafe; opcional, precisa de chave em `.env`, veja [ferramentas](docs/ferramentas.md#organizar)) |
 | `npm run cli -- grade <biblioteca> --epoca 2004` | Monta o canal TV Gominho, no estilo da TV Globinho, com os programas da biblioteca (`grades/tv-gominho.yaml`) |

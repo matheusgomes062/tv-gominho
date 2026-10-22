@@ -1,12 +1,17 @@
 Trechos de 24 segundos usados na página, de desenhos em domínio público,
-na versão original em inglês, baixados do Internet Archive:
+na versão original em inglês, baixados do Internet Archive. Todos são de 1955
+ou antes (domínio público no Brasil, Lei 9.610/98, art. 44) e constam da lista
+de animações em domínio público nos EUA (registro de direitos não renovado):
+https://en.wikipedia.org/wiki/List_of_animated_films_in_the_public_domain_in_the_United_States
 
-felix.mp4     Felix the Cat, "Feline Follies" (1919)
-              https://archive.org/details/FelixTheCat-FelineFollies1919
-felix-1922.mp4  Felix the Cat, "The Stone Age" (1922)
-              https://archive.org/details/FelixTheCat-TheStoneAge1922
-superman.mp4  Superman, "The Mad Scientist" (Fleischer Studios, 1941)
-              https://archive.org/details/superman-the-complete-collection-fleischerfamous-studios
+pica-pau.mp4     Woody Woodpecker, "Pantry Panic" (Walter Lantz, 1941)
+                 https://archive.org/details/woody_woodpecker_pantry_panic
+pernalonga.mp4   Bugs Bunny, "Falling Hare" (Merrie Melodies, 1943)
+                 https://archive.org/details/falling-hare-1943
+luluzinha.mp4    Little Lulu, "A Bout with a Trout" (Famous Studios, 1947)
+                 https://archive.org/details/a-bout-with-a-trout-1947
+superman.mp4     Superman, "The Mad Scientist" (Fleischer Studios, 1941)
+                 https://archive.org/details/superman-the-complete-collection-fleischerfamous-studios
 
 Os nomes e personagens continuam sendo marcas de seus donos.
 A foto da sala (img/sala.jpg) é ilustrativa, gerada por IA.

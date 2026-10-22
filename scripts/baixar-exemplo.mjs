@@ -154,6 +154,119 @@ const PROGRAMAS = [
       },
     ],
   },
+  // Colour shorts, each checked against Wikipedia's "List of animated films in the public
+  // domain in the United States" (copyright not renewed). All are from 1955 or earlier, so
+  // also public domain in Brazil (Lei 9.610/98, art. 44). Left out on purpose despite being
+  // free: Fresh Hare (minstrel ending), Wackiki Wabbit (racial caricature), Daffy - The
+  // Commando (war propaganda).
+  {
+    pasta: 'pica-pau',
+    titulo: 'Pica-Pau',
+    titulo_original: 'Woody Woodpecker',
+    ano: 1941,
+    descricao: 'O pica-pau mais maluco do cinema, no seu terceiro desenho, o único dele em domínio público.',
+    classificacao: 'Livre',
+    capaSegundos: 40,
+    fonte: {
+      id: 'woody_woodpecker_pantry_panic',
+      pd: 'Curta de 1941 de Walter Lantz/Universal cujo registro de direitos autorais não foi renovado; é o único desenho do Pica-Pau em domínio público nos EUA. O personagem continua sendo marca da Universal.',
+    },
+    episodios: [
+      {
+        titulo: 'Pânico na Despensa',
+        descricao: 'O inverno chega, a comida acaba, e o Pica-Pau começa a ver o gato faminto como jantar (e vice-versa).',
+        arquivo: 'woody_woodpecker_pantry_panic_512kb.mp4',
+        tamanho: 29904006,
+      },
+    ],
+  },
+  {
+    pasta: 'gasparzinho',
+    titulo: 'Gasparzinho',
+    titulo_original: 'Casper the Friendly Ghost',
+    ano: 1945,
+    descricao: 'O fantasminha camarada que só queria fazer amigos, nos primeiros desenhos dos estúdios Famous.',
+    classificacao: 'Livre',
+    capaSegundos: 30,
+    fonte: {
+      id: 'vários (veja cada episódio)',
+      pd: 'Noveltoons de 1945 e 1948 (Famous Studios/Paramount) cujo registro de direitos autorais não foi renovado nos EUA. O personagem continua sendo marca de seus donos.',
+    },
+    episodios: [
+      {
+        titulo: 'O Fantasminha Camarada',
+        descricao: 'O primeiro desenho do Gasparzinho: todo mundo foge dele, até ele encontrar dois amigos.',
+        id: 'TheFriendlyGhost',
+        arquivo: 'TheFriendlyGhost_512kb.mp4',
+        tamanho: 40828377,
+      },
+      {
+        titulo: 'Boas Assombrações Esta Noite',
+        descricao: 'Gasparzinho fica amigo de uma raposinha e precisa salvá-la dos caçadores.',
+        id: 'noveltoon_casper_tfg_theres_good_boos_tonight',
+        arquivo: 'noveltoon_casper_tfg_theres_good_boos_tonight_512kb.mp4',
+        tamanho: 38148356,
+      },
+    ],
+  },
+  {
+    pasta: 'luluzinha',
+    titulo: 'Luluzinha',
+    titulo_original: 'Little Lulu',
+    ano: 1946,
+    descricao: 'A Luluzinha das tirinhas em desenhos coloridos dos estúdios Famous, com o Bolinha sempre por perto.',
+    classificacao: 'Livre',
+    capaSegundos: 30,
+    fonte: {
+      id: 'vários (veja cada episódio)',
+      pd: 'Curtas de 1946 e 1947 (Famous Studios/Paramount) cujo registro de direitos autorais não foi renovado nos EUA. A personagem continua sendo marca de seus donos.',
+    },
+    episodios: [
+      {
+        titulo: 'Sono na Aula',
+        descricao: 'Luluzinha cochila na aula de história e vai parar na viagem de Colombo.',
+        id: 'LLBoredOfEducation',
+        arquivo: 'LLBoredOfEducation_512kb.mp4',
+        tamanho: 28543816,
+      },
+      {
+        titulo: 'Uma Briga com uma Truta',
+        descricao: 'Luluzinha mata aula para pescar e acaba no fundo do rio com um peixe nada amigável.',
+        id: 'a-bout-with-a-trout-1947',
+        arquivo: 'A Bout with a Trout (1947).mp4',
+        tamanho: 36162013,
+      },
+    ],
+  },
+  {
+    pasta: 'pernalonga',
+    titulo: 'Pernalonga',
+    titulo_original: 'Bugs Bunny (Merrie Melodies)',
+    ano: 1943,
+    descricao: 'O coelho mais folgado do desenho animado, em dois curtas clássicos dos anos 40.',
+    classificacao: 'Livre',
+    capaSegundos: 45,
+    fonte: {
+      id: 'vários (veja cada episódio)',
+      pd: 'Merrie Melodies de 1943 (Warner Bros.) cujo registro de direitos autorais não foi renovado nos EUA. Os personagens continuam sendo marcas da Warner Bros.',
+    },
+    episodios: [
+      {
+        titulo: 'Coelho em Queda Livre',
+        descricao: 'Pernalonga duvida que existam gremlins sabotando aviões, até encontrar um.',
+        id: 'falling-hare-1943',
+        arquivo: 'Falling Hare (1943).mp4',
+        tamanho: 32730419,
+      },
+      {
+        titulo: 'Um Concerto Maluco',
+        descricao: 'Valsas de Strauss com Hortelino, Gaguinho, Pernalonga e Patolino desafinando tudo.',
+        id: 'ACornyConcerto1943BugsBunny',
+        arquivo: 'ACornyConcerto1943BugsBunnyDaffyDuckElmerFudd-m735o_eewgg.mp4',
+        tamanho: 35989899,
+      },
+    ],
+  },
 ];
 
 const FONTS = [
@@ -257,6 +370,9 @@ const pad = (n) => String(n).padStart(3, '0');
 const quote = (text) => JSON.stringify(text); // JSON strings are valid YAML
 
 // Never touch a folder this script didn't create; an existing one with the marker is reused.
+// Libraries made before the project was renamed carry the old marker.
+const oldMarker = path.join(out, '.gerado-pelo-tv-chuvisco');
+if (existsSync(oldMarker) && !existsSync(marker)) renameSync(oldMarker, marker);
 if (existsSync(out) && !existsSync(marker)) {
   console.error(`${out} já existe e não foi criada por este script. Apague ou renomeie a pasta antes.`);
   process.exit(1);

@@ -262,7 +262,7 @@ footer strong { color: var(--text); font-weight: 600; }
     </div>
   </div>
   <div class="wrap hero-foot">
-    <p class="credit">Na TV: <em>Felix</em> (1919 e 1922) e <em>Superman</em> da Fleischer (1941), em domínio público. A sala é uma imagem ilustrativa gerada por IA.</p>
+    <p class="credit">Na TV: <em>Pica-Pau</em> (1941), <em>Pernalonga</em> (1943), <em>Luluzinha</em> (1947) e <em>Superman</em> (1941), na versão original em inglês, em domínio público. A sala é uma imagem ilustrativa gerada por IA.</p>
     <div class="remote" role="group" aria-label="Controle da TV">
       <button class="btn icon" id="prev" type="button" aria-label="Canal anterior">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
@@ -309,10 +309,10 @@ footer strong { color: var(--text); font-weight: 600; }
           <figcaption id="guide-t"><span class="eyebrow">Uma manhã na TV Gominho</span><span class="guide-note">Exemplo de grade</span></figcaption>
           <ol>
             <li><time>08:00</time><span>Abertura</span></li>
-            <li><time>08:01</time><span>O Gato Félix</span></li>
+            <li><time>08:01</time><span>Pica-Pau</span></li>
             <li><time>08:09</time><span>Intervalo: “já voltamos” e três comerciais</span></li>
-            <li><time>08:12</time><span>Popeye</span></li>
-            <li><time>08:28</time><span>Chamada: amanhã tem Superman</span></li>
+            <li><time>08:12</time><span>Pernalonga</span></li>
+            <li><time>08:28</time><span>Chamada: amanhã tem Luluzinha</span></li>
             <li><time>08:29</time><span>Superman</span></li>
             <li><time>08:39</time><span>Encerramento</span></li>
             <li class="off"><time>08:40</time><span>Fora do ar. Volta amanhã às 08:00.</span></li>
@@ -334,10 +334,10 @@ footer strong { color: var(--text); font-weight: 600; }
           <p>Uma pasta com os seus episódios e vinhetas. Nomes baixados, como <code>DBZ_Episodio 001</code> ou <code>S01E05</code>, já são entendidos.</p>
 <pre><span class="c">biblioteca/</span>
   programas/
-    gato-felix/
+    pica-pau/
       programa.yaml
       episodios/
-        001 - Loucuras de Gato.mp4
+        001 - Pânico na Despensa.mp4
   vinhetas/
     aberturas/  intervalos/
     comerciais/</pre>
@@ -349,7 +349,7 @@ footer strong { color: var(--text); font-weight: 600; }
   - horario: <span class="g">"08:00"</span>
     itens:
       - vinheta: aberturas
-      - programa: gato-felix
+      - programa: pica-pau
       - vinheta: intervalos
       - comerciais: 3
       - programa: superman-fleischer</pre>
@@ -437,7 +437,7 @@ Comandos:
   <div class="wrap">
     <p><strong>A TV Gominho não distribui episódios, vinhetas nem marcas da Globo.</strong> Cada pessoa usa os próprios arquivos.</p>
     <p>É um projeto independente de fãs, sem afiliação com a Globo. “TV Globinho” é marca de seus donos e aparece aqui só para descrever o estilo que o projeto recria.</p>
-    <p>Software livre, GPL-3.0. Código no <a href="https://github.com/matheusgomes062/tv-gominho">GitHub</a>. Os desenhos desta página estão em domínio público no Brasil; os nomes dos personagens continuam sendo marcas dos donos. A foto da sala é ilustrativa, gerada por IA.</p>
+    <p>Software livre, GPL-3.0. Código no <a href="https://github.com/matheusgomes062/tv-gominho">GitHub</a>. Os desenhos desta página estão em domínio público no Brasil; Pica-Pau, Pernalonga, Luluzinha e Superman continuam sendo marcas de seus donos, que não têm relação com este projeto. A foto da sala é ilustrativa, gerada por IA.</p>
   </div>
 </footer>
 
@@ -445,9 +445,10 @@ Comandos:
 (() => {
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const CHANNELS = [
-    { ch: '03', show: 'O GATO FÉLIX', ep: 'Loucuras de Gato · 1919', src: 'videos/felix.mp4' },
-    { ch: '04', show: 'O GATO FÉLIX', ep: 'A Idade da Pedra · 1922', src: 'videos/felix-1922.mp4' },
-    { ch: '05', show: 'SUPERMAN', ep: 'O Cientista Maluco · 1941', src: 'videos/superman.mp4' },
+    { ch: '03', show: 'PICA-PAU', ep: 'Pânico na Despensa · 1941', src: 'videos/pica-pau.mp4' },
+    { ch: '04', show: 'PERNALONGA', ep: 'Coelho em Queda Livre · 1943', src: 'videos/pernalonga.mp4' },
+    { ch: '05', show: 'LULUZINHA', ep: 'Uma Briga com uma Truta · 1947', src: 'videos/luluzinha.mp4' },
+    { ch: '06', show: 'SUPERMAN', ep: 'O Cientista Maluco · 1941', src: 'videos/superman.mp4' },
   ];
   // The TV screen's corners in the photo (img/sala.jpg, 1536×864), traced against the silver bezel.
   const PHOTO = { w: 1536, h: 864 };
