@@ -233,8 +233,16 @@ function pickBumperGroup(library: Library, brand: string, era: number | undefine
 
 const quote = (text: string) => JSON.stringify(text);
 
-/** The schedule as a grade file (docs/grade.md), with the estimated start of each show as a comment. */
-export function scheduleToYaml(generated: GeneratedSchedule, header: string[] = []): string {
+/** "08:00", or "08:00:30" when the time has seconds (a hand-written grade may), so writing it back loses nothing. */
+function clock(seconds: number): string {
+  return seconds % 60 === 0 ? formatTimeOfDay(seconds) : `${formatTimeOfDay(seconds)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+/**
+ * The schedule as a grade file (docs/grade.md), with the estimated start of each show as a comment. Without the
+ * estimates (a grade edited by hand or in the app) the comments are left out.
+ */
+export function scheduleToYaml(generated: Pick<GeneratedSchedule, 'schedule'> & Partial<GeneratedSchedule>, header: string[] = []): string {
   const { schedule, estimates, itemStarts } = generated;
   const lines = header.map((line) => `# ${line}`);
   if (lines.length > 0) lines.push('');
@@ -255,12 +263,15 @@ export function scheduleToYaml(generated: GeneratedSchedule, header: string[] = 
   }
   lines.push('', 'blocos:');
   schedule.blocks.forEach((block, index) => {
-    lines.push(`  - horario: "${formatTimeOfDay(block.start)}"   # ~${formatTimeOfDay(block.start + estimates[index]!)} no fim, com os intervalos`);
+    const estimate = estimates?.[index];
+    lines.push(`  - horario: "${clock(block.start)}"${estimate !== undefined ? `   # ~${formatTimeOfDay(block.start + estimate)} no fim, com os intervalos` : ''}`);
     lines.push('    itens:');
     for (const item of block.items) {
       if (item.type === 'show') {
-        const at = itemStarts.get(item);
-        lines.push(`      - programa: ${item.show}${at !== undefined ? `   # ~${formatTimeOfDay(at)}` : ''}`);
+        const at = itemStarts?.get(item);
+        // Folder names that YAML could read as something else (a number, "a: b", "#...") are quoted.
+        const show = /^[A-Za-z][\w.-]*$/.test(item.show) ? item.show : quote(item.show);
+        lines.push(`      - programa: ${show}${at !== undefined ? `   # ~${formatTimeOfDay(at)}` : ''}`);
         if (item.count > 1) lines.push(`        episodios: ${item.count}`);
       } else if (item.type === 'interstitial') {
         lines.push(`      - vinheta: ${quote(item.ref)}`);
@@ -279,7 +290,7 @@ export function scheduleToYaml(generated: GeneratedSchedule, header: string[] = 
       }
       const item = schedule.blocks.find((block) => block.start === pick.blockStart)?.items[pick.item - 1];
       const show = item?.type === 'show' ? `   # ${item.show}` : '';
-      lines.push(`    - bloco: "${formatTimeOfDay(pick.blockStart)}"`, `      item: ${pick.item}${show}`, `      episodio: ${/^\d+$/.test(pick.episode) ? pick.episode : quote(pick.episode)}`);
+      lines.push(`    - bloco: "${clock(pick.blockStart)}"`, `      item: ${pick.item}${show}`, `      episodio: ${/^\d+$/.test(pick.episode) ? pick.episode : quote(pick.episode)}`);
     }
   }
   if (schedule.positions && schedule.positions.length > 0) {
