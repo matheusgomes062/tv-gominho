@@ -1,5 +1,6 @@
 import {
   buildTimeline,
+  channelAdBreaks,
   localIsoDate,
   locate,
   nextAiringDate,
@@ -100,7 +101,8 @@ export function TvMode({ source, library, durations, channels, channel, onChanne
   const { settings } = useSettings();
   // Settings that change what plays: tune() runs again when they do.
   const { interstitials, commercials, schedule: scheduleMode } = settings;
-  const { every: breakEvery, ads: breakAds, afterEpisode: breakAfterEpisode, bumpers: breakBumpers } = settings.adBreaks;
+  // The channel's own `intervalos` over the general ones.
+  const { every: breakEvery, ads: breakAds, afterEpisode: breakAfterEpisode, bumpers: breakBumpers } = schedule ? channelAdBreaks(settings, schedule) : settings.adBreaks;
   const video = useRef<HTMLVideoElement>(null);
   const timeline = useRef<Timeline | null>(null);
   const index = useRef(0);

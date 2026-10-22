@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { breakPoints, buildTimeline, filePosition, locate, planDay, requiredPaths, type TimelineEntry, type TimelineOptions } from './engine';
 import { scanLibrary } from './library';
+import { channelAdBreaks } from './settings';
 import { locateReal, resolveFromStart, resolveReal, type TimelineOf } from './modes';
 import { memorySource } from './test-helpers';
 import type { Library, Schedule } from './types';
@@ -409,5 +410,46 @@ describe('finding the file position inside a split episode', () => {
     expect(nextEntry.part?.index).toBe(1);
     expect(nextEntry.path).not.toBe(entry.path);
     expect(filePosition(nextEntry, next.offset).time).toBeCloseTo(5, 6);
+  });
+});
+
+describe('intervalos in the grade', () => {
+  const channel = (rules: string) => `${GRADE}${rules}`;
+  const withChannels = (rules: Record<string, string>) =>
+    setup({ ...FILES, ...Object.fromEntries(Object.entries(rules).map(([id, text]) => [`grades/${id}.yaml`, channel(text)])) });
+  const kinds = (lib: Library, schedule: Schedule, commercials = true) =>
+    timeline(lib, schedule, { adBreaks: channelAdBreaks({ adBreaks: BREAKS }, schedule) }, '2003-03-03', { commercials }).entries.map(describeEntry);
+
+  it('uses the channel rules, while another channel keeps the general ones', async () => {
+    const { lib, grade } = await withChannels({ curto: 'intervalos:\n  a_cada: 0\n  comerciais: 1\n  apos_episodio: nao\n' });
+    expect(kinds(lib, grade('curto'))).toEqual(['episode']);
+    expect(kinds(lib, grade('teste'))).toEqual(['ep1', 'ad', 'ad', 'ad', 'ep2', 'ad', 'ad', 'ad', 'ep3', 'ad', 'ad', 'ad']);
+    const one = await withChannels({ um: 'intervalos:\n  a_cada: 0\n  comerciais: 1\n' });
+    expect(kinds(one.lib, one.grade('um'))).toEqual(['episode', 'ad']);
+  });
+
+  it('inherits what the channel leaves out', async () => {
+    const { lib, grade } = await withChannels({ parcial: 'intervalos:\n  comerciais: 2\n' });
+    expect(grade('parcial').adBreaks).toEqual({ ads: 2 });
+    expect(channelAdBreaks({ adBreaks: BREAKS }, grade('parcial'))).toEqual({ ...BREAKS, ads: 2 });
+    expect(kinds(lib, grade('parcial'))).toEqual(['ep1', 'ad', 'ad', 'ep2', 'ad', 'ad', 'ep3', 'ad', 'ad']);
+  });
+
+  it('cannot turn commercials on when they are off in the general settings', async () => {
+    const { lib, grade } = await withChannels({ canal: 'intervalos:\n  a_cada: 5\n  comerciais: 4\n' });
+    expect(kinds(lib, grade('canal'), false)).toEqual(['episode']);
+  });
+
+  it('warns about invalid values and ignores them', async () => {
+    const { lib, grade } = await withChannels({ ruim: 'intervalos:\n  a_cada: muito\n  apos_episodio: talvez\n  cor: azul\n  comerciais: 2\n' });
+    expect(grade('ruim').adBreaks).toEqual({ ads: 2 });
+    const messages = lib.warnings.filter((w) => w.path === 'grades/ruim.yaml').map((w) => w.message);
+    expect(messages).toHaveLength(3);
+    expect(messages.join('\n')).toContain('intervalos.a_cada');
+    expect(messages.join('\n')).toContain('intervalos.apos_episodio');
+    expect(messages.join('\n')).toContain('intervalos.cor');
+    const bad = await withChannels({ lista: 'intervalos: 8\n' });
+    expect(bad.grade('lista').adBreaks).toBeUndefined();
+    expect(bad.lib.warnings.some((w) => w.path === 'grades/lista.yaml' && w.message.includes('intervalos'))).toBe(true);
   });
 });

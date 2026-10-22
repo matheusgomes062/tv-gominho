@@ -20,7 +20,7 @@ Menu, ajustes rápidos e configurações são painéis translúcidos **por cima 
 
 | Tecla | O que faz |
 |---|---|
-| Esc / Backspace / Voltar (na TV) | Abre o **menu**: canais, Biblioteca, Ajustes rápidos, Configurações, Avisos, Trocar pasta |
+| Esc / Backspace / Voltar (na TV) | Abre o **menu**: canais, Biblioteca, Programação ([montar um canal novo pela tela](grade.md#montar-a-semana-pelo-app)), Ajustes rápidos, Configurações, Avisos, Trocar pasta |
 | `S`, `←` ou `→` (na TV; `S` também no player) | Abre os **ajustes rápidos** |
 | Esc / Voltar (num painel) | Fecha um nível: lista de valores, depois o painel, depois o painel de baixo (por exemplo, configurações → menu → TV) |
 
@@ -117,6 +117,7 @@ intervalos:
 - **`comerciais`**: de 1 a 10 comerciais em cada intervalo. Cada comercial dura uns 30 segundos nos anúncios de época, então 3 comerciais são cerca de um minuto e meio.
 - **`apos_episodio`**: um intervalo no fim de cada episódio. Se a grade já tem um `comerciais: N` logo depois do episódio, não há intervalo extra.
 - **`vinhetas`**: as vinhetas que enquadram cada intervalo, como na TV de verdade: uma **entrando** ("TV Globinho volta já") e uma **voltando** ("estamos de volta"), de `vinhetas/intervalos/` (como organizar as pastas e nomear os arquivos está em [biblioteca.md](biblioteca.md)). Cada intervalo fica assim: vinheta de entrada, comerciais, vinheta de saída. Sem vinhetas em `intervalos/`, ou sem uma das duas pontas, o intervalo passa sem elas. Quais passam em cada dia vem da grade (`vinhetas_intervalo`, veja [grade.md](grade.md)) ou, sem isso, de um sorteio diário entre as subpastas.
+- Cada grade pode ter o próprio bloco `intervalos` com estes mesmos nomes; o que ela não define vem daqui, e o interruptor `comerciais` geral continua valendo para todas (veja "Intervalos por canal" em [grade.md](grade.md)).
 - Os quatro só valem com `comerciais: sim` e com comerciais em `vinhetas/comerciais/`. Valores fora dos limites geram um aviso e viram o limite mais próximo; os que faltam ficam no padrão.
 - `intervalos.vinhetas` respeita também a chave geral `vinhetas`: `vinhetas: não` (que tira **todas** as vinhetas) tira estas também, mesmo com `intervalos.vinhetas: sim`. O contrário não vale: `intervalos.vinhetas: não` tira só as vinhetas dos intervalos, e as da grade e as dos espaços entre blocos continuam.
 - No app (Configurações → Intervalos comerciais), as mesmas opções são barras e interruptores ("Vinhetas de intervalo" é o último), apagados enquanto os comerciais estiverem desligados (as vinhetas de intervalo também, se as vinhetas gerais estiverem desligadas).

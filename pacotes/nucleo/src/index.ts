@@ -10,6 +10,7 @@ export {
   DEFAULT_AD_BREAKS,
   AD_BREAK_LIMITS,
   mergeSettings,
+  channelAdBreaks,
   parseSettings,
   sanitizeSettings,
   findChannelIndex,

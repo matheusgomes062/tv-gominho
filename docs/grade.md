@@ -2,7 +2,30 @@
 
 Uma grade descreve o que passa em cada horário, como a programação da TV Globinho de um determinado ano. Cada grade é um **canal** no Modo TV. Depois das grades vêm os **canais por programa** (um por programa, só com os episódios dele; veja `canais_por_programa` em [configuracoes.md](configuracoes.md)). Sem nenhuma grade, o app cria um "Canal Automático" com todos os programas.
 
-Não precisa escrever a grade à mão: `tv-gominho grade <biblioteca> --epoca 2004` monta uma no estilo da TV Globinho com os programas e as vinhetas da biblioteca (veja [ferramentas.md](ferramentas.md#grade)). Depois é só editar o arquivo, se quiser.
+Não precisa escrever a grade à mão: `tv-gominho grade <biblioteca> --epoca 2004` monta uma no estilo da TV Globinho com os programas e as vinhetas da biblioteca (veja [ferramentas.md](ferramentas.md#grade)). Depois é só editar o arquivo, se quiser. Também dá para montar um canal pela tela, sem linha de comando: veja a seção abaixo.
+
+## Montar a semana pelo app
+
+No app, **Menu → Programação** abre o assistente "Montar a semana": uma sequência curta de passos que gera uma grade nova com o mesmo gerador do `tv-gominho grade` e a salva na biblioteca. Funciona com mouse, teclado e controle remoto (setas, OK e Voltar).
+
+| Passo | O que você escolhe |
+|---|---|
+| 1. Horários | **Manhã** (08:00–12:00), **Tarde** (14:00–18:00), **Manhã e tarde**, ou **Faixas próprias**: até 3 faixas, com início e fim ajustados de 15 em 15 minutos (← → no valor, ou clique nas setas). As faixas não podem se sobrepor e cada uma termina depois de começar. |
+| 2. Dias | Os dias da semana em que o canal passa, com atalhos "Segunda a sexta", "Fim de semana" e "Todos os dias". Pelo menos um dia. |
+| 3. Programas | **Todos os programas** (o app escolhe a ordem do rodízio) ou **Escolher os programas**: você marca os que entram e a ordem do rodízio é a da marcação; com ← → no programa marcado ele passa para antes ou depois. Pelo menos um programa. |
+| 4. Nome | Como o canal aparece na troca de canais. |
+| 5. Salvar | Um resumo e o botão **Salvar canal**. |
+
+Cada faixa de horário vira um bloco da grade, preenchido com os programas em rodízio, com abertura, chamadas e encerramento, como em `tv-gominho grade` (a marca padrão é a TV Globinho, sem época específica). Voltar (Esc) recua um passo; no primeiro, fecha o assistente.
+
+**O assistente sempre cria um canal novo.** O nome do arquivo vem do nome do canal (letras, números e hífens: "Manhãs da Turma" vira `grades/manhas-da-turma.yaml`) e, se já existe, ganha `-2`, `-3`... Nenhum arquivo existente é trocado. Para mudar um canal que já existe, edite o arquivo (formato abaixo).
+
+### Onde o canal é salvo
+
+- **Chrome ou Edge, no PC, com a biblioteca aberta pelo botão "Escolher biblioteca"** (a pasta fica lembrada): ao tocar em **Salvar canal**, o navegador pede **permissão de escrita** na pasta. O app só pede isso nessa hora; a leitura continua como sempre. Dada a permissão, o arquivo é gravado em `grades/` (a pasta é criada se não existir; se a biblioteca está dentro de uma pasta `biblioteca`, vai para `biblioteca/grades/`). Em seguida a biblioteca é lida de novo e o canal já aparece na troca de canais, sem recarregar a página. A tela oferece **Assistir agora**.
+- **Em qualquer outro caso** (Firefox, Safari, pasta aberta pelo campo de pasta comum, biblioteca servida por `tv-gominho servir`, ou permissão negada): o app **baixa o arquivo** `.yaml` e mostra onde colocá-lo: dentro da pasta `grades/` da biblioteca (a mesma pasta, no pendrive e no Raspberry Pi). Depois é só abrir a biblioteca de novo para o canal aparecer.
+
+Para os blocos fecharem perto do fim de cada faixa, o assistente lê a duração dos vídeos (o navegador lê os metadados dos arquivos, sem ffmpeg). Se isso demorar mais de 12 segundos numa biblioteca grande, valem as durações típicas (22 minutos por episódio) para o que faltou.
 
 ## Exemplo
 
@@ -48,6 +71,7 @@ blocos:
 | `data_inicio` | Dia da estreia; define qual episódio passa em cada dia. |
 | `dias` | Dias da semana em que a grade passa (padrão: todos). |
 | `vinhetas_intervalo` | Opcional. De onde vêm as vinhetas que abrem e fecham os intervalos comerciais (veja "Intervalos comerciais" abaixo). |
+| `intervalos` | Opcional. Regras de intervalo só deste canal, com os mesmos nomes da configuração geral (veja "Intervalos por canal" abaixo). |
 | `agenda` | Opcional. Episódios escolhidos à mão para datas específicas (veja "Agenda" abaixo). |
 | `blocos` | Os blocos de horário, com seus itens. |
 
@@ -105,6 +129,22 @@ Como na TV de verdade, os episódios não passam direto: o motor insere **interv
 - **O tempo conta:** os intervalos entram na linha do tempo, então um bloco com intervalos dura mais que a soma dos episódios (e o preenchimento de espaços entre blocos, a regra 1, usa só o que sobrar). O episódio continua a partir do ponto em que parou, no mesmo arquivo.
 - **Vinhetas de intervalo:** com `intervalos.vinhetas` ligado (padrão), cada intervalo começa com uma vinheta de **entrada** ("TV Globinho volta já") e termina com uma de **saída** ("estamos de volta"), tiradas de `vinhetas/intervalos/` (nomes e pastas em [biblioteca.md](biblioteca.md)). Os dois lados de um intervalo vêm sempre da mesma marca (subpasta). Se a grade não diz nada, o motor sorteia uma marca **por dia**, com a semente do dia (igual em todo aparelho e durante o dia todo, então o canal parece uma emissora só naquele dia). Com `vinhetas_intervalo`, a grade escolhe a marca, na mesma sintaxe dos itens `vinheta`: uma categoria (`intervalos`, que volta a sortear uma subpasta por dia), uma subpasta (`intervalos/tv-globinho`) ou um arquivo (`intervalos/tv-globinho/entrada-01.mp4`, que só serve ao lado que o nome indica). Se o caminho não existe, aparece um aviso em Avisos e vale o sorteio diário. Sem vinheta de entrada (ou de saída) na marca, aquele lado do intervalo fica sem vinheta. As vinhetas contam no tempo do dia como os comerciais e só passam quando o intervalo acontece. O "Canal Automático" e os canais por programa também as usam, sempre com o sorteio diário.
 - **Vinhetas escritas na grade** (`vinheta: intervalos`, `encerramentos`...) continuam passando onde você escreveu: a grade é sua. O "Canal Automático" e os canais por programa não colocam mais vinhetas de intervalo entre os episódios; quem faz isso são os comerciais.
+
+### Intervalos por canal
+
+Uma grade pode ter as próprias regras de intervalo, com o bloco opcional `intervalos` e os mesmos nomes do [bloco geral](configuracoes.md): `a_cada`, `comerciais`, `apos_episodio` e `vinhetas`.
+
+```yaml
+intervalos:
+  a_cada: 11            # só este canal: um intervalo a cada 11 minutos de episódio
+  comerciais: 2         # e 2 comerciais por intervalo
+                        # apos_episodio e vinhetas não aparecem: valem os da configuração geral
+```
+
+- **O que a grade não escreve vem da configuração geral** (`configuracoes.yaml` e o que foi escolhido no menu). Outras grades da mesma biblioteca, sem `intervalos`, seguem as regras gerais.
+- **O interruptor geral `comerciais` vence.** O canal só muda *como* os intervalos são, nunca *se* há comerciais: com `comerciais: não` na configuração geral, ou no menu, nenhuma grade liga comerciais. `vinhetas: não` geral também continua tirando as vinhetas de intervalo.
+- **Valores inválidos** (texto onde se espera número, "talvez" no lugar de sim/não, opção desconhecida) geram um aviso em Avisos e são ignorados, e a regra volta a ser a geral. Números fora dos limites viram o limite mais próximo, como na configuração geral.
+- Vale no app e no `tv-gominho pendrive`.
 
 ## Grades da comunidade
 

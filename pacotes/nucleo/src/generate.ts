@@ -243,6 +243,16 @@ export function scheduleToYaml(generated: GeneratedSchedule, header: string[] = 
   lines.push(`data_inicio: ${schedule.startDate}`);
   lines.push(`dias: [${schedule.days.join(', ')}]`);
   if (schedule.breakBumpersRef) lines.push(`vinhetas_intervalo: ${quote(schedule.breakBumpersRef)}`);
+  if (schedule.adBreaks) {
+    const { every, ads, afterEpisode, bumpers } = schedule.adBreaks;
+    const rules = [
+      every !== undefined ? `a_cada: ${every}` : '',
+      ads !== undefined ? `comerciais: ${ads}` : '',
+      afterEpisode !== undefined ? `apos_episodio: ${afterEpisode ? 'sim' : 'nao'}` : '',
+      bumpers !== undefined ? `vinhetas: ${bumpers ? 'sim' : 'nao'}` : '',
+    ].filter(Boolean);
+    if (rules.length > 0) lines.push('intervalos:', ...rules.map((rule) => `  ${rule}`));
+  }
   lines.push('', 'blocos:');
   schedule.blocks.forEach((block, index) => {
     lines.push(`  - horario: "${formatTimeOfDay(block.start)}"   # ~${formatTimeOfDay(block.start + estimates[index]!)} no fim, com os intervalos`);

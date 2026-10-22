@@ -32,7 +32,7 @@ export async function openFolder(root: FileSystemDirectoryHandle): Promise<Brows
   await walk(root, '');
 
   const files = new Map<string, File>();
-  return fileBackedLibrary(root.name, [...handles.keys()], async (path) => {
+  const library = fileBackedLibrary(root.name, [...handles.keys()], async (path) => {
     let file = files.get(path);
     if (!file) {
       const handle = handles.get(path);
@@ -42,6 +42,8 @@ export async function openFolder(root: FileSystemDirectoryHandle): Promise<Brows
     }
     return file;
   });
+  library.handle = root;
+  return library;
 }
 
 /** Fallback for browsers without showDirectoryPicker: <input type="file" webkitdirectory>. */

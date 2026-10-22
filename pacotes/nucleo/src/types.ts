@@ -1,5 +1,5 @@
 import type { Weekday } from './dates';
-import type { PartialSettings, Settings } from './settings';
+import type { AdBreakSettings, PartialSettings, Settings } from './settings';
 
 /**
  * Where the library files come from: a folder picked in the browser, the Node
@@ -90,6 +90,11 @@ export interface Schedule {
    * ("intervalos/tv-globinho"). Absent: the engine draws one brand from vinhetas/intervalos/ for each day.
    */
   breakBumpersRef?: string;
+  /**
+   * `intervalos` of the grade: break rules of this channel; what is missing follows the general settings
+   * (see `channelAdBreaks`). Absent: the channel uses the general ones.
+   */
+  adBreaks?: Partial<AdBreakSettings>;
   /** Episodes picked by hand for a date, in date order. Absent: every episode follows the count from `startDate`. */
   agenda?: AgendaPick[];
 }
