@@ -20,6 +20,8 @@ export interface PreviewOptions {
 export interface PreviewRow {
   /** Index of the block in the schedule. */
   block: number;
+  /** Position (from 0) in its block of the schedule item that plays this episode. */
+  item: number;
   /** Seconds since midnight when the episode starts (its first part, when breaks cut it). */
   start: number;
   /** When it ends (its last part). */
@@ -118,7 +120,7 @@ export function previewDay(schedule: Schedule, library: Library, date: string, o
   const rows: PreviewRow[] = [];
   for (const [item, span] of spans) {
     if (item.kind !== 'episode') continue;
-    rows.push({ block: blockOf.get(item)!, start: span.start, end: span.end, show: item.show, episode: item.episode, episodeIndex: item.episodeIndex });
+    rows.push({ block: blockOf.get(item)!, item: item.itemIndex, start: span.start, end: span.end, show: item.show, episode: item.episode, episodeIndex: item.episodeIndex });
   }
   rows.sort((a, b) => a.start - b.start);
 
@@ -134,7 +136,7 @@ export function previewDay(schedule: Schedule, library: Library, date: string, o
           kind: 'overlap',
           block: index,
           seconds: late,
-          message: `O bloco das ${formatTimeOfDay(before.start)} passa do horário do bloco das ${formatTimeOfDay(block.start)}: o das ${formatTimeOfDay(block.start)} começa ${formatSpan(late)} atrasado, às ${formatTimeOfDay(block.actualStart)}.`,
+          message: `O horário das ${formatTimeOfDay(before.start)} passa do horário das ${formatTimeOfDay(block.start)}: o das ${formatTimeOfDay(block.start)} começa ${formatSpan(late)} atrasado, às ${formatTimeOfDay(block.actualStart)}.`,
         });
       } else if (hole > DEFAULT_MAX_GAP_FILL) {
         warnings.push({

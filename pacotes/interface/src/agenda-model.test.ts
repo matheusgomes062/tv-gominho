@@ -2,6 +2,7 @@ import { planDay, scanLibrary, type Library, type LibrarySource, type Schedule }
 import { describe, expect, it } from 'vitest';
 import {
   agendaEntryOf,
+  airingOf,
   agendaRows,
   airingDates,
   buildWeek,
@@ -93,6 +94,30 @@ describe('weeks', () => {
 
   it('shows only the days the grade airs on', () => {
     expect(airingDates('2003-03-03', ['seg', 'qua', 'sab'])).toEqual(['2003-03-03', '2003-03-05', '2003-03-08']);
+  });
+});
+
+describe('the grade as it airs', () => {
+  it('ties each item of the grade to the item of the editor, even after blocks and items move', async () => {
+    const { library, state } = await setup();
+    const airing = airingOf(state, library, TODAY)!;
+    expect(airing.itemKeyAt(0, 1)).toBe(keyOf(state, '08:00', 1));
+    expect(airing.itemKeyAt(1, 0)).toBe(keyOf(state, '10:30', 0));
+    expect(airing.itemKeyAt(5, 0)).toBeUndefined();
+
+    // The 10:30 block goes first: block 0 of the grade is now that one.
+    const moved = setBlockTime(state, state.blocks[1]!.key, '07:00');
+    const early = airingOf(moved, library, TODAY)!;
+    expect(early.schedule.blocks.map((block) => block.start)).toEqual([7 * 3600, 8 * 3600]);
+    expect(early.itemKeyAt(0, 0)).toBe(keyOf(moved, '07:00', 0));
+    expect(early.itemKeyAt(1, 2)).toBe(keyOf(moved, '08:00', 2));
+  });
+
+  it('leaves out what is not usable yet, and has nothing when nothing is', async () => {
+    const { library, state } = await setup();
+    const typing = airingOf(setBlockTime(state, state.blocks[1]!.key, '10:'), library, TODAY)!;
+    expect(typing.schedule.blocks).toHaveLength(1);
+    expect(airingOf(toggleDay(toggleDay(toggleDay(toggleDay(toggleDay(state, 'seg'), 'ter'), 'qua'), 'qui'), 'sex'), library, TODAY)).toBeNull();
   });
 });
 

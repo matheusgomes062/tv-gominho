@@ -2,10 +2,8 @@ import {
   formatSpan,
   formatTimeOfDay,
   localIsoDate,
-  previewDay,
   proposalToRaw,
   scheduleToYaml,
-  type DayPreview,
   type Weekday,
   type Library,
   type Proposal,
@@ -16,6 +14,9 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNod
 import { Icon, type IconName } from '../components/Icon';
 import { KeyHints, Overlay } from '../components/Overlay';
 import { ScrollBody } from '../components/ScrollBody';
+import { useWeek } from '../components/useWeek';
+import { WeekView, WeekWarnings } from '../components/WeekView';
+import type { WeekDay } from '../week-model';
 import type { Durations } from '../media';
 import { useSettings } from '../settings';
 import { clickDirection } from '../settings-model';
@@ -403,7 +404,7 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
               )}
               {step === 'review' && (
                 <>
-                  <NameField state={state} fileName={fileName} onChange={setState} onEnter={goOn} />
+                  <NameField state={state} onChange={setState} onEnter={goOn} />
                   <button data-nav data-advanced className="action-tile small" onClick={() => setNav(openStep(nav, 'advanced'))}>
                     <Icon name="settings" className="action-icon" />
                     <span>Ajustes avançados</span>
@@ -949,12 +950,10 @@ function BumpersStep({ state, library, onChange }: { state: WizardState; library
 
 function NameField({
   state,
-  fileName,
   onChange,
   onEnter,
 }: {
   state: WizardState;
-  fileName: string;
   onChange(update: (state: WizardState) => WizardState): void;
   onEnter(): void;
 }) {
@@ -985,15 +984,7 @@ function NameField({
         onFocus={(event) => event.target.select()}
       />
       <span className="row-meta" id="wizard-file-note">
-        {state.target === null ? (
-          <>
-            Aparece na troca de canais. O arquivo vai se chamar <code>grades/{fileName}.yaml</code>.
-          </>
-        ) : (
-          <>
-            Aparece na troca de canais. Vai por cima de <code>grades/{fileName}.yaml</code>, com cópia de segurança.
-          </>
-        )}
+        {state.target === null ? 'Aparece na troca de canais.' : 'Aparece na troca de canais. Vai por cima de um canal que já existe, com cópia de segurança.'}
       </span>
     </label>
   );
@@ -1047,12 +1038,9 @@ function ReplaceStep({ state, fileName, library, onChange }: { state: WizardStat
   );
 }
 
-// ---------------------------------------------------------------- preview
+/// ---------------------------------------------------------------- preview
 
 type PreviewView = 'day' | 'week';
-
-/** The clock time of an estimate: "08:22". */
-const at = (seconds: number) => formatTimeOfDay(seconds);
 
 function PreviewStep({
   prepared,
@@ -1068,39 +1056,16 @@ function PreviewStep({
   library: Library;
   durations: Durations;
 }) {
-  const { settings } = useSettings();
   const [view, setView] = useState<PreviewView>('day');
   const [day, setDay] = useState(0);
-  // Bumps when the durations of the days' videos have been read, to lay the days out again with the real lengths.
-  const [loaded, setLoaded] = useState(0);
-  const [reading, setReading] = useState(false);
 
   const schedule = prepared?.built.generated.schedule;
   const today = prepared?.today;
   const dates = useMemo(() => (today ? previewDates(today) : []), [today]);
-  const days = useMemo<DayPreview[]>(
-    () => (schedule ? dates.map((date) => previewDay(schedule, library, date, { settings, durationOf: durations.get })) : []),
-    // `loaded` stands for "durations.get answers differently now".
-    [schedule, library, settings, dates, durations, loaded],
-  );
+  // The same week as the one of "Mudar uma programação" (week-model.ts), with the real durations once they are read.
+  const { week, reading } = useWeek(schedule, library, dates, durations);
 
-  // Read the durations of what the week airs (the plan of each day decides which files), then lay the days out again.
-  useEffect(() => {
-    if (!schedule) return;
-    const paths = [...new Set(dates.flatMap((date) => previewDay(schedule, library, date, { settings, durationOf: durations.get }).paths))];
-    let current = true;
-    setReading(true);
-    durations.load(paths).finally(() => {
-      if (!current) return;
-      setReading(false);
-      setLoaded((count) => count + 1);
-    });
-    return () => {
-      current = false;
-    };
-  }, [schedule, library, settings, dates, durations]);
-
-  if (!prepared || !schedule) {
+  if (!prepared || !schedule || !week) {
     return building ? (
       <p className="wizard-busy" role="status">
         Montando a prévia… Lendo a duração dos vídeos para os horários fecharem certinho.
@@ -1108,21 +1073,7 @@ function PreviewStep({
     ) : null;
   }
 
-  const titleOf = (id: string) => library.shows.find((show) => show.id === id)?.title ?? id;
-  const selected = days[day]!;
-  // One line per message; in the week view, with the days it applies to.
-  const warned = new Map<string, { kind: string; days: string[] }>();
-  days.forEach((preview, i) => {
-    for (const warning of preview.warnings) {
-      const entry = warned.get(warning.message) ?? { kind: warning.kind, days: [] };
-      warned.set(warning.message, { ...entry, days: [...entry.days, dayLabel(dates[i]!)] });
-    }
-  });
-  const warnings =
-    view === 'day'
-      ? selected.warnings.map((warning) => ({ message: warning.message, kind: warning.kind, days: [] as string[] }))
-      : [...warned].map(([message, entry]) => ({ message, ...entry }));
-  const guessed = days.some((preview) => preview.estimated);
+  const selected = week.days[day]!;
 
   return (
     <>
@@ -1152,74 +1103,52 @@ function PreviewStep({
         />
       )}
 
-      {warnings.map((warning) => (
-        <p key={warning.message} className="wizard-warning" role="note" tabIndex={0} data-nav data-warning={warning.kind}>
-          <Icon name="alert" className="row-lead" />
-          <span>
-            {warning.message}
-            {warning.days.length > 0 && <em> ({warning.days.length === dates.length ? 'todos os dias' : warning.days.join(', ')})</em>}
-          </span>
-        </p>
-      ))}
-
+      {/* The week is read first and its warnings come after it; a day's warnings come before its list. */}
       {view === 'day' ? (
-        <DayList preview={selected} titleOf={titleOf} />
+        <>
+          <WeekWarnings week={week} only={selected.label} />
+          <DayList day={selected} />
+        </>
       ) : (
-        <ul className="preview-week" aria-label="A semana">
-          {days.map((preview, i) => (
-            <li key={preview.date} className="preview-day" tabIndex={0} data-nav data-day-section={preview.date}>
-              <strong>{dayLabel(dates[i]!)}</strong>
-              {preview.airs ? (
-                <span className="preview-chips">
-                  {preview.rows.map((row) => (
-                    <span key={`${row.start}-${row.episodeIndex}`} className="preview-chip">
-                      <b>{at(row.start)}</b> {titleOf(row.show.id)} <i>{episodeNumber(row.episode.number, row.episodeIndex)}</i>
-                    </span>
-                  ))}
-                </span>
-              ) : (
-                <span className="row-meta">O canal não passa neste dia.</span>
-              )}
-            </li>
-          ))}
-        </ul>
+        <>
+          <WeekView week={week} label="A semana" />
+          <WeekWarnings week={week} />
+        </>
       )}
 
       <p className="panel-note" data-note="estimate">
         {stale
           ? 'Atualizando a prévia com as suas mudanças… '
-          : guessed
+          : week.estimated
           ? 'Estimado: alguns vídeos ainda não tiveram a duração lida, então valem durações típicas (22 minutos por episódio) e os horários são aproximados. '
           : reading
             ? 'Lendo a duração dos vídeos da semana… os horários podem mudar um pouco. '
             : 'Horários calculados com a duração real dos vídeos. '}
-        Os intervalos comerciais já contam. Cada bloco começa na hora marcada, a menos que o anterior passe dela.
+        Os intervalos comerciais já contam. Cada horário marcado começa na hora certa, a menos que o anterior passe dela.
       </p>
     </>
   );
 }
 
-/** "ep. 12"; an episode with no number in its file name is shown by its place in the show ("#3"). */
-function episodeNumber(number: number | null, index: number): string {
-  return number === null ? `#${index + 1}` : `ep. ${number}`;
-}
-
-function DayList({ preview, titleOf }: { preview: DayPreview; titleOf(id: string): string }) {
+/** One day, a line per episode with how long it runs; the times are the ones of the week (week-model.ts). */
+function DayList({ day }: { day: WeekDay }) {
+  const { preview } = day;
   if (!preview.airs) return <p className="panel-note">O canal não passa neste dia: não está entre os dias escolhidos.</p>;
-  if (preview.rows.length === 0) return <p className="panel-note">Nada a mostrar neste dia.</p>;
+  if (day.airings.length === 0) return <p className="panel-note">Nada a mostrar neste dia.</p>;
   return (
     <ul className="preview-list" aria-label="Programação do dia">
       {preview.rows.map((row, i) => {
+        const airing = day.airings[i]!;
         const newBlock = i === 0 || preview.rows[i - 1]!.block !== row.block;
         return (
-          <li key={`${row.start}-${row.episodeIndex}`} className="preview-row" tabIndex={0} data-nav data-row={i}>
-            {newBlock && <span className="preview-block">Bloco das {at(preview.blocks[row.block]!.start)}</span>}
-            <span className="preview-time">{at(row.start)}</span>
+          <li key={airing.key} className="preview-row" tabIndex={0} data-nav data-row={i}>
+            {newBlock && <span className="preview-block">Às {formatTimeOfDay(preview.blocks[row.block]!.start)}</span>}
+            <span className="preview-time">{airing.time}</span>
             <span className="row-text">
-              <span className="row-label">{titleOf(row.show.id)}</span>
+              <span className="row-label">{airing.showTitle}</span>
               <span className="row-meta">
-                {episodeNumber(row.episode.number, row.episodeIndex)}
-                {row.episode.title ? ` · ${row.episode.title}` : ''} · {formatSpan(row.end - row.start)}
+                {airing.label}
+                {airing.title ? ` · ${airing.title}` : ''} · {formatSpan(row.end - row.start)}
               </span>
             </span>
           </li>

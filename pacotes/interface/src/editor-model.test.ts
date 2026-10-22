@@ -1,16 +1,20 @@
 import { planDay, scanLibrary, type Library, type LibrarySource, type Schedule } from '@tv-gominho/nucleo';
 import { describe, expect, it } from 'vitest';
 import {
+  ADD_LABEL,
   MAX_COUNT,
+  SECTIONS,
   addBlock,
   addItem,
   buildEditor,
+  categoryName,
   checkEditor,
   defaultItem,
   editedYaml,
   hasHandComments,
   interstitialCategories,
   isDirty,
+  itemKindLabel,
   moveItem,
   newestBlock,
   openEditor,
@@ -20,14 +24,16 @@ import {
   refIsFile,
   removeBlock,
   removeItem,
+  sectionAttention,
   setBlockTime,
   setDays,
   setDescription,
   setName,
   settleBlocks,
-  tabAfterKey,
+  showOptionLabel,
   timeProblem,
   toggleDay,
+  toggleSection,
   updateItem,
   type EditorState,
 } from './editor-model';
@@ -224,25 +230,25 @@ describe('blocks', () => {
     expect(timeProblem('08:00')).toBeNull();
     expect(timeProblem('8:00')).toBeNull();
     expect(timeProblem('23:59')).toBeNull();
-    expect(timeProblem('')).toMatch(/horário/);
-    for (const bad of ['24:00', '12:60', '8', '08h00', 'manhã', '08:0', '12:00:99']) expect(timeProblem(bad), bad).toMatch(/não é um horário/);
+    expect(timeProblem('')).toMatch(/hora/);
+    for (const bad of ['24:00', '12:60', '8', '08h00', 'manhã', '08:0', '12:00:99']) expect(timeProblem(bad), bad).toMatch(/não é uma hora/);
   });
 
   it('refuses two blocks at the same start and says which', async () => {
     const { state } = await stateOf();
     const clash = setBlockTime(state, state.blocks[1]!.key, '8:00');
     const check = checkEditor(clash);
-    expect(check.errors).toEqual(['Dois blocos começam às 08:00. Cada bloco precisa de um horário só dele.']);
+    expect(check.errors).toEqual(['Dois horários começam às 08:00. Cada um precisa de uma hora só dele.']);
     expect(Object.keys(check.blocks)).toHaveLength(2);
-    expect(() => buildEditor(clash)).toThrow(/Dois blocos/);
+    expect(() => buildEditor(clash)).toThrow(/Dois horários/);
   });
 
   it('refuses a block without items, and a grade without blocks', async () => {
     const { state } = await stateOf();
     const empty = addBlock(state);
-    expect(checkEditor(empty).errors).toEqual(['O bloco das 12:30 está sem itens.']);
+    expect(checkEditor(empty).errors).toEqual(['O horário das 12:30 está sem nada passando.']);
     const none = removeBlock(removeBlock(state, state.blocks[0]!.key), state.blocks[1]!.key);
-    expect(checkEditor(none).errors).toEqual(['O canal precisa de pelo menos um bloco.']);
+    expect(checkEditor(none).errors).toEqual(['O canal precisa de pelo menos um horário.']);
   });
 
   it('builds the blocks in time order whatever the order on screen', async () => {
@@ -324,8 +330,8 @@ describe('items', () => {
   it('refuses an item with nothing chosen', async () => {
     const { state } = await stateOf();
     const at = block(state, '08:00').key;
-    expect(checkEditor(updateItem(state, at, keyOf(state, '08:00', 1), { show: ' ' })).errors).toEqual(['Escolha o programa.']);
-    expect(checkEditor(updateItem(state, at, keyOf(state, '08:00', 0), { ref: '' } as never)).errors).toEqual(['Escolha a vinheta.']);
+    expect(checkEditor(updateItem(state, at, keyOf(state, '08:00', 1), { show: ' ' })).errors).toEqual(['Escolha o desenho.']);
+    expect(checkEditor(updateItem(state, at, keyOf(state, '08:00', 0), { ref: '' } as never)).errors).toEqual(['Escolha a abertura ou o encerramento.']);
   });
 });
 
@@ -348,9 +354,9 @@ describe('choosing a vinheta', () => {
       ['aberturas/solta.mp4', 'file', 1],
     ]);
     expect(refChoices(library, 'aberturas').map((choice) => choice.label).slice(0, 3)).toEqual([
-      'Sortear de toda a pasta aberturas',
-      'Sortear da pasta 2003',
-      'Sortear da pasta 2004',
+      'Sortear entre todas',
+      'Sortear entre as de 2003',
+      'Sortear entre as de 2004',
     ]);
   });
 
@@ -576,12 +582,58 @@ describe('hasHandComments', () => {
   });
 });
 
-describe('tabAfterKey', () => {
-  it('switches with the arrows, stops at the ends and ignores other keys', () => {
-    expect(tabAfterKey('blocks', 'ArrowRight')).toBe('agenda');
-    expect(tabAfterKey('agenda', 'ArrowLeft')).toBe('blocks');
-    expect(tabAfterKey('blocks', 'ArrowLeft')).toBe('blocks');
-    expect(tabAfterKey('agenda', 'ArrowRight')).toBe('agenda');
-    expect(tabAfterKey('blocks', 'ArrowDown')).toBe('blocks');
+describe('the sections of the advanced settings', () => {
+  it('opens and folds a section, leaving the others as they were', () => {
+    const folded = toggleSection(new Set(), 'times');
+    expect([...folded]).toEqual(['times']);
+    expect([...toggleSection(folded, 'items')].sort()).toEqual(['items', 'times']);
+    expect([...toggleSection(folded, 'times')]).toEqual([]);
+    expect(SECTIONS.map((section) => section.title)).toEqual(['Nome e dias', 'Horários', 'O que passa em cada horário']);
+  });
+
+  it('says which section has something to fix, so a folded one does not hide it', async () => {
+    const { library, state } = await stateOf();
+    const attention = (current: EditorState) => sectionAttention(current, checkEditor(current, library));
+    expect(attention(state)).toEqual({ basics: false, times: false, items: false });
+
+    expect(attention(setName(state, ' '))).toEqual({ basics: true, times: false, items: false });
+    expect(attention(setDays(state, []))).toMatchObject({ basics: true });
+    expect(attention(setBlockTime(state, state.blocks[0]!.key, '8h'))).toEqual({ basics: false, times: true, items: false });
+    const clash = setBlockTime(state, state.blocks[1]!.key, '08:00');
+    expect(attention(clash)).toMatchObject({ times: true });
+    expect(attention(removeBlock(removeBlock(state, state.blocks[0]!.key), state.blocks[1]!.key))).toMatchObject({ times: true });
+
+    // An empty time is a problem of what airs there, not of the time.
+    const empty = addBlock(state, []);
+    expect(attention(empty)).toEqual({ basics: false, times: false, items: true });
+    // A show the library does not have: only a warning, but still worth a look.
+    const missing = updateItem(state, state.blocks[0]!.key, state.blocks[0]!.items[1]!.key, { show: 'sumiu' });
+    expect(attention(missing)).toMatchObject({ items: true });
+  });
+});
+
+describe('plain words', () => {
+  it('names the items the way a viewer says it', () => {
+    expect(itemKindLabel({ type: 'show' })).toBe('Desenho');
+    expect(itemKindLabel({ type: 'commercials' })).toBe('Intervalo');
+    expect(itemKindLabel({ type: 'interstitial', ref: 'aberturas/2003' })).toBe('Abertura');
+    expect(itemKindLabel({ type: 'interstitial', ref: 'encerramentos' })).toBe('Encerramento');
+    expect(itemKindLabel({ type: 'interstitial', ref: '' })).toBe('Abertura/Encerramento');
+    expect(itemKindLabel({ type: 'interstitial', ref: 'outras' })).toBe('Abertura/Encerramento');
+    expect(ADD_LABEL).toEqual({ show: 'Desenho', interstitial: 'Abertura/Encerramento', commercials: 'Intervalo' });
+    expect(categoryName('aberturas')).toBe('Aberturas');
+    expect(categoryName('intervalos')).toBe('Vinhetas de intervalo');
+    expect(categoryName('especiais')).toBe('Especiais');
+  });
+
+  it('lists a show by its title, with the id only when two titles are the same', () => {
+    const shows = [
+      { id: 'superman-fleischer', title: 'Superman (Fleischer)' },
+      { id: 'gato', title: 'Gato' },
+      { id: 'gato-2', title: 'gato' },
+    ];
+    expect(showOptionLabel(shows[0]!, { shows } as Library)).toBe('Superman (Fleischer)');
+    expect(showOptionLabel(shows[1]!, { shows } as Library)).toBe('Gato (gato)');
+    expect(showOptionLabel(shows[2]!, { shows } as Library)).toBe('gato (gato-2)');
   });
 });

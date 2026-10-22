@@ -2938,8 +2938,7 @@ h2 {
 }
 
 /* The preview of the week: rows that take focus so the remote can scroll through them. */
-.preview-list,
-.preview-week {
+.preview-list {
   display: grid;
   gap: calc(0.35 * var(--u));
   margin: 0;
@@ -2948,7 +2947,6 @@ h2 {
 }
 
 .preview-row,
-.preview-day,
 .wizard-warning {
   border: var(--bw) solid transparent;
   border-radius: calc(var(--k-md) * var(--u));
@@ -2978,31 +2976,6 @@ h2 {
   font-variant-numeric: tabular-nums;
 }
 
-.preview-day {
-  display: grid;
-  gap: calc(0.35 * var(--u));
-  padding: calc(0.55 * var(--u)) calc(0.9 * var(--u));
-  background: var(--ov-tile);
-}
-
-.preview-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(0.25 * var(--u)) calc(0.7 * var(--u));
-  font-family: var(--ff-body);
-  font-size: var(--fs-meta);
-  line-height: 1.35;
-}
-
-.preview-chip b {
-  font-variant-numeric: tabular-nums;
-}
-
-.preview-chip i {
-  font-style: normal;
-  color: var(--ov-dim);
-}
-
 .wizard-warning {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -3023,7 +2996,6 @@ h2 {
 }
 
 .preview-row:focus-visible,
-.preview-day:focus-visible,
 .wizard-warning:focus-visible {
   outline: none;
   color: var(--ov-on-focus);
@@ -3034,7 +3006,6 @@ h2 {
 
 .preview-row:focus-visible .row-meta,
 .preview-row:focus-visible .preview-block,
-.preview-day:focus-visible .preview-chip i,
 .wizard-warning:focus-visible em {
   color: var(--ov-on-focus-dim);
 }
@@ -3075,10 +3046,6 @@ h2 {
   color: var(--ov-on-focus);
 }
 
-.editor-overlay .overlay-surface {
-  width: clamp(calc(34 * var(--u)), 82vw, calc(112 * var(--u)));
-}
-
 .editor {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
@@ -3115,11 +3082,6 @@ h2 {
   font-family: var(--ff-body);
   font-size: var(--fs-meta);
   color: var(--ov-dim);
-}
-
-.overlay.editor-overlay {
-  /* A screen to read close up with a mouse: smaller than the TV-sized panels. */
-  --u: clamp(12px, min(2.15vh, 1.2vw), 52px);
 }
 
 .editor-fields {
@@ -3204,6 +3166,9 @@ h2 {
 }
 
 .editor-block-head {
+  padding: calc(0.4 * var(--u)) calc(0.7 * var(--u));
+  background: var(--ov-tile);
+  border-radius: calc(var(--k-md) * var(--u));
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -3232,12 +3197,18 @@ h2 {
 
 .editor-item {
   display: grid;
-  grid-template-columns: calc(8.5 * var(--u)) minmax(0, 1fr) auto;
+  /* What it is and its buttons on the first line, its controls full width below: the panel is as wide as the others. */
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: calc(0.35 * var(--u)) calc(0.7 * var(--u));
   padding: calc(0.45 * var(--u)) calc(0.7 * var(--u));
   background: var(--ov-tile);
   border-radius: calc(var(--k-md) * var(--u));
+}
+
+.editor-item-controls {
+  grid-column: 1 / -1;
+  grid-row: 2;
 }
 
 .editor-item[data-warning] {
@@ -3363,17 +3334,6 @@ h2 {
   gap: calc(0.7 * var(--u));
 }
 
-/* --- Channel editor: the Agenda tab (week of the grade) ----------------------------------------------------- */
-.editor-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(0.4 * var(--u));
-}
-
-.editor-tabs .action-tile[aria-selected='true'] {
-  border-color: var(--ov-accent);
-}
-
 .agenda {
   display: grid;
   gap: calc(0.7 * var(--u));
@@ -3394,113 +3354,6 @@ h2 {
   font-variant-numeric: tabular-nums;
 }
 
-.agenda-scroll {
-  overflow-x: auto;
-  scrollbar-width: thin;
-  padding-bottom: calc(0.3 * var(--u));
-}
-
-.agenda-grid {
-  display: grid;
-  gap: calc(0.3 * var(--u));
-  min-width: min-content;
-}
-
-.agenda-head {
-  padding: calc(0.3 * var(--u)) calc(0.5 * var(--u));
-  font-family: var(--ff-body);
-  font-size: var(--fs-meta);
-  font-weight: var(--fw-display);
-  letter-spacing: var(--ls-section);
-  text-transform: uppercase;
-  color: var(--ov-dim);
-}
-
-.agenda-head[data-today] {
-  color: var(--ov-accent);
-}
-
-.agenda-label {
-  display: grid;
-  align-content: center;
-  gap: 0.1em;
-  padding: calc(0.3 * var(--u)) calc(0.5 * var(--u));
-  font-family: var(--ff-body);
-  font-size: var(--fs-meta);
-  min-width: 0;
-}
-
-.agenda-time {
-  font-variant-numeric: tabular-nums;
-  color: var(--ov-dim);
-}
-
-.agenda-show {
-  font-size: var(--fs-label);
-  font-weight: var(--fw-display);
-  overflow-wrap: anywhere;
-}
-
-.agenda-cell {
-  display: grid;
-  align-content: start;
-  gap: 0.15em;
-  min-width: 0;
-  padding: calc(0.45 * var(--u)) calc(0.6 * var(--u));
-  text-align: left;
-  color: var(--ov-text);
-  background: var(--ov-tile);
-  border: var(--bw) solid transparent;
-  border-radius: calc(var(--k-md) * var(--u));
-  font-family: var(--ff-body);
-  font-size: var(--fs-meta);
-}
-
-button.agenda-cell {
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
-}
-
-button.agenda-cell:hover {
-  background: var(--ov-tile-hover);
-}
-
-button.agenda-cell:focus-visible {
-  outline: none;
-  color: var(--ov-on-focus);
-  background: var(--ov-focus);
-  border-color: var(--ov-focus);
-  box-shadow: var(--shadow-focus);
-}
-
-.agenda-cell[data-pinned] {
-  border-color: var(--ov-accent);
-  box-shadow: inset calc(var(--u) * 0.25) 0 0 var(--ov-accent);
-}
-
-button.agenda-cell[data-pinned]:focus-visible {
-  border-color: var(--ov-focus);
-  box-shadow: var(--shadow-focus);
-}
-
-.agenda-cell[data-locked] {
-  opacity: 0.6;
-}
-
-.agenda-ep {
-  font-size: var(--fs-label);
-  font-weight: var(--fw-display);
-  font-variant-numeric: tabular-nums;
-}
-
-.agenda-title,
-.agenda-none {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  opacity: 0.85;
-}
-
 .agenda-tags {
   display: flex;
   flex-wrap: wrap;
@@ -3508,7 +3361,6 @@ button.agenda-cell[data-pinned]:focus-visible {
   font-size: 0.9em;
 }
 
-.agenda-more,
 .agenda-tag {
   padding: 0 0.5em;
   border: var(--bw) solid currentColor;
@@ -3527,9 +3379,249 @@ button.agenda-cell[data-pinned]:focus-visible {
   color: var(--danger);
 }
 
-button.agenda-cell:focus-visible .agenda-tag[data-tag],
+.week-airing:focus-visible .agenda-tag[data-tag],
 .agenda-choice:focus-visible .agenda-tag[data-tag] {
   color: inherit;
+}
+
+/* --- The week of a channel: a line per day, the airings at the time they start. The preview of the wizard and the
+   week of "Mudar uma programação" both draw it (components/WeekView.tsx). ---------------------------------------- */
+.week {
+  display: grid;
+  gap: calc(0.35 * var(--u));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.week-day {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: calc(0.3 * var(--u)) calc(0.8 * var(--u));
+  padding: calc(0.55 * var(--u)) calc(0.7 * var(--u));
+  background: var(--ov-tile);
+  border: var(--bw) solid transparent;
+  border-radius: calc(var(--k-md) * var(--u));
+}
+
+.week-day[data-off] {
+  background: transparent;
+  border-color: var(--ov-line);
+}
+
+.week-day[data-today] {
+  box-shadow: inset calc(var(--u) * 0.25) 0 0 var(--ov-accent);
+}
+
+.week-day[data-off] {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+}
+
+.week-day-name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7em;
+  font-family: var(--ff-body);
+  font-size: var(--fs-meta);
+  font-weight: var(--fw-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.week-today {
+  font-size: 0.85em;
+  letter-spacing: var(--ls-section);
+  text-transform: uppercase;
+  color: var(--ov-accent);
+}
+
+.week-airings {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(calc(11 * var(--u)), 1fr));
+  gap: calc(0.15 * var(--u)) calc(0.5 * var(--u));
+  min-width: 0;
+}
+
+.week-airing {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0 0.5em;
+  min-width: 0;
+  padding: 0.2em 0.45em;
+  text-align: left;
+  color: var(--ov-text);
+  background: transparent;
+  border: var(--bw) solid transparent;
+  border-radius: calc(var(--k-md) * var(--u) * 0.8);
+  font-family: var(--ff-body);
+  font-size: var(--fs-meta);
+  line-height: 1.3;
+}
+
+button.week-airing {
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 0.15s ease-out, color 0.15s ease-out, box-shadow 0.15s ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button.week-airing:hover {
+    background: var(--ov-tile-hover);
+  }
+}
+
+button.week-airing:focus-visible {
+  outline: none;
+  color: var(--ov-on-focus);
+  background: var(--ov-focus);
+  border-color: var(--ov-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+.week-airing[data-pinned] {
+  box-shadow: inset calc(var(--u) * 0.2) 0 0 var(--ov-accent);
+}
+
+button.week-airing[data-pinned]:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+.week-time {
+  font-weight: var(--fw-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.week-show {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.week-ep {
+  color: var(--ov-dim);
+  white-space: nowrap;
+}
+
+.week-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em;
+  grid-column: 2 / -1;
+  font-size: 0.9em;
+}
+
+.week-day:focus-visible {
+  outline: none;
+  color: var(--ov-on-focus);
+  background: var(--ov-focus);
+  border-color: var(--ov-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+.week-day:focus-visible .week-ep,
+.week-day:focus-visible .row-meta,
+.week-day:focus-visible .week-today,
+button.week-airing:focus-visible .week-ep {
+  color: var(--ov-on-focus-dim);
+}
+
+/* --- Channel editor: the schedule editor behind "Ajustes avançados" -------------------------------------------- */
+.editor-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(0.5 * var(--u));
+}
+
+.editor-channel {
+  margin: 0;
+  font-family: var(--ff-body);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-display);
+  overflow-wrap: anywhere;
+}
+
+.editor-outline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(0.4 * var(--u));
+}
+
+.editor-section {
+  display: grid;
+  gap: calc(0.5 * var(--u));
+}
+
+.editor-body .editor-section h2 {
+  margin: calc(0.3 * var(--u)) 0 0;
+}
+
+.editor-section-head {
+  display: flex;
+  align-items: center;
+  gap: calc(0.5 * var(--u));
+  width: 100%;
+  padding: calc(0.4 * var(--u)) calc(0.6 * var(--u));
+  text-align: left;
+  color: inherit;
+  background: transparent;
+  border: var(--bw) solid transparent;
+  border-radius: calc(var(--k-md) * var(--u));
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .editor-section-head:hover {
+    background: var(--ov-tile-hover);
+  }
+}
+
+.editor-section-head:focus-visible {
+  outline: none;
+  color: var(--ov-on-focus);
+  background: var(--ov-focus);
+  border-color: var(--ov-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+.editor-attention {
+  margin-left: auto;
+  padding: 0 0.6em;
+  font-family: var(--ff-body);
+  font-size: var(--fs-meta);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--danger);
+  border: var(--bw) solid currentColor;
+  border-radius: var(--r-pill);
+}
+
+.editor-section-head:focus-visible .editor-attention {
+  color: inherit;
+}
+
+.editor-section-body {
+  display: grid;
+  gap: calc(0.6 * var(--u));
+}
+
+.editor-block-title {
+  margin: 0;
+  font-family: var(--ff-body);
+  font-size: var(--fs-label);
+  font-weight: var(--fw-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.editor-block-head .editor-problem {
+  flex-basis: 100%;
 }
 
 .agenda-chooser {
