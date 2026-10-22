@@ -1,5 +1,7 @@
 # TV Gominho
 
+[![CI](https://github.com/matheusgomes062/tv-gominho/actions/workflows/ci.yml/badge.svg)](https://github.com/matheusgomes062/tv-gominho/actions/workflows/ci.yml)
+
 Um player de vídeo livre (FOSS) para reviver as manhãs de desenho como na **TV Globinho**, numa TV antiga: você liga e o desenho já está passando, com vinhetas, intervalos e aquele chuvisco de tubo.
 
 Você coloca os seus próprios episódios em pastas organizadas e a TV Gominho monta o canal: `tv-gominho grade` cria a programação no estilo da TV Globinho (abertura, desenhos, chamadas, intervalos com comerciais e vinhetas da época, encerramento), e o app passa tudo como uma TV ao vivo.
