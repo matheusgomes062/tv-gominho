@@ -15,7 +15,8 @@ import {
 } from '../agenda-model';
 import { Icon } from '../components/Icon';
 import { useWeek } from '../components/useWeek';
-import { WeekView, WeekWarnings } from '../components/WeekView';
+import { Guide } from '../components/Guide';
+import { WeekWarnings } from '../components/WeekWarnings';
 import type { EditorState } from '../editor-model';
 import type { Durations } from '../media';
 import { longDayLabel, previewDates } from '../wizard-model';
@@ -60,11 +61,11 @@ export function ChannelWeek({ state, library, durations, today, edit }: Props) {
     return r >= 0 && c >= 0 ? { row: cells.rows[r]!, cell: cells.cells[r]![c]! } : null;
   })();
 
-  /** Back to the airing that opened the list. */
+  /** Back to the guide, on the block that opened the list. */
   const close = (target: Open | null) => {
     setOpen(null);
     if (!target) return;
-    requestAnimationFrame(() => root.current?.querySelector<HTMLElement>(`[data-cell="${target.itemKey}|${target.date}"]`)?.focus());
+    requestAnimationFrame(() => root.current?.querySelector<HTMLElement>('[data-guide] [role="grid"]')?.focus());
   };
 
   const goTo = (next: string) => {
@@ -99,7 +100,7 @@ export function ChannelWeek({ state, library, durations, today, edit }: Props) {
   return (
     <div className="agenda" ref={root}>
       <p className="panel-note">
-        Cada linha é um dia, com o horário em que cada episódio começa (estimado pela duração dos vídeos). Escolha um episódio para fixar o que passa naquele dia: os dias seguintes continuam a partir dele. As mudanças valem quando você salva o canal.
+        ← → andam entre os episódios, ↑ ↓ entre os dias. OK escolhe o episódio que passa ali; os dias seguintes continuam a partir dele. Vale quando você salva o canal.
       </p>
 
       <div className="agenda-nav" role="group" aria-label="Semana" data-nav-row="week">
@@ -122,7 +123,7 @@ export function ChannelWeek({ state, library, durations, today, edit }: Props) {
 
       {week && (
         <>
-          <WeekView week={week} label={`Semana de ${weekLabel(weekStart)}`} onPick={pick} />
+          <Guide key={weekStart} week={week} label={`Semana de ${weekLabel(weekStart)}`} onPick={pick} />
           <WeekWarnings week={week} />
           <p className="panel-note" data-note="estimate">
             {week.estimated

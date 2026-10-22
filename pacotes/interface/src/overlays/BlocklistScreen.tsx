@@ -1,5 +1,6 @@
 import { localIsoDate, type Blocklist, type Library, type Show } from '@tv-gominho/nucleo';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Choice } from '../components/Choice';
 import { Icon } from '../components/Icon';
 import { KeyHints, Overlay } from '../components/Overlay';
 import {
@@ -212,30 +213,23 @@ function ShowList({
           const status = showStatus(library, list, show);
           return (
             <div className="np-item" key={show.id} data-show={show.id}>
-              <button
-                data-nav
-                data-autofocus={i === 0 ? '' : undefined}
-                data-toggle-show={show.id}
-                className="row wizard-row"
-                role="checkbox"
-                aria-checked={status.state === 'all' ? true : status.state === 'some' ? 'mixed' : false}
+              <Choice
+                kind="checkbox"
+                mark="cross"
+                icon="episode"
+                autofocus={i === 0}
+                attrs={{ 'data-toggle-show': show.id }}
+                checked={status.state === 'all' ? true : status.state === 'some' ? 'mixed' : false}
+                label={show.title}
+                meta={
+                  status.state === 'all'
+                    ? 'Bloqueado inteiro'
+                    : status.state === 'some'
+                      ? `${status.blocked} de ${status.total} episódios bloqueados`
+                      : `${status.total} ${status.total === 1 ? 'episódio' : 'episódios'}`
+                }
                 onClick={() => onChange(toggleShow(library, list, show))}
-              >
-                <Icon name="episode" className="row-lead" />
-                <span className="row-text">
-                  <span className="row-label">{show.title}</span>
-                  <span className="row-meta">
-                    {status.state === 'all'
-                      ? 'Bloqueado inteiro'
-                      : status.state === 'some'
-                        ? `${status.blocked} de ${status.total} episódios bloqueados`
-                        : `${status.total} ${status.total === 1 ? 'episódio' : 'episódios'}`}
-                  </span>
-                </span>
-                <span className="wizard-mark" data-on={status.state === 'all'} data-partial={status.state === 'some'}>
-                  {status.state === 'all' ? <Icon name="close" /> : status.state === 'some' ? <span aria-hidden="true">–</span> : null}
-                </span>
-              </button>
+              />
               <button data-nav data-open-show={show.id} className="action-tile" onClick={() => onOpen(show.id)} aria-label={`Episódios de ${show.title}`}>
                 <span>Episódios</span>
                 <Icon name="chevronRight" className="action-icon" />
@@ -270,30 +264,18 @@ function EpisodeList({ library, list, show, onChange }: { library: Library; list
           const blocked = isEpisodeBlocked(library, list, show, index);
           const nameable = canBlockEpisode(show, index);
           return (
-            <button
+            <Choice
               key={episode.path}
-              data-nav
-              data-episode={index}
-              className="row wizard-row"
-              role="checkbox"
-              aria-checked={blocked}
-              aria-disabled={nameable ? undefined : true}
+              kind="checkbox"
+              mark="cross"
+              icon="episode"
+              attrs={{ 'data-episode': String(index) }}
+              checked={blocked}
+              disabled={!nameable}
+              label={`${episode.number !== null ? `${episode.number}. ` : ''}${episode.title}`}
+              meta={(episode.season || !nameable) && [episode.season, nameable ? '' : 'Sem número no nome do arquivo: não dá para bloquear sozinho'].filter(Boolean).join(' · ')}
               onClick={() => onChange(toggleEpisode(library, list, show, index))}
-            >
-              <Icon name="episode" className="row-lead" />
-              <span className="row-text">
-                <span className="row-label">
-                  {episode.number !== null ? `${episode.number}. ` : ''}
-                  {episode.title}
-                </span>
-                {(episode.season || !nameable) && (
-                  <span className="row-meta">{[episode.season, nameable ? '' : 'Sem número no nome do arquivo: não dá para bloquear sozinho'].filter(Boolean).join(' · ')}</span>
-                )}
-              </span>
-              <span className="wizard-mark" data-on={blocked}>
-                {blocked && <Icon name="close" />}
-              </span>
-            </button>
+            />
           );
         })}
       </div>

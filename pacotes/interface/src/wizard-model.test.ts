@@ -13,6 +13,8 @@ import {
   startNav,
   addRange,
   applyPreset,
+  DAYS_CHOICES,
+  daysChoiceOf,
   daysSummary,
   existingGradeFiles,
   firstProblemStep,
@@ -197,6 +199,16 @@ describe('days', () => {
     expect(daysSummary(['seg', 'ter', 'qua', 'qui', 'sex'])).toBe('Segunda a sexta');
     expect(daysSummary(['dom', 'sab'])).toBe('Fim de semana');
     expect(daysSummary(['qua', 'seg'])).toBe('Segunda, Quarta');
+  });
+
+  it('offers the days as one single choice: three shortcuts and "Escolher dias"', () => {
+    expect(DAYS_CHOICES.map((choice) => choice.label)).toEqual(['Seg a sex', 'Fim de semana', 'Todos os dias', 'Escolher dias']);
+    expect(daysChoiceOf(['seg', 'ter', 'qua', 'qui', 'sex'], false)).toBe('week');
+    expect(daysChoiceOf(['sab', 'dom'], false)).toBe('weekend');
+    expect(daysChoiceOf(['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'], false)).toBe('all');
+    // Days that match no shortcut can only be "Escolher dias"; so can any days once the person asked to choose.
+    expect(daysChoiceOf(['seg', 'qua'], false)).toBe('pick');
+    expect(daysChoiceOf(['sab', 'dom'], true)).toBe('pick');
   });
 });
 
