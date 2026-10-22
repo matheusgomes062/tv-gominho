@@ -50,6 +50,23 @@ export interface EditorBlock {
   items: EditorItem[];
 }
 
+/**
+ * An episode picked for a date, tied to the item it was picked for (by `key`, so it follows the item when blocks
+ * move and items are reordered). It becomes an `AgendaPick` when the grade is built (`buildEditor`).
+ */
+export interface EditorPick {
+  /** "YYYY-MM-DD". */
+  date: string;
+  /** `EditorItem.key` of the show item; 0 for a pick of the opened file that points at nothing. */
+  itemKey: number;
+  /** The show lowercased as it was when picked: a pick is dropped when the item becomes another show. */
+  show: string;
+  /** Same form as `AgendaPick.episode`. */
+  episode: string;
+  /** Where the pick stood in the file as opened (or when it was made): for reporting what was dropped. */
+  at: { blockStart: number; item: number };
+}
+
 export interface EditorState {
   /** Where the grade file is, from the folder picked (grades/x.yaml, under the library root). */
   path: string;
@@ -57,6 +74,8 @@ export interface EditorState {
   description: string;
   days: Weekday[];
   blocks: EditorBlock[];
+  /** The episodes picked by hand (the agenda of the grade), see agenda-model.ts. */
+  picks: EditorPick[];
   nextKey: number;
   /** The grade as it was opened: what the editor does not edit is kept from it, and the old positions come from it. */
   base: Schedule;
@@ -82,12 +101,23 @@ export function openEditor(schedule: Schedule): EditorState {
     from: block.start,
     items: block.items.map((item, index): EditorItem => ({ ...item, key: nextKey++, from: { index: index + 1, ...(item.type === 'show' ? { show: item.show } : {}) } })),
   }));
+  const picks = (schedule.agenda ?? []).map((pick): EditorPick => {
+    const item = blocks.find((block) => block.from === pick.blockStart)?.items.find((entry) => entry.from?.index === pick.item);
+    return {
+      date: pick.date,
+      itemKey: item?.type === 'show' ? item.key : 0,
+      show: item?.type === 'show' ? item.show.toLowerCase() : '',
+      episode: pick.episode,
+      at: { blockStart: pick.blockStart, item: pick.item },
+    };
+  });
   const state: EditorState = {
     path: schedule.path,
     name: schedule.name,
     description: schedule.description ?? '',
     days: [...schedule.days],
     blocks,
+    picks,
     nextKey,
     base: schedule,
     opened: '',
@@ -102,6 +132,7 @@ function signature(state: EditorState): string {
     state.description,
     state.days,
     state.blocks.map((block) => [block.time, block.items.map(({ key: _key, from: _from, ...item }) => item)]),
+    state.picks.map((pick) => [pick.date, pick.itemKey, pick.episode]).sort(),
   ]);
 }
 
@@ -395,7 +426,7 @@ export interface EditorBuild {
 
 /**
  * The Schedule the editor describes: the edited name, description, days, blocks and items on top of the grade as it was
- * opened. The agenda follows the items it pointed at (by block and position in the file) and the saved positions of
+ * opened. The agenda follows the items it pointed at (see `EditorPick`) and the saved positions of
  * shows that left the blocks or days that were turned off are dropped, since the grade would only warn about them.
  * Throws if the grade is not valid (see `checkEditor`).
  */
@@ -411,13 +442,13 @@ export function buildEditor(state: EditorState): EditorBuild {
   const days = WEEKDAYS.filter((day) => state.days.includes(day));
   const description = state.description.trim();
 
-  const { agenda: oldAgenda, positions: oldPositions, description: _description, ...rest } = state.base;
+  const { agenda: _agenda, positions: oldPositions, description: _description, ...rest } = state.base;
   const agenda: AgendaPick[] = [];
   const droppedPicks: AgendaPick[] = [];
-  for (const pick of oldAgenda ?? []) {
-    const moved = followPick(sorted, pick);
+  for (const pick of state.picks) {
+    const moved = pickToAgenda(sorted, pick);
     if (moved && days.includes(weekdayOf(isoToDayNumber(pick.date)))) agenda.push(moved);
-    else droppedPicks.push(pick);
+    else droppedPicks.push({ date: pick.date, blockStart: pick.at.blockStart, item: pick.at.item, episode: pick.episode });
   }
   agenda.sort((a, b) => a.date.localeCompare(b.date) || a.blockStart - b.blockStart || a.item - b.item);
 
@@ -438,14 +469,16 @@ export function buildEditor(state: EditorState): EditorBuild {
   return { schedule, droppedPicks };
 }
 
-/** Where an agenda choice of the opened grade is now: the same item of the same block, or null when it is gone or is another show. */
-function followPick(blocks: EditorBlock[], pick: AgendaPick): AgendaPick | null {
-  const block = blocks.find((entry) => entry.from === pick.blockStart);
-  if (!block) return null;
-  const at = block.items.findIndex((item) => item.from?.index === pick.item);
-  const item = block.items[at];
-  if (!item || item.type !== 'show' || item.from?.show?.toLowerCase() !== item.show.trim().toLowerCase()) return null;
-  return { ...pick, blockStart: parseTime(block.time)!, item: at + 1 };
+/** The agenda entry of a pick: where its item is now in the (sorted) blocks; null when the item is gone or is another show. */
+function pickToAgenda(blocks: EditorBlock[], pick: EditorPick): AgendaPick | null {
+  for (const block of blocks) {
+    const at = block.items.findIndex((item) => item.key === pick.itemKey);
+    const item = block.items[at];
+    if (!item) continue;
+    if (item.type !== 'show' || item.show.trim().toLowerCase() !== pick.show) return null;
+    return { date: pick.date, blockStart: parseTime(block.time)!, item: at + 1, episode: pick.episode };
+  }
+  return null;
 }
 
 /** Whether the edit changes what airs (the days or the items), as opposed to only the name, the description or the times. */

@@ -32,6 +32,7 @@ import {
   type EditorItem,
   type EditorState,
 } from '../editor-model';
+import { AgendaWeek } from './AgendaWeek';
 import { downloadText, requestWriteAccess, type SaveResult } from '../sources/save';
 import { overwriteGrade } from '../sources/overwrite';
 import type { BrowserLibrary } from '../sources/types';
@@ -64,6 +65,8 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
   const [phase, setPhase] = useState<Phase>({ name: 'editing' });
   const [error, setError] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
+  const [tab, setTab] = useState<'blocks' | 'agenda'>('blocks');
+  const today = useMemo(() => localIsoDate(new Date()), []);
   const refocus = useRef<string | null>(null);
   const body = useRef<HTMLDivElement>(null);
 
@@ -149,26 +152,49 @@ export function ChannelEditor({ source, library, schedule, onSaved, onWatch, onB
               <p className="editor-file">
                 Arquivo <code>{state.path}</code>
               </p>
-              <Fields state={state} edit={edit} />
+              <div className="editor-tabs" role="tablist" aria-label="Partes do canal">
+                {(['blocks', 'agenda'] as const).map((id) => (
+                  <button
+                    key={id}
+                    data-nav
+                    data-tab={id}
+                    role="tab"
+                    aria-selected={tab === id}
+                    className="action-tile small"
+                    onClick={() => setTab(id)}
+                  >
+                    <Icon name={id === 'blocks' ? 'clock' : 'calendar'} className="action-icon" />
+                    <span>{id === 'blocks' ? 'Blocos' : `Agenda${state.picks.length > 0 ? ` (${state.picks.length})` : ''}`}</span>
+                  </button>
+                ))}
+              </div>
 
-              <h2>Blocos</h2>
-              {state.blocks.map((block) => (
-                <BlockCard
-                  key={block.key}
-                  block={block}
-                  check={check}
-                  library={library}
-                  edit={edit}
-                  refocus={refocus}
-                />
-              ))}
-              <button data-nav data-focus="add-block" className="action-tile small" onClick={addNewBlock}>
-                <Icon name="plus" className="action-icon" />
-                <span>Adicionar bloco</span>
-              </button>
-              <p className="panel-note">
-                Os blocos ficam em ordem de horário. Um bloco começa no horário dele; se o anterior passar do horário, o bloco atrasa (veja docs/grade.md).
-              </p>
+              {tab === 'agenda' ? (
+                <AgendaWeek state={state} library={library} today={today} edit={edit} />
+              ) : (
+                <>
+                  <Fields state={state} edit={edit} />
+
+                  <h2>Blocos</h2>
+                  {state.blocks.map((block) => (
+                    <BlockCard
+                      key={block.key}
+                      block={block}
+                      check={check}
+                      library={library}
+                      edit={edit}
+                      refocus={refocus}
+                    />
+                  ))}
+                  <button data-nav data-focus="add-block" className="action-tile small" onClick={addNewBlock}>
+                    <Icon name="plus" className="action-icon" />
+                    <span>Adicionar bloco</span>
+                  </button>
+                  <p className="panel-note">
+                    Os blocos ficam em ordem de horário. Um bloco começa no horário dele; se o anterior passar do horário, o bloco atrasa (veja docs/grade.md).
+                  </p>
+                </>
+              )}
             </>
           )}
         </div>
