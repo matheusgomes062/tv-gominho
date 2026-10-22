@@ -1,6 +1,8 @@
-import { bumperBrands, bumperEras, MAX_PROPOSAL_RANGES, proposalToRaw, type Library, type Proposal } from '@tv-gominho/nucleo';
+import { bumperBrands, bumperEras } from './generate';
+import { MAX_PROPOSAL_RANGES, proposalToRaw, type Proposal } from './proposal';
+import type { Library } from './types';
 
-// What the assistant sends: the library's metadata (show ids, titles, episode counts, typical lengths, bumper brands
+// What the AI assistant sends (the server of `tv-gominho servir` and the browser on its own use the same prompt): the library's metadata (show ids, titles, episode counts, typical lengths, bumper brands
 // and years) and the person's request. Never a file path, a video or anything else from the computer. Titles and
 // the request are data: they go inside tags, as JSON with "<" escaped, and the instructions say they are data.
 

@@ -4,6 +4,8 @@ import { Icon } from '../components/Icon';
 import { KeyHints, Overlay } from '../components/Overlay';
 import { BACK_KEYS } from '../nav';
 import { useSettings } from '../settings';
+import type { AiBackend } from '../sources/types';
+import { AiSettings } from './AiSettings';
 import {
   buildDefs,
   CATEGORIES,
@@ -23,6 +25,8 @@ import {
 interface Props {
   channels: Schedule[];
   libraryName: string;
+  /** The AI assistant of this library (Configurações, Assistente de IA). */
+  ai?: AiBackend;
   initialCategory?: string;
   onBack(): void;
 }
@@ -37,7 +41,7 @@ const THEME_ORDER: Theme[] = ['classic', 'vhs', 'modern', 'custom'];
  * chosen category in the next. Changes apply to the picture at once. Back goes from the options to the
  * categories, and from the categories closes the panel.
  */
-export function SettingsPanel({ channels, libraryName, initialCategory = 'theme', onBack }: Props) {
+export function SettingsPanel({ channels, libraryName, ai, initialCategory = 'theme', onBack }: Props) {
   const { settings, overrides, fromLibrary, update, reset } = useSettings();
   const [category, setCategory] = useState(initialCategory);
   const [restored, setRestored] = useState(false);
@@ -136,6 +140,8 @@ export function SettingsPanel({ channels, libraryName, initialCategory = 'theme'
           {current.id === 'ads' && settings.commercials === false && (
             <p className="panel-note">Os comerciais estão desligados em Programação, então estes ajustes ficam bloqueados.</p>
           )}
+
+          {current.id === 'ia' && <AiSettings ai={ai} />}
 
           {current.id === 'about' && (
             <About

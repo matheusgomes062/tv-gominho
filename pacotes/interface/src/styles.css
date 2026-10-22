@@ -2515,6 +2515,33 @@ h2 {
   height: calc(1.6 * var(--u));
 }
 
+/* Configurações, Assistente de IA (overlays/AiSettings.tsx) */
+.ai-settings {
+  display: grid;
+  gap: calc(0.7 * var(--u));
+}
+
+.ai-status {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: calc(0.9 * var(--u));
+  margin: 0;
+  padding: calc(0.6 * var(--u)) calc(0.3 * var(--u));
+}
+
+.ai-settings .wizard-footer {
+  justify-content: flex-start;
+  padding: 0;
+  border-top: 0;
+}
+
+.ai-notices {
+  display: grid;
+  gap: calc(0.3 * var(--u));
+  padding-left: calc(1.2 * var(--u));
+}
+
 /* --- Menu / Ajustes buttons on the TV (mouse only) ----------------------------------------------------------- */
 .tv-corner-buttons {
   position: absolute;
