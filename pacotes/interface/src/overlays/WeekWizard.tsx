@@ -161,7 +161,7 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
       container.querySelector<HTMLElement>('[data-nav]') ??
       container.parentElement?.querySelector<HTMLElement>('[data-save], [data-next]');
     target?.focus();
-  }, [step, phase.name]);
+  }, [step, phase.name, prepared !== null]);
 
   const goBack = () => {
     if (phase.name === 'saving') return;
@@ -263,17 +263,17 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
 
         {phase.name === 'editing' && (
           <footer className="wizard-footer">
-            <button data-nav className="action-tile" onClick={goBack}>
+            <button data-nav data-nav-adjust className="action-tile" onClick={goBack} onKeyDown={footerKeys}>
               <Icon name="back" className="action-icon" />
               <span>{index === 0 ? 'Cancelar' : 'Voltar'}</span>
             </button>
             {last ? (
-              <button data-nav data-save className="action-tile primary" aria-disabled={problem ? true : undefined} onClick={save}>
+              <button data-nav data-nav-adjust data-save className="action-tile primary" aria-disabled={problem ? true : undefined} onClick={save} onKeyDown={footerKeys}>
                 <Icon name="check" className="action-icon" />
                 <span>{state.target ? 'Trocar o canal' : 'Salvar canal'}</span>
               </button>
             ) : (
-              <button data-nav data-next className="action-tile primary" aria-disabled={problem ? true : undefined} onClick={goOn}>
+              <button data-nav data-nav-adjust data-next className="action-tile primary" aria-disabled={problem ? true : undefined} onClick={goOn} onKeyDown={footerKeys}>
                 <span>Avançar</span>
                 <Icon name="chevronRight" className="action-icon" />
               </button>
@@ -292,6 +292,17 @@ export function WeekWizard({ source, library, durations, channels, onSaved, onWa
       </div>
     </Overlay>
   );
+}
+
+/**
+ * Left and Right between the buttons of the footer. The spatial navigation alone would send Right from "Voltar" to
+ * a wide row above instead of "Avançar" (rows are nearer than the button on the far side), so the footer keeps them.
+ */
+function footerKeys(event: KeyboardEvent<HTMLElement>) {
+  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+  event.preventDefault();
+  const buttons = [...event.currentTarget.parentElement!.querySelectorAll<HTMLElement>('[data-nav]')];
+  buttons[buttons.indexOf(event.currentTarget) + (event.key === 'ArrowLeft' ? -1 : 1)]?.focus();
 }
 
 // ---------------------------------------------------------------- rows
