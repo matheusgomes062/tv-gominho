@@ -85,7 +85,8 @@ export async function sendFile(req: IncomingMessage, res: ServerResponse, file: 
     res.setHeader('Content-Range', `bytes ${start}-${end}/${info.size}`);
   }
   res.setHeader('Content-Length', end - start + 1);
-  if (req.method === 'HEAD') {
+  // An empty file has nothing to stream (and createReadStream rejects end: -1).
+  if (req.method === 'HEAD' || end < start) {
     res.end();
     return;
   }

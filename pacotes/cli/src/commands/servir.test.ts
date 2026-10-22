@@ -36,6 +36,7 @@ beforeAll(async () => {
   await writeFile(path.join(library, 'pagina.html'), '<script>alert(1)</script>');
   await writeFile(path.join(library, 'capa.svg'), '<svg onload="alert(1)"/>');
   await writeFile(path.join(library, 'programas/dbz/programa.yaml'), 'titulo: DBZ');
+  await writeFile(path.join(library, 'vazio.txt'), '');
   await writeFile(path.join(root, 'segredo.txt'), 'fora da biblioteca');
   await writeFile(path.join(app, 'index.html'), '<!doctype html><title>TV</title>');
   await writeFile(path.join(app, 'assets/app.js'), 'console.log(1)');
@@ -59,7 +60,7 @@ describe('createLibraryServer', () => {
     expect(res.headers['content-encoding']).toBe('gzip');
     const listing = JSON.parse(gunzipSync(res.body).toString('utf8'));
     expect(listing.base).toBe('/__biblioteca/arquivo/');
-    expect(listing.files).toHaveLength(83);
+    expect(listing.files).toHaveLength(84);
     expect(listing.files.some((file: string) => file.includes('.originais'))).toBe(false);
   });
 
@@ -69,6 +70,14 @@ describe('createLibraryServer', () => {
     expect(res.headers['content-range']).toBe('bytes 10-19/1000');
     expect([...res.body]).toEqual(Array(10).fill(2));
     expect((await get('/__biblioteca/arquivo/programas/dbz/episodios/000%20-%20Epis%C3%B3dio.mp4', { range: 'bytes=5000-' })).status).toBe(416);
+  });
+
+  it('serves an empty file as an empty body', async () => {
+    const res = await get('/__biblioteca/arquivo/vazio.txt');
+    expect(res.status).toBe(200);
+    expect(res.headers['content-length']).toBe('0');
+    expect(res.body).toHaveLength(0);
+    expect((await get('/__biblioteca/arquivo/vazio.txt', { range: 'bytes=0-' })).status).toBe(416);
   });
 
   it('refuses hidden files and paths outside the library', async () => {
