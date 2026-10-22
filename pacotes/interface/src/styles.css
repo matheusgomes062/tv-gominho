@@ -2840,6 +2840,108 @@ h2 {
   color: var(--ov-text);
 }
 
+/* The preview of the week: rows that take focus so the remote can scroll through them. */
+.preview-list,
+.preview-week {
+  display: grid;
+  gap: calc(0.35 * var(--u));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.preview-row,
+.preview-day,
+.wizard-warning {
+  border: var(--bw) solid transparent;
+  border-radius: calc(var(--k-md) * var(--u));
+}
+
+.preview-row {
+  display: grid;
+  grid-template-columns: calc(4.4 * var(--u)) minmax(0, 1fr);
+  align-items: center;
+  gap: calc(0.1 * var(--u)) calc(0.8 * var(--u));
+  padding: calc(0.55 * var(--u)) calc(0.9 * var(--u));
+  background: var(--ov-tile);
+}
+
+.preview-block {
+  grid-column: 1 / -1;
+  font-family: var(--ff-body);
+  font-size: var(--fs-meta);
+  letter-spacing: var(--ls-section);
+  text-transform: uppercase;
+  color: var(--ov-dim);
+}
+
+.preview-time {
+  font-weight: var(--fw-display);
+  font-size: var(--fs-label);
+  font-variant-numeric: tabular-nums;
+}
+
+.preview-day {
+  display: grid;
+  gap: calc(0.35 * var(--u));
+  padding: calc(0.55 * var(--u)) calc(0.9 * var(--u));
+  background: var(--ov-tile);
+}
+
+.preview-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(0.25 * var(--u)) calc(0.7 * var(--u));
+  font-family: var(--ff-body);
+  font-size: var(--fs-meta);
+  line-height: 1.35;
+}
+
+.preview-chip b {
+  font-variant-numeric: tabular-nums;
+}
+
+.preview-chip i {
+  font-style: normal;
+  color: var(--ov-dim);
+}
+
+.wizard-warning {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: calc(0.7 * var(--u));
+  margin: 0;
+  padding: calc(0.55 * var(--u)) calc(0.8 * var(--u));
+  font-family: var(--ff-body);
+  font-size: calc(var(--fs-meta) * 1.1);
+  line-height: 1.4;
+  background: color-mix(in srgb, var(--danger), transparent 82%);
+  border-left: calc(var(--u) * 0.25) solid var(--danger);
+}
+
+.wizard-warning em {
+  font-style: normal;
+  color: var(--ov-dim);
+}
+
+.preview-row:focus-visible,
+.preview-day:focus-visible,
+.wizard-warning:focus-visible {
+  outline: none;
+  color: var(--ov-on-focus);
+  background: var(--ov-focus);
+  border-color: var(--ov-focus);
+  box-shadow: var(--shadow-focus);
+}
+
+.preview-row:focus-visible .row-meta,
+.preview-row:focus-visible .preview-block,
+.preview-day:focus-visible .preview-chip i,
+.wizard-warning:focus-visible em {
+  color: var(--ov-on-focus-dim);
+}
+
 /* --- "Não passar" screen ---------------------------------------------------------------------------- */
 .np-summary {
   margin: 0;

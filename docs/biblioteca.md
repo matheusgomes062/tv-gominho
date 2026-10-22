@@ -46,6 +46,7 @@ biblioteca/
 - **Temporadas** são opcionais. Se existirem, as pastas `temporada-NN` são lidas em ordem e os episódios ficam numa sequência só.
 - **Título do episódio:** vem de `episodios.yaml`. Se não houver, usa o nome do arquivo sem o número (`A Volta de Goku`).
 - **Arquivos ignorados:** qualquer coisa que não seja vídeo, imagem ou YAML conhecido, e arquivos que começam com `.`.
+- **Cópias de segurança de canais:** ao trocar um canal pelo assistente, o app guarda o arquivo antigo em `grades/` com o nome `<canal>.AAAA-MM-DD.yaml.bak` (por exemplo `manha.2026-10-22.yaml.bak`). Por terminar em `.bak`, ela **não é lida como canal** e não gera aviso. Para voltar atrás, apague o canal novo e renomeie a cópia, tirando a data e o `.bak` (`manha.yaml`). Pode apagar as cópias quando não precisar mais.
 - **Vinhetas** podem ficar em subpastas dentro de cada categoria (por exemplo, `vinhetas/aberturas/2003/`). A grade pode apontar para a categoria inteira ou para uma subpasta.
 
 ## Vinhetas de intervalo (`vinhetas/intervalos/`)

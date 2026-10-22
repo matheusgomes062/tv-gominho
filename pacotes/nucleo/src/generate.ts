@@ -6,7 +6,7 @@ import { WEEKDAYS, formatTimeOfDay, type Weekday } from './dates';
 import { resolveInterstitials } from './library';
 import { fold, naturalCompare } from './paths';
 import { hashString } from './random';
-import type { AdBreakSettings } from './settings';
+import { channelAdBreaks, type AdBreakSettings, type Settings } from './settings';
 import type { Library, SavedPosition, Schedule, ScheduleBlock, ScheduleItem, Show } from './types';
 
 export interface GenerateBlock {
@@ -33,6 +33,13 @@ export interface GenerateOptions {
   days?: Weekday[];
   /** "YYYY-MM-DD": the first day; also where the episode count starts. */
   startDate: string;
+  /**
+   * The channel's own break rules (`intervalos` of the grade; what is left out follows the general ones). They are
+   * written into the grade and used for the estimates, so the blocks close on time with the channel's breaks.
+   */
+  adBreaks?: Partial<AdBreakSettings>;
+  /** The settings the channel will play with (the user's choices over the library's). Default: the library's. */
+  settings?: Pick<Settings, 'interstitials' | 'commercials' | 'adBreaks'>;
 }
 
 export interface GeneratedSchedule {
@@ -43,8 +50,8 @@ export interface GeneratedSchedule {
   itemStarts: Map<ScheduleItem, number>;
 }
 
-/** When nothing is known about a file. */
-const GUESS = { episode: 22 * 60, commercial: 30, bumper: 8, promo: 20 } as const;
+/** When nothing is known about a file (seconds). */
+export const GUESS = { episode: 22 * 60, commercial: 30, bumper: 8, promo: 20 } as const;
 /** Shows shorter than this air two episodes in a row, like the 11-minute segments on TV. */
 const SHORT_EPISODE = 13 * 60;
 const SAMPLE = 12;
@@ -67,8 +74,11 @@ export function generateSchedule(
   const promo = pickInterstitialRef(library, 'chamadas', brand, undefined);
   const bumpers = pickBumperGroup(library, brand, options.era);
 
-  const settings = library.settings;
-  const adBreaks: AdBreakSettings | null = settings.commercials && resolveInterstitials(library, 'comerciais').length > 0 ? settings.adBreaks : null;
+  const settings = options.settings ?? library.settings;
+  // The channel's own rules over the general ones; the general `commercials` switch still decides whether there are breaks at all.
+  const ownBreaks = options.adBreaks && Object.keys(options.adBreaks).length > 0 ? options.adBreaks : undefined;
+  const adBreaks: AdBreakSettings | null =
+    settings.commercials && resolveInterstitials(library, 'comerciais').length > 0 ? channelAdBreaks(settings, { adBreaks: ownBreaks }) : null;
   const average = (paths: string[], guess: number) => averageDuration(paths, durationOf, guess);
   const adSeconds = adBreaks ? adBreaks.ads * average(resolveInterstitials(library, 'comerciais').map((i) => i.path), GUESS.commercial) : 0;
   const bumperSeconds = adBreaks?.bumpers && settings.interstitials ? 2 * average(refPaths(library, bumpers ?? 'intervalos'), GUESS.bumper) : 0;
@@ -130,6 +140,7 @@ export function generateSchedule(
     days: options.days ?? WEEKDAYS.filter((day) => day !== 'sab' && day !== 'dom'),
     blocks,
     ...(bumpers ? { breakBumpersRef: bumpers } : {}),
+    ...(ownBreaks ? { adBreaks: ownBreaks } : {}),
   };
   return { schedule, estimates, itemStarts };
 }

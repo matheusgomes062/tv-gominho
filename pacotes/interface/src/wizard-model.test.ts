@@ -32,7 +32,7 @@ const range = (from: number, to: number): TimeRange => ({ start: h(from), end: h
 
 describe('steps', () => {
   it('go from the time ranges to the save step, and Back from the first leaves the wizard', () => {
-    expect(STEPS.map((step) => step.id)).toEqual(['ranges', 'days', 'shows', 'name', 'save']);
+    expect(STEPS.map((step) => step.id)).toEqual(['ranges', 'days', 'shows', 'commercials', 'bumpers', 'name', 'preview', 'save']);
     expect(nextStep('ranges')).toBe('days');
     expect(nextStep('save')).toBe('save');
     expect(previousStep('days')).toBe('ranges');
@@ -186,6 +186,7 @@ describe('toGenerateOptions', () => {
       ],
       days: ['seg', 'qua', 'sex'],
       startDate: '2026-03-02',
+      brand: '',
     });
   });
 
