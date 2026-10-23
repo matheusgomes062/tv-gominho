@@ -180,6 +180,41 @@ main section .wrap { display: grid; gap: 32px; }
 .guide li.off span { color: var(--muted); }
 .guide li.off time { color: var(--muted); }
 
+/* The TV guide, drawn like the app's (components/Guide.tsx): one row per day, each episode a block
+   as wide as its airtime, one colour per cartoon, striped breaks, a bar on top of a fixed episode. */
+.prog { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr); gap: 28px; align-items: start; }
+.tvguide { margin: 0; background: var(--bg-deep); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 18px 16px; display: grid; gap: 12px; min-width: 0; }
+.tvguide figcaption { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.tvguide-now { font-family: var(--font-osd); font-size: 0.62rem; line-height: 1.6; color: var(--osd); }
+.tvguide-scroll { overflow-x: auto; padding-bottom: 4px; }
+.tvguide-grid { position: relative; min-width: 540px; display: grid; gap: 6px; }
+.tvguide-row { display: grid; grid-template-columns: 3.6rem minmax(0, 1fr); gap: 8px; align-items: stretch; }
+.tvguide-day { font-size: var(--text-caption); font-weight: 600; color: var(--muted); display: grid; align-content: center; line-height: 1.2; }
+.tvguide-day small { font-family: var(--font-osd); font-size: 0.5rem; color: var(--osd); font-weight: 400; }
+.tvguide-times { font-family: var(--font-osd); font-size: 0.55rem; color: var(--faint); }
+.tvguide-times > span:last-child { display: flex; justify-content: space-between; }
+.tvguide-slots { display: flex; gap: 2px; min-height: 44px; }
+.tvguide-slots > span { flex: var(--m) 1 0; min-width: 0; border-radius: 4px; background: var(--c); color: #10131f;
+  padding: 5px 6px; display: grid; align-content: center; font-size: 0.72rem; font-weight: 700; line-height: 1.15; overflow: hidden; white-space: nowrap; }
+.tvguide-slots > span small { font-weight: 500; font-size: 0.66rem; opacity: 0.8; }
+.tvguide-slots > .brk { background: repeating-linear-gradient(135deg, #2a3157 0 4px, #1b2142 4px 8px); padding: 0; }
+.tvguide-slots > .vin { background: #3a4270; padding: 0; }
+.tvguide-slots > .fix { box-shadow: inset 0 4px 0 #ffffff; padding-top: 8px; }
+.tvguide-slots > .focus { outline: 3px solid var(--focus); outline-offset: -1px; }
+.tvguide-slots > .off { background: transparent; border: 1px dashed var(--line); color: var(--faint); font-weight: 500; }
+.tvguide-nowline { position: absolute; top: 18px; bottom: 0; left: calc(3.6rem + 8px + (100% - 3.6rem - 8px) * 0.24); width: 2px; background: var(--osd); box-shadow: 0 0 8px rgba(93, 255, 106, 0.7); pointer-events: none; }
+.tvguide-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0; padding: 0; list-style: none; font-size: var(--text-caption); color: var(--muted); }
+.tvguide-legend li { display: flex; align-items: center; gap: 6px; }
+.tvguide-legend i { width: 12px; height: 12px; border-radius: 3px; background: var(--c); flex: none; }
+.tvguide-legend .brk-key { background: repeating-linear-gradient(135deg, #2a3157 0 3px, #1b2142 3px 6px); }
+.tvguide-legend .fix-key { background: #3a4270; box-shadow: inset 0 3px 0 #ffffff; }
+.features { display: grid; gap: 0; }
+.feature { display: grid; gap: 4px; padding-block: 14px; border-top: 1px solid var(--line); }
+.feature:first-child { border-top: 0; padding-top: 0; }
+.feature h3 { font-size: 1.15rem; }
+.feature p { color: var(--muted); font-size: var(--text-small); text-wrap: pretty; }
+.feature small { color: var(--faint); font-size: var(--text-caption); }
+
 .flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .step { background: var(--surface); border-radius: var(--radius); padding: 22px; display: grid; gap: 12px; grid-template-rows: auto auto 1fr; min-width: 0; }
 .step-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
@@ -219,7 +254,7 @@ footer p { max-width: 82ch; text-wrap: pretty; }
 footer strong { color: var(--text); font-weight: 600; }
 
 @media (max-width: 900px) {
-  .flow, .tools, .start, .why { grid-template-columns: minmax(0, 1fr); }
+  .flow, .tools, .start, .why, .prog { grid-template-columns: minmax(0, 1fr); }
   main section { padding-block: 56px; }
 }
 @media (max-width: 560px) {
@@ -303,7 +338,7 @@ footer strong { color: var(--text); font-weight: 600; }
           </article>
           <article class="reason">
             <h3>Só passa o que você escolheu</h3>
-            <p>O canal toca só o que está na pasta: os desenhos que você aprovou. Nenhuma recomendação, nenhum vídeo estranho no meio.</p>
+            <p>O canal toca só o que está na pasta: os desenhos que você aprovou. E o episódio que você tirar não passa mais. Nenhuma recomendação, nenhum vídeo estranho no meio.</p>
           </article>
           <article class="reason">
             <h3>Sem internet e sem conta</h3>
@@ -323,6 +358,51 @@ footer strong { color: var(--text); font-weight: 600; }
             <li class="off"><time>08:40</time><span>Fora do ar. Volta amanhã às 08:00.</span></li>
           </ol>
         </figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="programacao" aria-labelledby="programacao-t">
+    <div class="wrap">
+      <div class="section-head">
+        <h2 id="programacao-t">Você monta a programação, com o controle remoto</h2>
+        <p class="lede">No menu da TV, em Programação, você cria um canal novo ou muda um que já existe. Sem editar arquivo e sem terminal: dá para fazer tudo do sofá.</p>
+      </div>
+      <div class="prog">
+        <figure class="tvguide" aria-labelledby="tvguide-t">
+          <figcaption><span class="eyebrow" id="tvguide-t">Mudar uma programação: a semana do canal</span><span class="tvguide-now">PERNALONGA · EP. 1 · 08:12</span></figcaption>
+          <div class="tvguide-scroll">
+            <div class="tvguide-grid" aria-hidden="true">
+              <div class="tvguide-row tvguide-times"><span></span><span><span>08:00</span><span>08:30</span><span>09:00</span><span>09:30</span></span></div>
+              <div class="tvguide-row"><span class="tvguide-day">Seg<small>HOJE</small></span><div class="tvguide-slots">
+                <span class="vin" style="--m:1"></span><span style="--m:8;--c:#ff8a7a">Pica-Pau<small>Ep. 1</small></span><span class="brk" style="--m:3"></span><span class="focus" style="--m:16;--c:#8fb4ff">Pernalonga<small>Ep. 1</small></span><span class="brk" style="--m:3"></span><span style="--m:8;--c:#ffa8d6">Luluzinha<small>Ep. 1</small></span><span class="brk" style="--m:3"></span><span style="--m:10;--c:#ffd75e">Superman<small>Ep. 1</small></span><span class="brk" style="--m:3"></span><span style="--m:8;--c:#ff8a7a">Pica-Pau<small>Ep. 2</small></span><span class="brk" style="--m:3"></span><span style="--m:16;--c:#8fb4ff">Pernalonga<small>Ep. 2</small></span><span class="brk" style="--m:3"></span><span style="--m:5;--c:#ffa8d6">Luluzinha</span>
+              </div></div>
+              <div class="tvguide-row"><span class="tvguide-day">Ter</span><div class="tvguide-slots">
+                <span class="vin" style="--m:1"></span><span style="--m:8;--c:#ff8a7a">Pica-Pau<small>Ep. 3</small></span><span class="brk" style="--m:3"></span><span style="--m:16;--c:#8fb4ff">Pernalonga<small>Ep. 3</small></span><span class="brk" style="--m:3"></span><span style="--m:8;--c:#ffa8d6">Luluzinha<small>Ep. 3</small></span><span class="brk" style="--m:3"></span><span style="--m:10;--c:#ffd75e">Superman<small>Ep. 2</small></span><span class="brk" style="--m:3"></span><span style="--m:8;--c:#ff8a7a">Pica-Pau<small>Ep. 4</small></span><span class="brk" style="--m:3"></span><span style="--m:16;--c:#8fb4ff">Pernalonga<small>Ep. 4</small></span><span class="brk" style="--m:3"></span><span style="--m:5;--c:#ffa8d6">Luluzinha</span>
+              </div></div>
+              <div class="tvguide-row"><span class="tvguide-day">Qua</span><div class="tvguide-slots">
+                <span class="vin" style="--m:1"></span><span class="fix" style="--m:8;--c:#ff8a7a">Pica-Pau<small>Ep. 1</small></span><span class="brk" style="--m:3"></span><span style="--m:16;--c:#8fb4ff">Pernalonga<small>Ep. 5</small></span><span class="brk" style="--m:3"></span><span style="--m:8;--c:#ffa8d6">Luluzinha<small>Ep. 5</small></span><span class="brk" style="--m:3"></span><span style="--m:10;--c:#ffd75e">Superman<small>Ep. 3</small></span><span class="brk" style="--m:3"></span><span style="--m:8;--c:#ff8a7a">Pica-Pau<small>Ep. 2</small></span><span class="brk" style="--m:3"></span><span style="--m:16;--c:#8fb4ff">Pernalonga<small>Ep. 6</small></span><span class="brk" style="--m:3"></span><span style="--m:5;--c:#ffa8d6">Luluzinha</span>
+              </div></div>
+              <div class="tvguide-row"><span class="tvguide-day">Sáb</span><div class="tvguide-slots"><span class="off" style="--m:90">fora do ar</span></div></div>
+              <span class="tvguide-nowline"></span>
+            </div>
+          </div>
+          <ul class="tvguide-legend">
+            <li><i style="--c:#ff8a7a"></i>Pica-Pau</li>
+            <li><i style="--c:#8fb4ff"></i>Pernalonga</li>
+            <li><i style="--c:#ffa8d6"></i>Luluzinha</li>
+            <li><i style="--c:#ffd75e"></i>Superman</li>
+            <li><i class="brk-key"></i>Intervalo</li>
+            <li><i class="fix-key"></i>Escolhido à mão</li>
+          </ul>
+        </figure>
+        <div class="features">
+          <div class="feature"><h3>Criar uma programação</h3><p>Quatro telas: quando passa, o que passa, o nome com a prévia da semana, e salvar. Com tudo no padrão, são cinco apertos de OK.</p></div>
+          <div class="feature"><h3>O episódio que você quiser, no dia que quiser</h3><p>A semana aparece como o guia das TVs a cabo. Escolha o episódio de um dia e os dias seguintes continuam a partir dele. Mudou os horários depois? Cada desenho segue do episódio em que estava.</p></div>
+          <div class="feature"><h3>Desenhos que não passam</h3><p>Uma lista dos episódios, ou desenhos inteiros, que não devem passar. O canal pula e segue para o próximo.</p></div>
+          <div class="feature"><h3>Pelo celular ou pela TV</h3><p>Com <code>tv-gominho servir --editar</code>, outro aparelho da casa muda a programação depois de digitar um PIN que aparece no computador.</p></div>
+          <div class="feature"><h3>Pedir para a IA</h3><p>Descreva o canal em poucas palavras e o Claude monta a grade para você conferir.</p><small>Opcional e desligado. Usa a sua chave da Anthropic, cobrada na sua conta. Saem só os nomes, as durações e o pedido; os vídeos nunca saem do computador.</small></div>
+        </div>
       </div>
     </div>
   </section>
@@ -349,7 +429,7 @@ footer strong { color: var(--text); font-weight: 600; }
         </article>
         <article class="step">
           <div class="step-top"><h3>A grade</h3><span class="step-num">02</span></div>
-          <p><code>tv-gominho grade</code> monta o canal: abertura, desenhos em rodízio, chamadas entre eles e encerramento, no tamanho do bloco.</p>
+          <p>O app (em Programação) ou o <code>tv-gominho grade</code> monta o canal: abertura, desenhos em rodízio, chamadas e encerramento, no tamanho do bloco. É um arquivo de texto: dá para abrir e mexer.</p>
 <pre><span class="k">blocos:</span>
   - horario: <span class="g">"08:00"</span>
     itens:
@@ -357,11 +437,16 @@ footer strong { color: var(--text); font-weight: 600; }
       - programa: pica-pau
       - vinheta: intervalos
       - comerciais: 3
-      - programa: superman-fleischer</pre>
+      - programa: superman-fleischer
+<span class="k">agenda:</span>    <span class="c"># opcional</span>
+  2026-12-25:
+    - bloco: <span class="g">"08:00"</span>
+      item: 2
+      episodio: 7</pre>
         </article>
         <article class="step">
           <div class="step-top"><h3>A TV</h3><span class="step-num">03</span></div>
-          <p>O canal segue o relógio, como uma TV ao vivo: ligou às 8h10, pega o desenho no meio. No modo Biblioteca, você escolhe o episódio.</p>
+          <p>O canal segue o relógio, como uma TV ao vivo: ligou às 8h10, pega o desenho no meio, com a marca d'água do canal no canto. No modo Biblioteca, você escolhe o episódio.</p>
 <pre><span class="c"># configuracoes.yaml: só o
 # que muda em relação ao padrão</span>
 <span class="k">horario:</span> real
@@ -382,7 +467,7 @@ footer strong { color: var(--text); font-weight: 600; }
         <div><dt>PC ou notebook</dt><dd>No Chrome ou no Edge, escolhendo a pasta da biblioteca, ou com <code>tv-gominho servir</code>, que já abre com ela.</dd></div>
         <div><dt>Raspberry Pi</dt><dd>Modo quiosque ligado na TV: o Pi liga direto no canal, em tela cheia.</dd></div>
         <div><dt>Qualquer TV com USB</dt><dd>Pendrive com a programação pronta em MP4, com intervalos e efeito de tubo. <code>tv-gominho verificar</code> confere se a TV vai tocar.</dd></div>
-        <div><dt>Outros aparelhos da casa</dt><dd><code>tv-gominho servir --rede</code> e o navegador do celular, da TV ou de outro PC.</dd></div>
+        <div><dt>Outros aparelhos da casa</dt><dd><code>tv-gominho servir --rede</code> e o navegador do celular, da TV ou de outro PC. Com <code>--editar</code>, eles também mudam a programação, depois de digitar o PIN.</dd></div>
         <div><dt>TV Box Android</dt><dd>Ainda não: um app para Android TV lendo os episódios do pendrive está nos planos.</dd></div>
       </dl>
     </div>
@@ -416,6 +501,7 @@ Comandos:
           <div class="tool"><b>grade</b><p>Monta a programação no estilo da época, com as vinhetas do ano que você escolher.</p></div>
           <div class="tool"><b>pendrive</b><p>Grava os dias da grade em MP4, em partes de menos de 4&nbsp;GB, para qualquer TV com USB.</p></div>
           <div class="tool"><b>verificar</b><p>Confere um pendrive como o player USB da TV: codecs, níveis, FAT32 e nomes.</p></div>
+          <div class="tool"><b>servir</b><p>Abre a TV no navegador já com a biblioteca, neste computador ou nos outros aparelhos da casa (<code>--rede</code>). Com <code>--editar</code>, a programação pode ser mudada pelo app, com PIN.</p></div>
         </div>
       </div>
     </div>
@@ -426,13 +512,16 @@ Comandos:
       <div class="start">
         <div class="section-head">
                     <h2 id="comecar-t">Para começar</h2>
-          <p class="lede">Precisa do Node.js 22.9 ou mais novo e, para a biblioteca de exemplo, do ffmpeg. Tudo cabe no pendrive, ao lado dos desenhos: o app tem uns 1&nbsp;MB e a ferramenta, 245&nbsp;KB. O código está no <a href="https://github.com/matheusgomes062/tv-gominho">GitHub</a>, com licença GPL-3.0.</p>
+          <p class="lede">Precisa do Node.js 22.9 ou mais novo e, para a biblioteca de exemplo, do ffmpeg. Tudo cabe no pendrive, ao lado dos desenhos: o app tem uns 1,6&nbsp;MB e a ferramenta, 280&nbsp;KB. O código está no <a href="https://github.com/matheusgomes062/tv-gominho">GitHub</a>, com licença GPL-3.0.</p>
         </div>
 <pre><span class="g">$</span> git clone https://github.com/matheusgomes062/tv-gominho.git
 <span class="g">$</span> cd tv-gominho
 <span class="g">$</span> npm install
 <span class="g">$</span> npm run exemplo:real   <span class="c"># desenhos em domínio público</span>
-<span class="g">$</span> npm run dev            <span class="c"># abre em localhost:5173</span></pre>
+<span class="g">$</span> npm run dev            <span class="c"># abre em localhost:5173</span>
+
+<span class="c"># ou já com a biblioteca, salvando canais pelo app:</span>
+<span class="g">$</span> npm run cli -- servir exemplo/dominio-publico/biblioteca --editar --abrir</pre>
       </div>
     </div>
   </section>
